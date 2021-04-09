@@ -7,13 +7,18 @@
     "author": "agora.io",
     "gypfile": true,
     "dependencies": {
+        "vue-cli": "^2.9.6",
+        "yuv-buffer": "1.0.0",
+        "yuv-canvas": "1.2.6"
+    },
+    "devDependencies": {
         "download": "8.0.0",
         "just-task": "1.2.0",
         "nan": "2.14.2",
         "node-gyp": "7.1.2",
+        "rimraf": "^3.0.0",
         "tsc": "^1.20150623.0",
-        "yuv-buffer": "1.0.0",
-        "yuv-canvas": "1.2.6",
-        "rimraf": "3.0.0"
+        "typescript": "3.7.2",
+        "@types/node": "10.17.5"
     }
 }

@@ -35,19 +35,19 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "OnEvent", OnEvent);
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
 
-                v8_Local<v8_Function> cons = _template->GetFunction(_context).ToLocalChecked();
-                v8_Local<v8_External> argChannel = v8_Local<v8_External>::New(isolate, v8_External::New(isolate, irisChannel));
+                auto cons = _template->GetFunction(_context).ToLocalChecked();
+                auto argChannel = v8_Local<v8_External>::New(isolate, v8_External::New(isolate, irisChannel));
                 v8_Local<v8_Value> argv[1] = {argChannel};
-                v8_Local<v8_Object> jschannel = cons->NewInstance(_context, 1, argv).ToLocalChecked();
+                auto jschannel = cons->NewInstance(_context, 1, argv).ToLocalChecked();
                 return jschannel;
             }
 
             void NodeIrisChannel::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
             {
-                v8_Isolate *_isolate = args.GetIsolate();
-                v8_Local<v8_External> _argChannel = v8_Local<v8_External>::Cast(args[0]);
-                IrisChannel *_irisChannel = static_cast<IrisChannel *>(_argChannel->Value());
-                NodeIrisChannel *_channel = new NodeIrisChannel(_isolate, _irisChannel);
+                auto *_isolate = args.GetIsolate();
+                auto _argChannel = v8_Local<v8_External>::Cast(args[0]);
+                auto *_irisChannel = static_cast<IrisChannel *>(_argChannel->Value());
+                auto *_channel = new NodeIrisChannel(_isolate, _irisChannel);
                 _channel->Wrap(args.This());
                 args.GetReturnValue().Set(args.This());
             }

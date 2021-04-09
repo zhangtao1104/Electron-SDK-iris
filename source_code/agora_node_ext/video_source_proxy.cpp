@@ -13,7 +13,7 @@ namespace agora {
             }
 
             VideoSourceProxy::~VideoSourceProxy() {
-                _videoSourceEventHandlerPtr.reset();
+                Clear();
             }
 
             bool VideoSourceProxy::Initialize(IVideoSourceEventHandler *videoSourceEventHandler, std::string& parameter) {
@@ -101,15 +101,17 @@ namespace agora {
                 switch (msg) {
                     case AGORA_IPC_ON_EVENT:
                         {
-                            CallbackParameter* _parameter = reinterpret_cast<CallbackParameter*>(payload);
-                            _videoSourceEventHandlerPtr.get()->OnVideoSourceEvent(_parameter->_eventName.c_str(), _parameter->_eventData.c_str());
+                            auto _parameter = reinterpret_cast<CallbackParameter*>(payload);
+                            if (_videoSourceEventHandlerPtr.get())
+                                _videoSourceEventHandlerPtr.get()->OnVideoSourceEvent(_parameter->_eventName.c_str(), _parameter->_eventData.c_str());
                         }
                         break;
 
                     case AGORA_IPC_ON_EVENT_WITH_BUFFER:
                         {
-                            CallbackParameter* _parameter = reinterpret_cast<CallbackParameter*>(payload);
-                            _videoSourceEventHandlerPtr.get()->OnVideoSourceEvent(_parameter->_eventName.c_str(), _parameter->_eventData.c_str(), _parameter->_buffer.c_str(), _parameter->_length);
+                            auto _parameter = reinterpret_cast<CallbackParameter*>(payload);
+                            if (_videoSourceEventHandlerPtr.get())
+                                _videoSourceEventHandlerPtr.get()->OnVideoSourceEvent(_parameter->_eventName.c_str(), _parameter->_eventData.c_str(), _parameter->_buffer.c_str(), _parameter->_length);
                         }
                         break;
                     
@@ -140,6 +142,29 @@ namespace agora {
                     return _iAgoraIpc->sendMessage(AGORA_IPC_CALL_API_WITH_BUFFER, (char *)&apiParameter, sizeof(apiParameter));
                 }
                 return -1;
+            }
+
+            int VideoSourceProxy::Release()
+            {
+                if (_initialized)
+                    Clear();
+
+                return 0;
+            }
+
+            void VideoSourceProxy::Clear()
+            {
+                _initialized = false;
+                _videoSourceEventHandlerPtr = nullptr;
+                
+                _iAgoraIpcDataReceiver.reset();
+                // m_videoRender.reset();
+                if (_iAgoraIpc.get()) {
+                    _iAgoraIpc->sendMessage(AGORA_IPC_DISCONNECT, nullptr, 0);
+                    _iAgoraIpc->disconnect();
+                }
+                if(_messageThread.joinable())
+                    _messageThread.join();
             }
         }
     }

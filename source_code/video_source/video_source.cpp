@@ -1,6 +1,23 @@
 #include "video_source.h"
 #include "iris_base.h"
 
+
+
+int main(int argc, char *argv[])
+{
+    std::string _parameter;
+    for (int i = 1; i < argc; i++)
+    {
+        _parameter.append(argv[i]);
+        _parameter.append(" ");
+    }
+    auto _videoSource = new agora::rtc::electron::VideoSource();
+    _videoSource->initialize(_parameter);
+    _videoSource->run();
+    _videoSource->release();
+    return 0;
+}
+
 namespace agora
 {
     namespace rtc
@@ -8,21 +25,6 @@ namespace agora
         namespace electron
         {
             using namespace iris;
-
-            int main(int argc, char *argv[])
-            {
-                std::string _parameter;
-                for (int i = 1; i < argc; i++)
-                {
-                    _parameter.append(argv[i]);
-                    _parameter.append(" ");
-                }
-                auto _videoSource = new VideoSource();
-                _videoSource->initialize(_parameter);
-                _videoSource->run();
-                _videoSource->release();
-                return 0;
-            }
 
             VideoSource::VideoSource()
             {

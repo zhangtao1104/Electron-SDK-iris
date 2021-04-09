@@ -58,8 +58,8 @@ namespace agora
         auto propName = v8_String::NewFromUtf8(isolate, name, v8::NewStringType::kInternalized).ToLocalChecked(); \
         auto propValue = v8_Int32::New(isolate, value);                                                           \
         auto result = object->Set(isolate->GetCurrentContext(), propName, propValue);                             \
-        v8_MAYBE_CHECK_RESULT(result);
-        }
+        v8_MAYBE_CHECK_RESULT(result);                                                                            \
+    }
 
 #define v8_SET_OBJECT_PROP_BOOL(isolate, obj, name, val)                                                          \
     {                                                                                                             \
@@ -93,9 +93,9 @@ namespace agora
         }                                  \
     }
 
-        std::string nan_api_get_value_utf8string_(const v8_Local<v8_Value> &value);
-        int nan_api_get_value_int32_(const v8_Local<v8_Value> &value);
-        v8_Local<v8_Value> nan_create_local_value_string_(v8_Isolate *isolate, const char *value);
+            std::string nan_api_get_value_utf8string_(const v8_Local<v8_Value> &value);
+            int nan_api_get_value_int32_(const v8_Local<v8_Value> &value);
+            v8_Local<v8_Value> nan_create_local_value_string_(v8_Isolate *isolate, const char *value);
+        }
     }
-}
 }

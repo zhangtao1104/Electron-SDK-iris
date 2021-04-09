@@ -1281,7 +1281,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "");
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "")
     return ret.retCode
   }
 
@@ -1300,7 +1300,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   release(): number {
-    return this.rtcEngine.release();
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "")
+    return ret.retCode
   }
 
   /**
@@ -1396,7 +1397,7 @@ class AgoraRtcEngine extends EventEmitter {
     height: number
   ) {
 
-    this.rtcEngine.setVideoRenderDimension(rendertype, uid, width, height);
+    // this.rtcEngine.setVideoRenderDimension(rendertype, uid, width, height);
   }
 
   /**
@@ -1410,7 +1411,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} fps The renderer frame rate (fps).
    */
   setVideoRenderFPS(fps: number) {
-    this.rtcEngine.setFPS(fps);
+    // this.rtcEngine.setFPS(fps);
   }
 
   /**
@@ -1426,7 +1427,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} fps The renderer high frame rate (fps).
    */
   setVideoRenderHighFPS(fps: number) {
-    this.rtcEngine.setHighFPS(fps);
+    // this.rtcEngine.setHighFPS(fps);
   }
 
   /**
@@ -1436,7 +1437,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} uid The User ID.
    */
   addVideoRenderToHighFPS(uid: number) {
-    this.rtcEngine.addToHighVideo(uid);
+    // this.rtcEngine.addToHighVideo(uid);
   }
 
   /**
@@ -1446,7 +1447,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} uid The User ID.
    */
   removeVideoRenderFromHighFPS(uid: number) {
-    this.rtcEngine.removeFromHighVideo(uid);
+    // this.rtcEngine.removeFromHighVideo(uid);
   }
 
   /**

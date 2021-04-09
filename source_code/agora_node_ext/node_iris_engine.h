@@ -33,6 +33,7 @@ namespace agora
                 static void VideoSourceInitialize(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void VideoSourceCallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args);
+                static void VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 
 
             private:

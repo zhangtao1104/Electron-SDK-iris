@@ -38,6 +38,11 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "GetDeviceManager", GetDeviceManager);
                 Nan::SetPrototypeMethod(_template, "GetScreenWindowsInfo", GetScreenWindowsInfo);
                 Nan::SetPrototypeMethod(_template, "GetScreenDisplaysInfo", GetScreenDisplaysInfo);
+                Nan::SetPrototypeMethod(_template, "VideoSourceInitialize", VideoSourceInitialize);
+                Nan::SetPrototypeMethod(_template, "VideoSourceCallApi", VideoSourceCallApi);
+                Nan::SetPrototypeMethod(_template, "VideoSourceCallApiWithBuffer", VideoSourceCallApiWithBuffer);
+                Nan::SetPrototypeMethod(_template, "VideoSourceRelease", VideoSourceRelease);
+                
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
                 _module->Set(_context, Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
             }
@@ -146,8 +151,7 @@ namespace agora
                 auto _isolate = args.GetIsolate();
 
                 auto _iris_channel = _engine->_iris_engine->iris_channel();
-
-                v8_Local<v8_Object> _js_channel = NodeIrisChannel::Init(_isolate, _iris_channel);
+                auto _js_channel = NodeIrisChannel::Init(_isolate, _iris_channel);
                 args.GetReturnValue().Set(_js_channel);
             }
 
@@ -157,7 +161,6 @@ namespace agora
                 auto _isolate = args.GetIsolate();
 
                 auto _device_manager = _engine->_iris_engine->iris_device_manager();
-
                 auto _js_device_manager = NodeIrisDeviceManager::Init(_isolate, _device_manager);
                 args.GetReturnValue().Set(_js_device_manager);
             }
@@ -250,6 +253,19 @@ namespace agora
                 
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
+                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
+                args.GetReturnValue().Set(_retObj);
+            }
+        
+            void NodeIrisEngine::VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _isolate = args.GetIsolate(); 
+                auto _result = _engine->_video_source_proxy->Release();
+                auto _retObj = v8_Object::New(_isolate);
+                v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
+                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
+                args.GetReturnValue().Set(_retObj);
             }
 
             void NodeIrisEngine::VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)

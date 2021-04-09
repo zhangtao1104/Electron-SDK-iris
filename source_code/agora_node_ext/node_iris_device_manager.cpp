@@ -28,19 +28,19 @@ namespace agora {
                 Nan::SetPrototypeMethod(_template, "CallApiVideoDevice", CallApiVideoDevice);
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
 
-                v8_Local<v8_Function> cons = _template->GetFunction(_context).ToLocalChecked();
-                v8_Local<v8_External> argDeviceManager = v8_Local<v8_External>::New(isolate, v8_External::New(isolate, deviceManager));
+                auto cons = _template->GetFunction(_context).ToLocalChecked();
+                auto argDeviceManager = v8_Local<v8_External>::New(isolate, v8_External::New(isolate, deviceManager));
                 v8_Local<v8_Value> argv[1] = {argDeviceManager};
-                v8_Local<v8_Object> jsDeviceManager = cons->NewInstance(_context, 1, argv).ToLocalChecked();
+                auto jsDeviceManager = cons->NewInstance(_context, 1, argv).ToLocalChecked();
                 return jsDeviceManager;   
             }
             
             void NodeIrisDeviceManager::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
             {
-                v8_Isolate *_isolate = args.GetIsolate();
-                v8_Local<v8_External> _argDeviceManager = v8_Local<v8_External>::Cast(args[0]);
-                IrisDeviceManager *_irisDeviceManager = static_cast<IrisDeviceManager *>(_argDeviceManager->Value());
-                NodeIrisDeviceManager *_deviceManager = new NodeIrisDeviceManager(_isolate, _irisDeviceManager);
+                auto *_isolate = args.GetIsolate();
+                auto _argDeviceManager = v8_Local<v8_External>::Cast(args[0]);
+                auto *_irisDeviceManager = static_cast<IrisDeviceManager *>(_argDeviceManager->Value());
+                auto *_deviceManager = new NodeIrisDeviceManager(_isolate, _irisDeviceManager);
                 _deviceManager->Wrap(args.This());
                 args.GetReturnValue().Set(args.This());
             }
