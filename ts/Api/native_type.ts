@@ -3067,6 +3067,10 @@ export interface NodeIrisEngine {
   GetDeviceManager(): NodeIrisDeviceManager;
   GetScreenDisplaysInfo(): Array<Object>;
   GetScreenWindowsInfo(): Array<Object>;
+  VideoSourceInitialize(params: string): { retCode: number, result: string };
+  VideoSourceCallApi(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
+  VideoSourceCallApiWithBuffer(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
+  VideoSourceRelease(): { retCode: number, result: string };
 }
 /**
  * @ignore

@@ -2319,9 +2319,9 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setEncryptionMode(mode: string): number {
+  setEncryptionMode(encryptionMode: string): number {
     let param = {
-      mode
+      encryptionMode
     }
 
     let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetEncryptionMode, JSON.stringify(param))
@@ -4001,63 +4001,6 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   /**
-   * @deprecated This method is deprecated. Use
-   * {@link videoSourceStartScreenCaptureByScreen} or
-   * {@link videoSourceStartScreenCaptureByWindow} instead.
-   *
-   * Starts the video source.
-   * @param {number} wndid Sets the video source area.
-   * @param {number} captureFreq (Mandatory) The captured frame rate. The value
-   * ranges between 1 fps and 15 fps.
-   * @param {*} rect Specifies the video source region. `rect` is valid when
-   * `wndid` is set as 0. When `rect` is set as NULL, the whole screen is
-   * shared.
-   * @param {number} bitrate The captured bitrate.
-   * @return
-   * - 0: Success.
-   * - < 0: Failure.
-   */
-  startScreenCapture2(
-    windowId: number,
-    captureFreq: number,
-    rect: Rect,
-    bitrate: number
-  ): number {
-    deprecate(
-      '"videoSourceStartScreenCaptureByScreen" or "videoSourceStartScreenCaptureByWindow"'
-    );
-    let param = {
-      windowId,
-      captureFreq,
-      rect,
-      bitrate
-    }
-
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCapture, JSON.stringify(param))
-    return ret.retCode
-  }
-
-  /**
-   * Stops the screen sharing when using the video source.
-   * @return
-   * - 0: Success.
-   * - < 0: Failure.
-   */
-  stopScreenCapture2(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopScreenCapture, '')
-    return ret.retCode
-  }
-
-  /**
-   * Starts the local video preview when using the video source.
-   * @return
-   * - 0: Success
-   * - < 0: Failure
-   */
-  startScreenCapturePreview(): number {
-    return this.rtcEngine.videoSourceStartPreview();
-  }
-  /**
    * Shares the whole or part of a window by specifying the window symbol.
    *
    * @param windowSymbol The symbol of the windows to be shared.
@@ -4157,16 +4100,6 @@ class AgoraRtcEngine extends EventEmitter {
 
     let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetScreenCaptureContentHint, JSON.stringify(param))
     return ret.retCode
-  }
-
-  /**
-   * Stops the local video preview when using the video source.
-   * @return
-   * - 0: Success.
-   * - < 0: Failure.
-   */
-  stopScreenCapturePreview(): number {
-    return this.rtcEngine.videoSourceStopPreview();
   }
 
   /**
@@ -5574,8 +5507,15 @@ class AgoraRtcEngine extends EventEmitter {
    *  - `ERR_INVALID_APP_ID (101)`: The app ID is invalid. Check if it is in
    * the correct format.
    */
-  videoSourceInitialize(appId: string): number {
-    return this.rtcEngine.videoSourceInitialize(appId);
+  videoSourceInitialize(appId: string, areaCode: AREA_CODE = (0xFFFFFFFF), logConfig?: LogConfig): number {
+    let param = {
+      appId,
+      areaCode,
+      logConfig
+    }
+
+    let ret = this.rtcEngine.VideoSourceInitialize(JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5588,8 +5528,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceSetLogFile(filepath: string) {
-    return this.rtcEngine.videoSourceSetLogFile(filepath);
+  videoSourceSetLogFile(filePath: string) {
+    let param = {
+      filePath
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetLogFile, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5623,7 +5568,12 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceEnableWebSdkInteroperability(enabled: boolean): number {
-    return this.rtcEngine.videoSourceEnableWebSdkInteroperability(enabled);
+    let param = {
+      enabled
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableWebSdkInteroperability, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5658,11 +5608,21 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceJoin(
     token: string,
-    cname: string,
+    channelId: string,
     info: string,
-    uid: number
+    uid: number,
+    options?: ChannelMediaOptions
   ): number {
-    return this.rtcEngine.videoSourceJoin(token, cname, info, uid);
+    let param = {
+      token,
+      channelId,
+      info,
+      uid,
+      options
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineJoinChannel, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5676,7 +5636,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceLeave(): number {
-    return this.rtcEngine.videoSourceLeave();
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineLeaveChannel, '')
+    return ret.retCode
   }
 
   /**
@@ -5692,7 +5653,12 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceRenewToken(token: string): number {
-    return this.rtcEngine.videoSourceRenewToken(token);
+    let param = {
+      token
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineRenewToken, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5708,7 +5674,12 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceSetChannelProfile(profile: number): number {
-    return this.rtcEngine.videoSourceSetChannelProfile(profile);
+    let param = {
+      profile
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetChannelProfile, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5725,12 +5696,15 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceSetVideoProfile(
     profile: VIDEO_PROFILE_TYPE,
-    swapWidthAndHeight = false
+    swapWidthAndHeight: boolean = false
   ): number {
-    return this.rtcEngine.videoSourceSetVideoProfile(
+    let param = {
       profile,
       swapWidthAndHeight
-    );
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetVideoProfile, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5742,8 +5716,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceEnableDualStreamMode(enable: boolean): number {
-    return this.rtcEngine.videoSourceEnableDualStreamMode(enable);
+  videoSourceEnableDualStreamMode(enabled: boolean): number {
+    let param = {
+      enabled
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableDualStreamMode, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5753,8 +5732,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceSetParameters(parameter: string): number {
-    return this.rtcEngine.videoSourceSetParameter(parameter);
+  videoSourceSetParameters(parameters: string): number {
+    let param = {
+      parameters
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetParameters, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5765,13 +5749,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceUpdateScreenCaptureRegion(rect: {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-  }) {
-    return this.rtcEngine.videoSourceUpdateScreenCaptureRegion(rect);
+  videoSourceUpdateScreenCaptureRegion(rect: Rectangle) {
+    let param = {
+      rect
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineUpdateScreenCaptureRegion, JSON.stringify(param))
+    return ret.retCode
   }
   /** Enables loopback audio capturing.
    *
@@ -5794,8 +5778,14 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  videoSourceEnableLoopbackRecording(enabled: boolean, deviceName: string | null = null): number {
-    return this.rtcEngine.videoSourceEnableLoopbackRecording(enabled, deviceName)
+  videoSourceEnableLoopbackRecording(enabled = false, deviceName: string | null = null): number {
+    let param = {
+      enabled,
+      deviceName
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableLoopBackRecording, JSON.stringify(param))
+    return ret.retCode
   }
   /**
    * Enables the audio module.
@@ -5822,7 +5812,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceEnableAudio(): number {
-    return this.rtcEngine.videoSourceEnableAudio()
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableAudio, '')
+    return ret.retCode
   }
   /** Enables/Disables the built-in encryption.
    *
@@ -5851,8 +5842,14 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceEnableEncryption(enabled: boolean, encryptionConfig: EncryptionConfig): number {
-    return this.rtcEngine.videoSourceEnableEncryption(enabled, encryptionConfig);
+  videoSourceEnableEncryption(enabled: boolean, config: EncryptionConfig): number {
+    let param = {
+      enabled,
+      config
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableEncryption, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5871,8 +5868,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceSetEncryptionMode(mode: string): number {
-    return this.rtcEngine.videoSourceSetEncryptionMode(mode);
+  videoSourceSetEncryptionMode(encryptionMode: string): number {
+    let param = {
+      encryptionMode
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetEncryptionMode, JSON.stringify(param))
+    return ret.retCode
   }
   /** Enables built-in encryption with an encryption password before users
    * join a channel.
@@ -5887,7 +5889,12 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceSetEncryptionSecret(secret: string): number {
-    return this.rtcEngine.videoSourceSetEncryptionSecret(secret);
+    let param = {
+      secret
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetEncryptionSecret, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5897,7 +5904,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceRelease(): number {
-    return this.rtcEngine.videoSourceRelease();
+    let ret = this.rtcEngine.VideoSourceRelease();
+    return ret.retCode
   }
 
   // 2.4 new Apis
@@ -5914,16 +5922,27 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
 
-  videoSourceStartScreenCaptureByScreen(
-    screenSymbol: ScreenSymbol,
-    rect: CaptureRect,
-    param: ScreenCaptureParameters
-  ): number {
-    return this.rtcEngine.videosourceStartScreenCaptureByScreen(
-      screenSymbol,
-      rect,
-      param
-    );
+  videoSourceStartScreenCaptureByScreen(screenSymbol: ScreenSymbol, regionRect: CaptureRect, captureParams: ScreenCaptureParameters): number {
+    if (process.platform == "win32") {
+      let param = {
+        displayId: screenSymbol,
+        regionRect,
+        captureParams
+      }
+
+      let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByDisplayId, JSON.stringify(param))
+      return ret.retCode
+    } else (process.platform == "darwin")
+    {
+      let param = {
+        screenRect: screenSymbol,
+        regionRect,
+        captureParams
+      }
+
+      let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByScreenRect, JSON.stringify(param))
+      return ret.retCode
+    }
   }
 
   /**
@@ -5935,16 +5954,15 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceStartScreenCaptureByWindow(
-    windowSymbol: number,
-    rect: CaptureRect,
-    param: CaptureParam
-  ): number {
-    return this.rtcEngine.videosourceStartScreenCaptureByWindow(
-      windowSymbol,
-      rect,
-      param
-    );
+  videoSourceStartScreenCaptureByWindow(windowId: number, regionRect: CaptureRect, captureParams: ScreenCaptureParameters): number {
+    let param = {
+      windowId,
+      regionRect,
+      captureParams
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStartScreenCaptureByWindowId, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5954,8 +5972,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceUpdateScreenCaptureParameters(param: CaptureParam): number {
-    return this.rtcEngine.videosourceUpdateScreenCaptureParameters(param);
+  videoSourceUpdateScreenCaptureParameters(captureParams: ScreenCaptureParameters): number {
+    let param = {
+      captureParams
+    }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineUpdateScreenCaptureParameters, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
@@ -5965,108 +5988,208 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceSetScreenCaptureContentHint(hint: VideoContentHint): number {
-    return this.rtcEngine.videosourceSetScreenCaptureContentHint(hint);
-  }
-
-  /**
-   * Private Interfaces.
-   * @ignore
-   */
-  convertPath(path: string): string {
-    return this.rtcEngine.convertPath(path);
-  }
-  /**
-   * Private Interfaces.
-   * @ignore
-   */
-  setProfile(profile: string, merge: boolean): number {
-    return this.rtcEngine.setProfile(profile, merge);
-  }
-
-  // ===========================================================================
-  // plugin apis
-  // ===========================================================================
-  /**
-   * @ignore
-   */
-  initializePluginManager(): number {
-    return this.rtcEngine.initializePluginManager();
-  }
-  /**
-   * @ignore
-   */
-  releasePluginManager(): number {
-    return this.rtcEngine.releasePluginManager();
-  }
-  /**
-   * @ignore
-   */
-  registerPlugin(info: PluginInfo): number {
-    return this.rtcEngine.registerPlugin(info);
-  }
-  /**
-   * @ignore
-   */
-  unregisterPlugin(pluginId: string): number {
-    return this.rtcEngine.unregisterPlugin(pluginId);
-  }
-  /**
-   * @ignore
-   */
-  getPlugins() {
-    return this.rtcEngine.getPlugins().map(item => {
-      return this.createPlugin(item.id)
-    })
-  }
-  /**
-   * @ignore
-   * @param pluginId
-   */
-  createPlugin(pluginId: string): Plugin {
-    return {
-      id: pluginId,
-      enable: () => {
-        return this.enablePlugin(pluginId, true)
-      },
-      disable: () => {
-        return this.enablePlugin(pluginId, false)
-      },
-      setParameter: (param: string) => {
-        return this.setPluginParameter(pluginId, param)
-      },
-      getParameter: (paramKey: string) => {
-        return this.getPluginParameter(pluginId, paramKey)
-      }
+  videoSourceSetScreenCaptureContentHint(contentHint: VideoContentHint): number {
+    let param = {
+      contentHint
     }
+
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetScreenCaptureContentHint, JSON.stringify(param))
+    return ret.retCode
+  }
+
+ /**
+   * @deprecated This method is deprecated. Use
+   * {@link videoSourceStartScreenCaptureByScreen} or
+   * {@link videoSourceStartScreenCaptureByWindow} instead.
+   *
+   * Starts the video source.
+   * @param {number} wndid Sets the video source area.
+   * @param {number} captureFreq (Mandatory) The captured frame rate. The value
+   * ranges between 1 fps and 15 fps.
+   * @param {*} rect Specifies the video source region. `rect` is valid when
+   * `wndid` is set as 0. When `rect` is set as NULL, the whole screen is
+   * shared.
+   * @param {number} bitrate The captured bitrate.
+   * @return
+   * - 0: Success.
+   * - < 0: Failure.
+   */
+  startScreenCapture2(windowId: number, captureFreq: number, rect: Rect, bitrate: number): number {
+    deprecate(
+      '"videoSourceStartScreenCaptureByScreen" or "videoSourceStartScreenCaptureByWindow"'
+    );
+    return this.videoSourceStartScreenCapture(windowId, captureFreq, rect, bitrate)
+  }
+
+  videoSourceStartScreenCapture(
+    windowId: number,
+    captureFreq: number,
+    rect: Rect,
+    bitrate: number
+  ): number {
+    let param = {
+      windowId,
+      captureFreq,
+      rect,
+      bitrate
+    }
+
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCapture, JSON.stringify(param))
+    return ret.retCode
   }
 
   /**
-   * @ignore
-   * @param pluginId
-   * @param enabled
+   * Stops the screen sharing when using the video source.
+   * @return
+   * - 0: Success.
+   * - < 0: Failure.
    */
-  enablePlugin(pluginId: string, enabled: boolean): number {
-    return this.rtcEngine.enablePlugin(pluginId, enabled);
+  stopScreenCapture2(): number {
+    deprecate(
+      "videoSourceStopScreenCapture"
+    );
+    return this.videoSourceStopScreenCapture()
+  }
+
+  videoSourceStopScreenCapture(): number {
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStopScreenCapture, '')
+    return ret.retCode
   }
 
   /**
-   * @ignore
-   * @param pluginId
-   * @param param
+   * Starts the local video preview when using the video source.
+   * @return
+   * - 0: Success
+   * - < 0: Failure
    */
-  setPluginParameter(pluginId: string, param: string): number {
-    return this.rtcEngine.setPluginParameter(pluginId, param);
+  startScreenCapturePreview(): number {
+    deprecate(
+      "videoSourceStartPreview"
+    );
+    return this.videoSourceStartPreview()
   }
 
-  /**
-   * @ignore
-   * @param pluginId
-   * @param paramKey
-   */
-  getPluginParameter(pluginId: string, paramKey: string): string {
-    return this.rtcEngine.getPluginParameter(pluginId, paramKey);
+  videoSourceStartPreview(): number {
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStartPreview, '')
+    return ret.retCode
   }
+
+    /**
+   * Stops the local video preview when using the video source.
+   * @return
+   * - 0: Success.
+   * - < 0: Failure.
+   */
+  stopScreenCapturePreview(): number {
+    deprecate(
+      "videoSourceStopPreview"
+    );
+    return this.videoSourceStopPreview()
+  }
+
+  videoSourceStopPreview(): number {
+    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStopPreview, '')
+    return ret.retCode
+  }
+
+  // /**
+  //  * Private Interfaces.
+  //  * @ignore
+  //  */
+  // convertPath(path: string): string {
+  //   return this.rtcEngine.convertPath(path);
+  // }
+  // /**
+  //  * Private Interfaces.
+  //  * @ignore
+  //  */
+  // setProfile(profile: string, merge: boolean): number {
+  //   return this.rtcEngine.setProfile(profile, merge);
+  // }
+
+  // // ===========================================================================
+  // // plugin apis
+  // // ===========================================================================
+  // /**
+  //  * @ignore
+  //  */
+  // initializePluginManager(): number {
+  //   return this.rtcEngine.initializePluginManager();
+  // }
+  // /**
+  //  * @ignore
+  //  */
+  // releasePluginManager(): number {
+  //   return this.rtcEngine.releasePluginManager();
+  // }
+  // /**
+  //  * @ignore
+  //  */
+  // registerPlugin(info: PluginInfo): number {
+  //   return this.rtcEngine.registerPlugin(info);
+  // }
+  // /**
+  //  * @ignore
+  //  */
+  // unregisterPlugin(pluginId: string): number {
+  //   return this.rtcEngine.unregisterPlugin(pluginId);
+  // }
+  // /**
+  //  * @ignore
+  //  */
+  // getPlugins() {
+  //   return this.rtcEngine.getPlugins().map(item => {
+  //     return this.createPlugin(item.id)
+  //   })
+  // }
+  // /**
+  //  * @ignore
+  //  * @param pluginId
+  //  */
+  // createPlugin(pluginId: string): Plugin {
+  //   return {
+  //     id: pluginId,
+  //     enable: () => {
+  //       return this.enablePlugin(pluginId, true)
+  //     },
+  //     disable: () => {
+  //       return this.enablePlugin(pluginId, false)
+  //     },
+  //     setParameter: (param: string) => {
+  //       return this.setPluginParameter(pluginId, param)
+  //     },
+  //     getParameter: (paramKey: string) => {
+  //       return this.getPluginParameter(pluginId, paramKey)
+  //     }
+  //   }
+  // }
+
+  // /**
+  //  * @ignore
+  //  * @param pluginId
+  //  * @param enabled
+  //  */
+  // enablePlugin(pluginId: string, enabled: boolean): number {
+  //   return this.rtcEngine.enablePlugin(pluginId, enabled);
+  // }
+
+  // /**
+  //  * @ignore
+  //  * @param pluginId
+  //  * @param param
+  //  */
+  // setPluginParameter(pluginId: string, param: string): number {
+  //   return this.rtcEngine.setPluginParameter(pluginId, param);
+  // }
+
+  // /**
+  //  * @ignore
+  //  * @param pluginId
+  //  * @param paramKey
+  //  */
+  // getPluginParameter(pluginId: string, paramKey: string): string {
+  //   return this.rtcEngine.getPluginParameter(pluginId, paramKey);
+  // }
 }
 /** The AgoraRtcEngine interface. */
 declare interface AgoraRtcEngine {
