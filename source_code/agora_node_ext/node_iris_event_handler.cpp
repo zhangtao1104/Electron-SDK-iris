@@ -1,4 +1,4 @@
-#include "agora_iris_event_handler.h"
+#include "node_iris_event_handler.h"
 
 namespace agora
 {
@@ -6,12 +6,12 @@ namespace agora
     {
         namespace electron
         {
-            AgoraIrisEventHandler::~AgoraIrisEventHandler()
+            NodeIrisEventHandler::~NodeIrisEventHandler()
             {
                 _callbacks.clear();
             }
 
-            void AgoraIrisEventHandler::OnEvent(const char *event, const char *data)
+            void NodeIrisEventHandler::OnEvent(const char *event, const char *data)
             {
                 std::string _eventName(event);
                 std::string _eventData(data);
@@ -33,7 +33,7 @@ namespace agora
                 });
             }
 
-            void AgoraIrisEventHandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned length)
+            void NodeIrisEventHandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned length)
             {
                 std::string _eventName(event);
                 std::string _eventData(data);
@@ -60,7 +60,7 @@ namespace agora
                 });
             }
 
-            void AgoraIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)
+            void NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)
             {
                 std::string _eventName(eventName);
                 std::string _eventData(eventData);
@@ -82,7 +82,7 @@ namespace agora
                 });
             }
 
-            void AgoraIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData, const char* buffer, int length)
+            void NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData, const char* buffer, int length)
             {
                 std::string _eventName(eventName);
                 std::string _eventData(eventData);
@@ -109,12 +109,12 @@ namespace agora
                 });
             }
 
-            void AgoraIrisEventHandler::OnVideoSourceExit()
+            void NodeIrisEventHandler::OnVideoSourceExit()
             {
                 
             }
 
-            void AgoraIrisEventHandler::addEvent(const std::string &eventName, Nan_Persistent<v8_Object> &obj, Nan_Persistent<v8_Function> &callback)
+            void NodeIrisEventHandler::addEvent(const std::string &eventName, Nan_Persistent<v8_Object> &obj, Nan_Persistent<v8_Function> &callback)
             {
                 auto _callback = new EventCallback();
                 _callback->js_this.Reset(obj);

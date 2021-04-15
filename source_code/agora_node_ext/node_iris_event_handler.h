@@ -11,7 +11,7 @@ namespace agora
     {
         namespace electron
         {
-            class AgoraIrisEventHandler : public iris::IrisEventHandler, public IVideoSourceEventHandler
+            class NodeIrisEventHandler : public iris::IrisEventHandler, public IVideoSourceEventHandler
             {
             public:
                 typedef struct NodeEventCallback
@@ -21,7 +21,7 @@ namespace agora
                 } EventCallback;
 
             public:
-                virtual ~AgoraIrisEventHandler();
+                virtual ~NodeIrisEventHandler();
 
                 virtual void OnEvent(const char *event, const char *data) override;
 

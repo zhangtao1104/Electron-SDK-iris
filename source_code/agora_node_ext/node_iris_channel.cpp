@@ -13,7 +13,7 @@ namespace agora
                 node::AddEnvironmentCleanupHook(isolate, Release, this);
                 _isolate = isolate;
                 _iris_channel.reset(channel);
-                _iris_channel_event_handler.reset(new AgoraIrisEventHandler());
+                _iris_channel_event_handler.reset(new NodeIrisEventHandler());
                 _iris_channel->SetEventHandler(_iris_channel_event_handler.get());
             }
 
@@ -121,6 +121,11 @@ namespace agora
                 _persistObj.Reset(_obj);
 
                 _channel->_iris_channel_event_handler->addEvent(_parameter, _persistObj, _persist);
+            }
+
+            void NodeIrisChannel::OnApiError(const char *errorMessage)
+            {
+                _iris_channel_event_handler->OnEvent("apiError", errorMessage);
             }
 
             void NodeIrisChannel::Release(void *data)

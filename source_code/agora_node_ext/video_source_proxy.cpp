@@ -158,7 +158,6 @@ namespace agora {
                 _videoSourceEventHandlerPtr = nullptr;
                 
                 _iAgoraIpcDataReceiver.reset();
-                // m_videoRender.reset();
                 if (_iAgoraIpc.get()) {
                     _iAgoraIpc->sendMessage(AGORA_IPC_DISCONNECT, nullptr, 0);
                     _iAgoraIpc->disconnect();

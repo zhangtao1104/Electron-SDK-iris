@@ -1,10 +1,3 @@
-//
-//  node_screen_window_info.hpp
-//
-//  Created by suleyu on 2018/8/8.
-//  Copyright © 2018 Agora. All rights reserved.
-//
-
 #pragma once
 
 #include <string>

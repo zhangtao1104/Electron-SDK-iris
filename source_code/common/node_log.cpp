@@ -44,7 +44,6 @@ void setLogLevel(log_level level)
 
 void node_log(enum log_level level, const char *format, ...)
 {
-    //
     va_list la;
     va_start(la, format);
     if(!log_stream)

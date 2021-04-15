@@ -10,8 +10,9 @@ namespace agora
 
             NodeIrisEngine::NodeIrisEngine(v8_Isolate *isolate) : _isolate(isolate)
             {
-                _iris_event_handler.reset(new AgoraIrisEventHandler());
+                _iris_event_handler.reset(new NodeIrisEventHandler());
                 _iris_engine.reset(new IrisEngine());
+                _iris_raw_data.reset(_iris_engine->iris_raw_data());
                 _video_source_proxy.reset(new VideoSourceProxy());
                 _iris_engine->SetEventHandler(_iris_event_handler.get());
             }
@@ -19,8 +20,10 @@ namespace agora
             NodeIrisEngine::~NodeIrisEngine()
             {
                 _iris_event_handler.reset();
+                _iris_raw_data.reset();
                 _iris_engine.reset();
                 _video_source_proxy.reset();
+                stopLogService();
             }
 
             void NodeIrisEngine::Init(v8_Local<v8_Object> &_module)
@@ -33,16 +36,19 @@ namespace agora
 
                 Nan::SetPrototypeMethod(_template, "CallApi", CallApi);
                 Nan::SetPrototypeMethod(_template, "CallApiWithBuffer", CallApiWithBuffer);
+                
                 Nan::SetPrototypeMethod(_template, "OnEvent", OnEvent);
                 Nan::SetPrototypeMethod(_template, "GetChannel", GetChannel);
                 Nan::SetPrototypeMethod(_template, "GetDeviceManager", GetDeviceManager);
                 Nan::SetPrototypeMethod(_template, "GetScreenWindowsInfo", GetScreenWindowsInfo);
                 Nan::SetPrototypeMethod(_template, "GetScreenDisplaysInfo", GetScreenDisplaysInfo);
+                
                 Nan::SetPrototypeMethod(_template, "VideoSourceInitialize", VideoSourceInitialize);
                 Nan::SetPrototypeMethod(_template, "VideoSourceCallApi", VideoSourceCallApi);
                 Nan::SetPrototypeMethod(_template, "VideoSourceCallApiWithBuffer", VideoSourceCallApiWithBuffer);
                 Nan::SetPrototypeMethod(_template, "VideoSourceRelease", VideoSourceRelease);
-                
+
+                Nan::SetPrototypeMethod(_template, "SetAddonLogFile", SetAddonLogFile);
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
                 _module->Set(_context, Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
             }
@@ -196,7 +202,7 @@ namespace agora
                         free(_windowInfo.imageData);
                     }
                     auto resultObj = _screenWindowInfoArray->Set(_context, i, obj);
-                    v8_MAYBE_CHECK_RESULT(resultObj); 
+                    v8_MAYBE_CHECK_RESULT(resultObj);
                 }
                 args.GetReturnValue().Set(_screenWindowInfoArray);
             }
@@ -224,20 +230,19 @@ namespace agora
 #endif
                     auto propName = v8_String::NewFromUtf8(_isolate, "displayId", v8::NewStringType::kInternalized).ToLocalChecked();
                     auto resultObj = _obj->Set(_context, propName, _displayIdObj);
-                    v8_MAYBE_CHECK_RESULT(resultObj); 
+                    v8_MAYBE_CHECK_RESULT(resultObj);
 
                     v8_SET_OBJECT_PROP_UINT32(_isolate, _obj, "width", _displayInfo.width)
                     v8_SET_OBJECT_PROP_UINT32(_isolate, _obj, "height", _displayInfo.height)
                     v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isMain", _displayInfo.isMain)
                     v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isActive", _displayInfo.isActive)
-                    v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isBuiltin", _displayInfo.isBuiltin)
-                    if (_displayInfo.imageData)
+                    v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isBuiltin", _displayInfo.isBuiltin) if (_displayInfo.imageData)
                     {
                         v8_SET_OBJECT_PROP_UINT8_ARRAY(_isolate, _obj, "image", _displayInfo.imageData, _displayInfo.imageDataLength)
                         free(_displayInfo.imageData);
                     }
                     auto result = _allDisplayInfoArray->Set(_context, i, _obj);
-                    v8_MAYBE_CHECK_RESULT(result); 
+                    v8_MAYBE_CHECK_RESULT(result);
                     args.GetReturnValue().Set(_allDisplayInfoArray);
                 }
             }
@@ -250,17 +255,17 @@ namespace agora
                 auto _result = -1;
                 if (_engine->_video_source_proxy->Initialize(_engine->_iris_event_handler.get(), _parameter))
                     _result = 0;
-                
+
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
                 v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
                 args.GetReturnValue().Set(_retObj);
             }
-        
+
             void NodeIrisEngine::VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
-                auto _isolate = args.GetIsolate(); 
+                auto _isolate = args.GetIsolate();
                 auto _result = _engine->_video_source_proxy->Release();
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
@@ -298,6 +303,63 @@ namespace agora
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
                 v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
                 args.GetReturnValue().Set(_retObj);
+            }
+
+            void NodeIrisEngine::SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+                auto _isolate = args.GetIsolate();
+                auto _filePath = nan_api_get_value_utf8string_(args[0]);
+                bool _ret = startLogService(_filePath.c_str());
+                auto _result = ERROR_CODE::ERROR_OK;
+                auto _retObj = v8_Object::New(_isolate);
+                v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "retCode", _ret)
+                v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "result", _result)
+                args.GetReturnValue().Set(_retObj);
+            }
+
+            void NodeIrisEngine::OnApiError(const char *errorMessage)
+            {
+                _iris_event_handler->OnEvent("apiError", errorMessage);
+            }
+
+            void NodeIrisEngine::InitializePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::ReleasePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::RegisterPlugin(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::UnregisterPlugin(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::EnablePlugin(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::GetPlugins(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::SetPluginParameter(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
+            }
+
+            void NodeIrisEngine::GetPluginParameter(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+
             }
         }
     }

@@ -1,14 +1,4 @@
-/*
-* Copyright (c) 2017 Agora.io
-* All rights reserved.
-* Proprietary and Confidential -- Agora.io
-*/
-
-/*
-*  Created by Wang Yongli, 2017
-*/
-#ifndef AGORA_NODE_LOG_H
-#define AGORA_NODE_LOG_H
+#pragma once
 
 /**
  * Log level definition
@@ -61,5 +51,3 @@ void node_log(enum log_level level, const char *format, ...);
  * write function leave log.
  */
 #define LOG_LEAVE LOG_VERBOSE("<== %s\n", __FUNCTION__)
-
-#endif

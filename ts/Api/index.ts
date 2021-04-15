@@ -115,6 +115,10 @@ class AgoraRtcEngine extends EventEmitter {
     this.customRenderer = CustomRenderer;
   }
 
+  setAddonLogFile(filePath: string): number {
+    let ret = this.rtcEngine.SetAddonLogFile(filePath)
+    return ret.retCode
+  }
   /**
    * return sdk config object
    */
@@ -199,6 +203,12 @@ class AgoraRtcEngine extends EventEmitter {
 
     this.rtcEngine.OnEvent('call_back', (_eventName: string, _eventData: string) => {
       switch (_eventName) {
+        case 'fireApiError':
+          {
+            fire('apiError', _eventData)
+          }
+          break
+
         case 'onWarning':
           {
             let data: {warn: number, msg: string} = JSON.parse(_eventData)

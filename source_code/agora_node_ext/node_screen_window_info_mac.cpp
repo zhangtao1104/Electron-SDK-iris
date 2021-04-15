@@ -1,10 +1,3 @@
-//
-//  node_screen_window_info.cpp
-//
-//  Created by suleyu on 2018/8/8.
-//  Copyright © 2018 Agora. All rights reserved.
-//
-
 #include "node_screen_window_info.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CoreGraphics.h>

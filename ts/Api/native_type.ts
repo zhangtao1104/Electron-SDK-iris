@@ -3071,6 +3071,7 @@ export interface NodeIrisEngine {
   VideoSourceCallApi(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
   VideoSourceCallApiWithBuffer(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
   VideoSourceRelease(): { retCode: number, result: string };
+  SetAddonLogFile(filePath: string): { retCode: number, result: number};
 }
 /**
  * @ignore
