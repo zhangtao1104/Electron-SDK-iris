@@ -5,6 +5,7 @@
     'targets': [
         {
             'target_name': 'VideoSource',
+            'cflags_cc!': [ '-fno-rtti' ],
             'type': 'executable',
             'defines': [
                 'UNICODE'
@@ -72,6 +73,7 @@
                         ],
                         'xcode_settings': {
                             'MACOSX_DEPLOYMENT_TARGET': '10.13',
+                            'GCC_ENABLE_CPP_RTTI': 'YES',
                             'FRAMEWORK_SEARCH_PATHS': [
                                 './sdk/lib/mac'
                             ],
@@ -84,6 +86,7 @@
         },
         {
             'target_name': 'agora_node_ext',
+            'cflags_cc!': [ '-fno-rtti' ],
             'include_dirs': [
                 './source_code/iris/include',
                 './source_code/iris/include/iris',
@@ -129,9 +132,6 @@
                         'mac_framework_dirs': [
                             '../sdk/lib/mac'
                         ],
-                        'xcode_settings': {
-                            'GCC_ENABLE_CPP_EXCEPTIONS': 'YES'
-                        },
                         'copies': [{
                             'destination': '<(PRODUCT_DIR)',
                             'files': [
@@ -172,6 +172,7 @@
                         ],
                         'xcode_settings': {
                             'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+                            'GCC_ENABLE_CPP_RTTI': 'YES',
                             'MACOSX_DEPLOYMENT_TARGET': '10.11',
                             'EXECUTABLE_EXTENSION': 'node',
                             'FRAMEWORK_SEARCH_PATHS': [
