@@ -9,6 +9,7 @@
 #include "video_source_proxy.h"
 #include "node_log.h"
 #include "node_base.h"
+#include "loguru.hpp"
 
 namespace agora
 {

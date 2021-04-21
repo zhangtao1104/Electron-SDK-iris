@@ -1,11 +1,9 @@
-import {
-  PluginInfo,
-  Plugin
-} from './plugin';
-import { type } from 'os';
+import { type } from "os";
+import { PluginInfo, Plugin } from "./plugin";
+import { ApiTypeEngine, ApiTypeChannel, ApiTypeAudioDeviceManager, ApiTypeVideoDeviceManager } from './api_type';
 
 export interface RendererOptions {
-  append: boolean
+  append: boolean;
 }
 
 /**
@@ -76,27 +74,27 @@ export enum REMOTE_VIDEO_STREAM_TYPE {
  */
 export enum MEDIA_DEVICE_TYPE {
   /** -1: Unknown device type.
-  */
+   */
   UNKNOWN_AUDIO_DEVICE = -1,
   /** 0: Audio playback device.
-    */
+   */
   AUDIO_PLAYOUT_DEVICE = 0,
   /** 1: Audio recording device.
-    */
+   */
   AUDIO_RECORDING_DEVICE = 1,
   /** 2: Video renderer.
-    */
+   */
   VIDEO_RENDER_DEVICE = 2,
   /** 3: Video capturer.
-    */
+   */
   VIDEO_CAPTURE_DEVICE = 3,
   /** 4: Application audio playback device.
-    */
+   */
   AUDIO_APPLICATION_PLAYOUT_DEVICE = 4,
 }
 
 /** Video codec profile types. */
-export enum VIDEO_CODEC_PROFILE_TYPE { /** 66: Baseline video codec profile. Generally used in video calls on mobile phones. */
+export enum VIDEO_CODEC_PROFILE_TYPE /** 66: Baseline video codec profile. Generally used in video calls on mobile phones. */ {
   VIDEO_CODEC_PROFILE_BASELINE = 66,
   /** 77: Main video codec profile. Generally used in mainstream electronics such as MP4 players, portable video players, PSP, and iPads. */
   VIDEO_CODEC_PROFILE_MAIN = 77,
@@ -117,9 +115,8 @@ export enum LASTMILE_PROBE_RESULT_STATE {
   /** 2: The last-mile network probe test is incomplete and the bandwidth estimation is not available, probably due to limited test resources. */
   LASTMILE_PROBE_RESULT_INCOMPLETE_NO_BWE = 2,
   /** 3: The last-mile network probe test is not carried out, probably due to poor network conditions. */
-  LASTMILE_PROBE_RESULT_UNAVAILABLE = 3
+  LASTMILE_PROBE_RESULT_UNAVAILABLE = 3,
 }
-
 
 /**
  * @deprecated Deprecated from v3.2.0.
@@ -158,7 +155,7 @@ export enum VOICE_CHANGER_PRESET {
   /**
    * A more vigorous voice.
    */
-  VOICE_BEAUTY_VIGOROUS = 0x00100001,//7,
+  VOICE_BEAUTY_VIGOROUS = 0x00100001, //7,
   /**
    * A deeper voice.
    */
@@ -202,8 +199,7 @@ export enum VOICE_CHANGER_PRESET {
   /**
    * 	(For female only) A more vital voice. Do not use it when the speaker is a male; otherwise, voice distortion occurs.
    */
-  GENERAL_BEAUTY_VOICE_FEMALE_VITALITY = 0x00200003
-
+  GENERAL_BEAUTY_VOICE_FEMALE_VITALITY = 0x00200003,
 }
 
 /** The reason for the remote video state change. */
@@ -246,8 +242,8 @@ export enum REMOTE_VIDEO_STATE_REASON {
 
   /** 9: The remote audio-only stream switches back to the audio-and-video stream after the network conditions improve.
    */
-  REMOTE_VIDEO_STATE_REASON_AUDIO_FALLBACK_RECOVERY = 9
-};
+  REMOTE_VIDEO_STATE_REASON_AUDIO_FALLBACK_RECOVERY = 9,
+}
 
 /** @deprecated Deprecated from v3.2.0.
  *
@@ -328,7 +324,7 @@ export enum AUDIO_REVERB_PRESET {
   /** 1: Electronic Voice.*/
   AUDIO_ELECTRONIC_VOICE = 0x00300001,
   /** 1: 3D Voice.*/
-  AUDIO_THREEDIM_VOICE = 0x00400001
+  AUDIO_THREEDIM_VOICE = 0x00400001,
 }
 
 export enum CAPTURE_BRIGHTNESS_LEVEL_TYPE {
@@ -402,11 +398,11 @@ export interface TranscodingUser {
 }
 
 export interface RtcImage {
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  url: string
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  url: string;
 }
 
 /**
@@ -669,7 +665,7 @@ export enum PRIORITY_TYPE {
    */
   PRIORITY_HIGH = 50,
   /** 100: (Default) The user's priority is normal.
-  */
+   */
   PRIORITY_NORMAL = 100,
 }
 
@@ -778,7 +774,7 @@ export interface RtcStats {
   memoryAppUsageInKbytes: number;
 }
 /** Quality change of the local video in terms of target frame rate and target bit rate since last count.
-  */
+ */
 export enum QUALITY_ADAPT_INDICATION {
   /** The quality of the local video stays the same. */
   ADAPT_NONE = 0,
@@ -904,32 +900,30 @@ export enum FRAME_RATE {
 
 export interface VideoDimensions {
   /** Width (pixels) of the video. */
-  width: number,
+  width: number;
   /** Height (pixels) of the video. */
-  height: number
+  height: number;
 }
 
 export interface BeautyOptions {
-
   /** The contrast level, used with the @p lightening parameter.
-  */
+   */
   lighteningContrastLevel: LIGHTENING_CONTRAST_LEVEL;
 
   /** The brightness level. The value ranges from 0.0 (original) to 1.0. */
   lighteningLevel: number;
 
   /** The sharpness level. The value ranges between 0 (original) and 1. This parameter is usually used to remove blemishes.
-  */
+   */
   smoothnessLevel: number;
 
   /** The redness level. The value ranges between 0 (original) and 1. This parameter adjusts the red saturation level.
-  */
+   */
   rednessLevel: number;
 }
 
 /** VideoEncoderConfiguration */
 export interface VideoEncoderConfiguration {
-
   dimensions: VideoDimensions;
   /**
    * The frame rate (fps) of the video.
@@ -1055,72 +1049,70 @@ export enum VIDEO_MIRROR_MODE_TYPE {
   /**
    * `2`: Disable mirror mode.
    */
-  DISABLED = 2
+  DISABLED = 2,
 }
 
-export enum AUDIO_PROFILE_TYPE // sample rate, bit rate, mono/stereo, speech/music codec
-{
-    /**
+export enum AUDIO_PROFILE_TYPE { // sample rate, bit rate, mono/stereo, speech/music codec
+  /**
      0: Default audio profile:
      - For the interactive streaming profile: A sample rate of 48 KHz, music encoding, mono, and a bitrate of up to 64 Kbps.
      - For the `COMMUNICATION` profile:
         - Windows: A sample rate of 16 KHz, music encoding, mono, and a bitrate of up to 16 Kbps.
         - Android/macOS/iOS: A sample rate of 32 KHz, music encoding, mono, and a bitrate of up to 18 Kbps.
     */
-    AUDIO_PROFILE_DEFAULT = 0, // use default settings
-    /**
+  AUDIO_PROFILE_DEFAULT = 0, // use default settings
+  /**
      1: A sample rate of 32 KHz, audio encoding, mono, and a bitrate of up to 18 Kbps.
      */
-    AUDIO_PROFILE_SPEECH_STANDARD = 1, // 32Khz, 18Kbps, mono, speech
-    /**
+  AUDIO_PROFILE_SPEECH_STANDARD = 1, // 32Khz, 18Kbps, mono, speech
+  /**
      2: A sample rate of 48 KHz, music encoding, mono, and a bitrate of up to 64 Kbps.
      */
-    AUDIO_PROFILE_MUSIC_STANDARD = 2, // 48Khz, 48Kbps, mono, music
-    /**
+  AUDIO_PROFILE_MUSIC_STANDARD = 2, // 48Khz, 48Kbps, mono, music
+  /**
      3: A sample rate of 48 KHz, music encoding, stereo, and a bitrate of up to 80 Kbps.
      */
-    AUDIO_PROFILE_MUSIC_STANDARD_STEREO = 3, // 48Khz, 56Kbps, stereo, music
-    /**
+  AUDIO_PROFILE_MUSIC_STANDARD_STEREO = 3, // 48Khz, 56Kbps, stereo, music
+  /**
      4: A sample rate of 48 KHz, music encoding, mono, and a bitrate of up to 96 Kbps.
      */
-    AUDIO_PROFILE_MUSIC_HIGH_QUALITY = 4, // 48Khz, 128Kbps, mono, music
-    /**
+  AUDIO_PROFILE_MUSIC_HIGH_QUALITY = 4, // 48Khz, 128Kbps, mono, music
+  /**
      5: A sample rate of 48 KHz, music encoding, stereo, and a bitrate of up to 128 Kbps.
      */
-    AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO = 5, // 48Khz, 192Kbps, stereo, music
-    /**
+  AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO = 5, // 48Khz, 192Kbps, stereo, music
+  /**
      6: A sample rate of 16 KHz, audio encoding, mono, and Acoustic Echo Cancellation (AES) enabled.
      */
-    AUDIO_PROFILE_IOT = 6,
-    AUDIO_PROFILE_NUM = 7,
+  AUDIO_PROFILE_IOT = 6,
+  AUDIO_PROFILE_NUM = 7,
 }
 
 /** Audio application scenarios.
-*/
-export enum AUDIO_SCENARIO_TYPE // set a suitable scenario for your app type
-{
-    /** 0: Default audio scenario. */
-    AUDIO_SCENARIO_DEFAULT = 0,
-    /** 1: Entertainment scenario where users need to frequently switch the user role. */
-    AUDIO_SCENARIO_CHATROOM_ENTERTAINMENT = 1,
-    /** 2: Education scenario where users want smoothness and stability. */
-    AUDIO_SCENARIO_EDUCATION = 2,
-    /** 3: High-quality audio chatroom scenario where hosts mainly play music. */
-    AUDIO_SCENARIO_GAME_STREAMING = 3,
-    /** 4: Showroom scenario where a single host wants high-quality audio. */
-    AUDIO_SCENARIO_SHOWROOM = 4,
-    /** 5: Gaming scenario for group chat that only contains the human voice. */
-    AUDIO_SCENARIO_CHATROOM_GAMING = 5,
-    /** 6: IoT (Internet of Things) scenario where users use IoT devices with low power consumption. */
-    AUDIO_SCENARIO_IOT = 6,
-    /** 8: Meeting scenario that mainly contains the human voice.
-     *
-     * @since v3.2.0
-     */
-    AUDIO_SCENARIO_MEETING = 8,
-    /** The number of elements in the enumeration.
-     */
-    AUDIO_SCENARIO_NUM = 9,
+ */
+export enum AUDIO_SCENARIO_TYPE { // set a suitable scenario for your app type
+  /** 0: Default audio scenario. */
+  AUDIO_SCENARIO_DEFAULT = 0,
+  /** 1: Entertainment scenario where users need to frequently switch the user role. */
+  AUDIO_SCENARIO_CHATROOM_ENTERTAINMENT = 1,
+  /** 2: Education scenario where users want smoothness and stability. */
+  AUDIO_SCENARIO_EDUCATION = 2,
+  /** 3: High-quality audio chatroom scenario where hosts mainly play music. */
+  AUDIO_SCENARIO_GAME_STREAMING = 3,
+  /** 4: Showroom scenario where a single host wants high-quality audio. */
+  AUDIO_SCENARIO_SHOWROOM = 4,
+  /** 5: Gaming scenario for group chat that only contains the human voice. */
+  AUDIO_SCENARIO_CHATROOM_GAMING = 5,
+  /** 6: IoT (Internet of Things) scenario where users use IoT devices with low power consumption. */
+  AUDIO_SCENARIO_IOT = 6,
+  /** 8: Meeting scenario that mainly contains the human voice.
+   *
+   * @since v3.2.0
+   */
+  AUDIO_SCENARIO_MEETING = 8,
+  /** The number of elements in the enumeration.
+   */
+  AUDIO_SCENARIO_NUM = 9,
 }
 
 /** The video encoding degradation preference under limited bandwidth. */
@@ -1174,17 +1166,16 @@ export enum ORIENTATION_MODE {
 }
 
 /** Stream fallback options. */
-export enum STREAM_FALLBACK_OPTIONS
-{
-    /** 0: No fallback behavior for the local/remote video stream when the uplink/downlink network conditions are poor. The quality of the stream is not guaranteed. */
-    STREAM_FALLBACK_OPTION_DISABLED = 0,
-    /** 1: Under poor downlink network conditions, the remote video stream, to which you subscribe, falls back to the low-stream (low resolution and low bitrate) video. You can set this option only in the \ref IRtcEngine::setRemoteSubscribeFallbackOption "setRemoteSubscribeFallbackOption" method. Nothing happens when you set this in the \ref IRtcEngine::setLocalPublishFallbackOption "setLocalPublishFallbackOption" method. */
-    STREAM_FALLBACK_OPTION_VIDEO_STREAM_LOW = 1,
-    /** 2: Under poor uplink network conditions, the published video stream falls back to audio only.
+export enum STREAM_FALLBACK_OPTIONS {
+  /** 0: No fallback behavior for the local/remote video stream when the uplink/downlink network conditions are poor. The quality of the stream is not guaranteed. */
+  STREAM_FALLBACK_OPTION_DISABLED = 0,
+  /** 1: Under poor downlink network conditions, the remote video stream, to which you subscribe, falls back to the low-stream (low resolution and low bitrate) video. You can set this option only in the \ref IRtcEngine::setRemoteSubscribeFallbackOption "setRemoteSubscribeFallbackOption" method. Nothing happens when you set this in the \ref IRtcEngine::setLocalPublishFallbackOption "setLocalPublishFallbackOption" method. */
+  STREAM_FALLBACK_OPTION_VIDEO_STREAM_LOW = 1,
+  /** 2: Under poor uplink network conditions, the published video stream falls back to audio only.
 
     Under poor downlink network conditions, the remote video stream, to which you subscribe, first falls back to the low-stream (low resolution and low bitrate) video; and then to an audio-only stream if the network conditions worsen.*/
-    STREAM_FALLBACK_OPTION_AUDIO_ONLY = 2,
-};
+  STREAM_FALLBACK_OPTION_AUDIO_ONLY = 2,
+}
 
 /**
  * Video statistics of the remote stream.
@@ -1256,13 +1247,13 @@ export interface RemoteVideoStats {
  */
 export enum CAPTURER_OUTPUT_PREFERENCE {
   /** 0: (Default) self-adapts the camera output parameters to the system performance and network conditions to balance CPU consumption and video preview quality.
-  */
+   */
   CAPTURER_OUTPUT_PREFERENCE_AUTO = 0,
   /** 1: Prioritizes the system performance. The SDK chooses the dimension and frame rate of the local camera capture closest to those set by \ref IRtcEngine::setVideoEncoderConfiguration "setVideoEncoderConfiguration".
-  */
+   */
   CAPTURER_OUTPUT_PREFERENCE_PERFORMANCE = 1,
   /** 2: Prioritizes the local preview quality. The SDK chooses higher camera output parameters to improve the local video preview quality. This option requires extra CPU and RAM usage for video pre-processing.
-  */
+   */
   CAPTURER_OUTPUT_PREFERENCE_PREVIEW = 2,
   /** 3: Allows you to customize the width and height of the video image captured by the local camera.
    *
@@ -1293,13 +1284,8 @@ export interface Rectangle {
  * - The screen symbol on the macOS platform, see {@link MacScreenSymbol}
  * - The screen symbol on the Windows platform, see {@link WindowsScreenSymbol}
  */
-export type ScreenSymbol = MacScreenSymbol | WindowsScreenSymbol;
+export type ScreenSymbol = number | Rectangle;
 
-export type MacScreenSymbol = number;
-
-export type WindowsScreenSymbol = Rectangle;
-
-export type CaptureRect = Rectangle;
 /** The video source encoding parameters. */
 export interface ScreenCaptureParameters {
   /** Width (pixels) of the video. */
@@ -1374,7 +1360,7 @@ export enum VideoContentHint {
    * Choose this option if you prefer sharpness or when you are sharing a
    * picture, PowerPoint slide, or text.
    */
-  CONTENT_HINT_DETAILS = 2
+  CONTENT_HINT_DETAILS = 2,
 }
 
 /**
@@ -1472,60 +1458,59 @@ export interface RemoteAudioStats {
   publishDuration: number;
 }
 
-
 /** The state of the remote video. */
 export enum REMOTE_VIDEO_STATE {
   /** 0: The remote video is in the default state, probably due to #REMOTE_VIDEO_STATE_REASON_LOCAL_MUTED (3), #REMOTE_VIDEO_STATE_REASON_REMOTE_MUTED (5), or #REMOTE_VIDEO_STATE_REASON_REMOTE_OFFLINE (7).
-     */
+   */
   REMOTE_VIDEO_STATE_STOPPED = 0,
 
   /** 1: The first remote video packet is received.
-     */
+   */
   REMOTE_VIDEO_STATE_STARTING = 1,
 
   /** 2: The remote video stream is decoded and plays normally, probably due to #REMOTE_VIDEO_STATE_REASON_NETWORK_RECOVERY (2), #REMOTE_VIDEO_STATE_REASON_LOCAL_UNMUTED (4), #REMOTE_VIDEO_STATE_REASON_REMOTE_UNMUTED (6), or #REMOTE_VIDEO_STATE_REASON_AUDIO_FALLBACK_RECOVERY (9).
-     */
+   */
   REMOTE_VIDEO_STATE_DECODING = 2,
 
   /** 3: The remote video is frozen, probably due to #REMOTE_VIDEO_STATE_REASON_NETWORK_CONGESTION (1) or #REMOTE_VIDEO_STATE_REASON_AUDIO_FALLBACK (8).
-     */
+   */
   REMOTE_VIDEO_STATE_FROZEN = 3,
 
   /** 4: The remote video fails to start, probably due to #REMOTE_VIDEO_STATE_REASON_INTERNAL (0).
-     */
-  REMOTE_VIDEO_STATE_FAILED = 4
+   */
+  REMOTE_VIDEO_STATE_FAILED = 4,
 }
 
 /** Remote audio state reasons.
  */
 export enum REMOTE_AUDIO_STATE_REASON {
   /** 0: The SDK reports this reason when the audio state changes.
-       */
+   */
   REMOTE_AUDIO_REASON_INTERNAL = 0,
   /** 1: Network congestion.
-       */
+   */
   REMOTE_AUDIO_REASON_NETWORK_CONGESTION = 1,
   /** 2: Network recovery.
-       */
+   */
   REMOTE_AUDIO_REASON_NETWORK_RECOVERY = 2,
   /** 3: The local user stops receiving the remote audio stream or
-       * disables the audio module.
-       */
+   * disables the audio module.
+   */
   REMOTE_AUDIO_REASON_LOCAL_MUTED = 3,
   /** 4: The local user resumes receiving the remote audio stream or
-       * enables the audio module.
-       */
+   * enables the audio module.
+   */
   REMOTE_AUDIO_REASON_LOCAL_UNMUTED = 4,
   /** 5: The remote user stops sending the audio stream or disables the
-       * audio module.
-       */
+   * audio module.
+   */
   REMOTE_AUDIO_REASON_REMOTE_MUTED = 5,
   /** 6: The remote user resumes sending the audio stream or enables the
-       * audio module.
-       */
+   * audio module.
+   */
   REMOTE_AUDIO_REASON_REMOTE_UNMUTED = 6,
   /** 7: The remote user leaves the channel.
-       */
+   */
   REMOTE_AUDIO_REASON_REMOTE_OFFLINE = 7,
 }
 
@@ -1533,32 +1518,28 @@ export enum REMOTE_AUDIO_STATE_REASON {
  */
 export enum REMOTE_AUDIO_STATE {
   /** 0: The remote audio is in the default state, probably due to
-     * #REMOTE_AUDIO_REASON_LOCAL_MUTED (3),
-     * #REMOTE_AUDIO_REASON_REMOTE_MUTED (5), or
-     * #REMOTE_AUDIO_REASON_REMOTE_OFFLINE (7).
-     */
-  REMOTE_AUDIO_STATE_STOPPED =
-  0,// Default state, audio is started or remote user disabled/muted audio stream
+   * #REMOTE_AUDIO_REASON_LOCAL_MUTED (3),
+   * #REMOTE_AUDIO_REASON_REMOTE_MUTED (5), or
+   * #REMOTE_AUDIO_REASON_REMOTE_OFFLINE (7).
+   */
+  REMOTE_AUDIO_STATE_STOPPED = 0, // Default state, audio is started or remote user disabled/muted audio stream
   /** 1: The first remote audio packet is received.
-     */
-  REMOTE_AUDIO_STATE_STARTING =
-  1,// The first audio frame packet has been received
+   */
+  REMOTE_AUDIO_STATE_STARTING = 1, // The first audio frame packet has been received
   /** 2: The remote audio stream is decoded and plays normally, probably
-     * due to #REMOTE_AUDIO_REASON_NETWORK_RECOVERY (2),
-     * #REMOTE_AUDIO_REASON_LOCAL_UNMUTED (4), or
-     * #REMOTE_AUDIO_REASON_REMOTE_UNMUTED (6).
-     */
-  REMOTE_AUDIO_STATE_DECODING =
-  2,// The first remote audio frame has been decoded or fronzen state ends
+   * due to #REMOTE_AUDIO_REASON_NETWORK_RECOVERY (2),
+   * #REMOTE_AUDIO_REASON_LOCAL_UNMUTED (4), or
+   * #REMOTE_AUDIO_REASON_REMOTE_UNMUTED (6).
+   */
+  REMOTE_AUDIO_STATE_DECODING = 2, // The first remote audio frame has been decoded or fronzen state ends
   /** 3: The remote audio is frozen, probably due to
-     * #REMOTE_AUDIO_REASON_NETWORK_CONGESTION (1).
-     */
-  REMOTE_AUDIO_STATE_FROZEN =
-  3,// Remote audio is frozen, probably due to network issue
+   * #REMOTE_AUDIO_REASON_NETWORK_CONGESTION (1).
+   */
+  REMOTE_AUDIO_STATE_FROZEN = 3, // Remote audio is frozen, probably due to network issue
   /** 4: The remote audio fails to start, probably due to
-     * #REMOTE_AUDIO_REASON_INTERNAL (0).
-     */
-  REMOTE_AUDIO_STATE_FAILED = 4,// Remote audio play failed
+   * #REMOTE_AUDIO_REASON_INTERNAL (0).
+   */
+  REMOTE_AUDIO_STATE_FAILED = 4, // Remote audio play failed
 }
 
 /** Connection states. */
@@ -1833,7 +1814,7 @@ export enum VIDEO_PROFILE_TYPE {
   /** 1072: 2160 &times; 3840, frame rate 60 fps, bitrate 6500 Kbps. */
   VIDEO_PROFILE_PORTRAIT_4K_3 = 1072,
   /** Default 640 &times; 360, frame rate 15 fps, bitrate 400 Kbps. */
-  VIDEO_PROFILE_DEFAULT = VIDEO_PROFILE_LANDSCAPE_360P
+  VIDEO_PROFILE_DEFAULT = VIDEO_PROFILE_LANDSCAPE_360P,
 }
 /** Events during the RTMP or RTMPS streaming.
  *
@@ -2020,7 +2001,7 @@ export enum AUDIO_EFFECT_PRESET {
    * and setting the `profile` parameter to `4` or `5`
    * before setting this enumerator.
    */
-  PITCH_CORRECTION = 0x02040100
+  PITCH_CORRECTION = 0x02040100,
 }
 
 /** The options for SDK preset voice beautifier effects.
@@ -2070,7 +2051,7 @@ export enum VOICE_BEAUTIFIER_PRESET {
   TIMBRE_TRANSFORMATION_RESOUNDING = 0x01030700,
   /** A more ringing voice.
    */
-  TIMBRE_TRANSFORMATION_RINGING = 0x01030800
+  TIMBRE_TRANSFORMATION_RINGING = 0x01030800,
 }
 
 /** The latency level of an audience member in interactive live streaming.
@@ -2088,25 +2069,25 @@ export enum AUDIENCE_LATENCY_LEVEL_TYPE {
  */
 export enum STREAM_SUBSCRIBE_STATE {
   /** 0: The initial subscribing state after joining the channel.
-     */
+   */
   SUB_STATE_IDLE = 0,
   /** 1: Fails to subscribe to the remote stream. Possible reasons:
-     * - The remote user:
-     *  - Calls \ref IRtcEngine::muteLocalAudioStream "muteLocalAudioStream(true)" or \ref IRtcEngine::muteLocalVideoStream "muteLocalVideoStream(true)" to stop sending local streams.
-     *  - Calls \ref IRtcEngine::disableAudio "disableAudio" or \ref IRtcEngine::disableVideo "disableVideo" to disable the entire audio or video modules.
-     *  - Calls \ref IRtcEngine::enableLocalAudio "enableLocalAudio(false)" or \ref IRtcEngine::enableLocalVideo "enableLocalVideo(false)" to disable the local audio sampling or video capturing.
-     *  - The role of the remote user is `AUDIENCE`.
-     * - The local user calls the following methods to stop receiving remote streams:
-     *  - Calls \ref IRtcEngine::muteRemoteAudioStream "muteRemoteAudioStream(true)", \ref IRtcEngine::muteAllRemoteAudioStreams "muteAllRemoteAudioStreams(true)", or \ref IRtcEngine::setDefaultMuteAllRemoteAudioStreams "setDefaultMuteAllRemoteAudioStreams(true)" to stop receiving remote audio streams.
-     *  - Calls \ref IRtcEngine::muteRemoteVideoStream "muteRemoteVideoStream(true)", \ref IRtcEngine::muteAllRemoteVideoStreams "muteAllRemoteVideoStreams(true)", or \ref IRtcEngine::setDefaultMuteAllRemoteVideoStreams "setDefaultMuteAllRemoteVideoStreams(true)" to stop receiving remote video streams.
-     */
+   * - The remote user:
+   *  - Calls \ref IRtcEngine::muteLocalAudioStream "muteLocalAudioStream(true)" or \ref IRtcEngine::muteLocalVideoStream "muteLocalVideoStream(true)" to stop sending local streams.
+   *  - Calls \ref IRtcEngine::disableAudio "disableAudio" or \ref IRtcEngine::disableVideo "disableVideo" to disable the entire audio or video modules.
+   *  - Calls \ref IRtcEngine::enableLocalAudio "enableLocalAudio(false)" or \ref IRtcEngine::enableLocalVideo "enableLocalVideo(false)" to disable the local audio sampling or video capturing.
+   *  - The role of the remote user is `AUDIENCE`.
+   * - The local user calls the following methods to stop receiving remote streams:
+   *  - Calls \ref IRtcEngine::muteRemoteAudioStream "muteRemoteAudioStream(true)", \ref IRtcEngine::muteAllRemoteAudioStreams "muteAllRemoteAudioStreams(true)", or \ref IRtcEngine::setDefaultMuteAllRemoteAudioStreams "setDefaultMuteAllRemoteAudioStreams(true)" to stop receiving remote audio streams.
+   *  - Calls \ref IRtcEngine::muteRemoteVideoStream "muteRemoteVideoStream(true)", \ref IRtcEngine::muteAllRemoteVideoStreams "muteAllRemoteVideoStreams(true)", or \ref IRtcEngine::setDefaultMuteAllRemoteVideoStreams "setDefaultMuteAllRemoteVideoStreams(true)" to stop receiving remote video streams.
+   */
   SUB_STATE_NO_SUBSCRIBED = 1,
   /** 2: Subscribing.
-     */
+   */
   SUB_STATE_SUBSCRIBING = 2,
   /** 3: Subscribes to and receives the remote stream successfully.
-     */
-  SUB_STATE_SUBSCRIBED = 3
+   */
+  SUB_STATE_SUBSCRIBED = 3,
 }
 
 /**
@@ -2174,15 +2155,15 @@ export interface WatermarkOptions {
    * - true: (Default) The watermark image is visible in preview.
    * - false: The watermark image is not visible in preview.
    */
-  visibleInPreview: boolean,
+  visibleInPreview: boolean;
   /**
    * The watermark position in the portrait mode. See {@link Rectangle}
    */
-  positionInPortraitMode: Rectangle,
+  positionInPortraitMode: Rectangle;
   /**
    * The watermark position in the landscape mode. See {@link Rectangle}
    */
-  positionInLandscapeMode: Rectangle
+  positionInLandscapeMode: Rectangle;
 }
 
 export interface Rect {
@@ -2257,42 +2238,42 @@ export interface ChannelMediaRelayConfiguration {
 /** The event code in CHANNEL_MEDIA_RELAY_EVENT. */
 export enum CHANNEL_MEDIA_RELAY_EVENT {
   /** 0: The user disconnects from the server due to poor network
-     * connections.
-     */
+   * connections.
+   */
   RELAY_EVENT_NETWORK_DISCONNECTED = 0,
   /** 1: The network reconnects.
-     */
+   */
   RELAY_EVENT_NETWORK_CONNECTED = 1,
   /** 2: The user joins the source channel.
-     */
+   */
   RELAY_EVENT_PACKET_JOINED_SRC_CHANNEL = 2,
   /** 3: The user joins the destination channel.
-     */
+   */
   RELAY_EVENT_PACKET_JOINED_DEST_CHANNEL = 3,
   /** 4: The SDK starts relaying the media stream to the destination channel.
-     */
+   */
   RELAY_EVENT_PACKET_SENT_TO_DEST_CHANNEL = 4,
   /** 5: The server receives the video stream from the source channel.
-     */
+   */
   RELAY_EVENT_PACKET_RECEIVED_VIDEO_FROM_SRC = 5,
   /** 6: The server receives the audio stream from the source channel.
-     */
+   */
   RELAY_EVENT_PACKET_RECEIVED_AUDIO_FROM_SRC = 6,
   /** 7: The destination channel is updated.
-     */
+   */
   RELAY_EVENT_PACKET_UPDATE_DEST_CHANNEL = 7,
   /** 8: The destination channel update fails due to internal reasons.
-     */
+   */
   RELAY_EVENT_PACKET_UPDATE_DEST_CHANNEL_REFUSED = 8,
   /** 9: The destination channel does not change, which means that the
-     * destination channel fails to be updated.
-     */
+   * destination channel fails to be updated.
+   */
   RELAY_EVENT_PACKET_UPDATE_DEST_CHANNEL_NOT_CHANGE = 9,
   /** 10: The destination channel name is NULL.
-     */
+   */
   RELAY_EVENT_PACKET_UPDATE_DEST_CHANNEL_IS_NULL = 10,
   /** 11: The video profile is sent to the server.
-     */
+   */
   RELAY_EVENT_VIDEO_PROFILE_UPDATE = 11,
 }
 
@@ -2302,75 +2283,75 @@ export enum LIGHTENING_CONTRAST_LEVEL {
   /** (Default) Normal contrast level. */
   LIGHTENING_CONTRAST_NORMAL,
   /** High contrast level. */
-  LIGHTENING_CONTRAST_HIGH
+  LIGHTENING_CONTRAST_HIGH,
 }
 
 /** The state code in CHANNEL_MEDIA_RELAY_STATE. */
 export enum CHANNEL_MEDIA_RELAY_STATE {
   /** 0: The initial state. After you successfully stop the channel media
-     * relay by calling \ref IRtcEngine::stopChannelMediaRelay "stopChannelMediaRelay",
-     * the \ref IRtcEngineEventHandler::onChannelMediaRelayStateChanged "onChannelMediaRelayStateChanged" callback returns this state.
-     */
+   * relay by calling \ref IRtcEngine::stopChannelMediaRelay "stopChannelMediaRelay",
+   * the \ref IRtcEngineEventHandler::onChannelMediaRelayStateChanged "onChannelMediaRelayStateChanged" callback returns this state.
+   */
   RELAY_STATE_IDLE = 0,
   /** 1: The SDK tries to relay the media stream to the destination channel.
-     */
+   */
   RELAY_STATE_CONNECTING = 1,
   /** 2: The SDK successfully relays the media stream to the destination
-     * channel.
-     */
+   * channel.
+   */
   RELAY_STATE_RUNNING = 2,
   /** 3: A failure occurs. See the details in code.
-     */
+   */
   RELAY_STATE_FAILURE = 3,
 }
 
 export enum CHANNEL_MEDIA_RELAY_ERROR {
   /** 0: The state is normal.
-     */
+   */
   RELAY_OK = 0,
   /** 1: An error occurs in the server response.
-     */
+   */
   RELAY_ERROR_SERVER_ERROR_RESPONSE = 1,
   /** 2: No server response.
-     *
-     * You can call the
-     * \ref agora::rtc::IRtcEngine::leaveChannel "leaveChannel" method to
-     * leave the channel.
-     *
-     * This error can also occur if your project has not enabled co-host token
-     * authentication. Contact support@agora.io to enable the co-host token
-     * authentication service before starting a channel media relay.
-     */
+   *
+   * You can call the
+   * \ref agora::rtc::IRtcEngine::leaveChannel "leaveChannel" method to
+   * leave the channel.
+   *
+   * This error can also occur if your project has not enabled co-host token
+   * authentication. Contact support@agora.io to enable the co-host token
+   * authentication service before starting a channel media relay.
+   */
   RELAY_ERROR_SERVER_NO_RESPONSE = 2,
   /** 3: The SDK fails to access the service, probably due to limited
-     * resources of the server.
-     */
+   * resources of the server.
+   */
   RELAY_ERROR_NO_RESOURCE_AVAILABLE = 3,
   /** 4: Fails to send the relay request.
-     */
+   */
   RELAY_ERROR_FAILED_JOIN_SRC = 4,
   /** 5: Fails to accept the relay request.
-     */
+   */
   RELAY_ERROR_FAILED_JOIN_DEST = 5,
   /** 6: The server fails to receive the media stream.
-     */
+   */
   RELAY_ERROR_FAILED_PACKET_RECEIVED_FROM_SRC = 6,
   /** 7: The server fails to send the media stream.
-     */
+   */
   RELAY_ERROR_FAILED_PACKET_SENT_TO_DEST = 7,
   /** 8: The SDK disconnects from the server due to poor network
-     * connections. You can call the \ref agora::rtc::IRtcEngine::leaveChannel
-     * "leaveChannel" method to leave the channel.
-     */
+   * connections. You can call the \ref agora::rtc::IRtcEngine::leaveChannel
+   * "leaveChannel" method to leave the channel.
+   */
   RELAY_ERROR_SERVER_CONNECTION_LOST = 8,
   /** 9: An internal error occurs in the server.
-     */
+   */
   RELAY_ERROR_INTERNAL_ERROR = 9,
   /** 10: The token of the source channel has expired.
-     */
+   */
   RELAY_ERROR_SRC_TOKEN_EXPIRED = 10,
   /** 11: The token of the destination channel has expired.
-     */
+   */
   RELAY_ERROR_DEST_TOKEN_EXPIRED = 11,
 }
 /**
@@ -2378,90 +2359,90 @@ export enum CHANNEL_MEDIA_RELAY_ERROR {
  */
 export enum AREA_CODE {
   /**
-     * Mainland China.
-     */
+   * Mainland China.
+   */
   AREA_CODE_CN = 0x00000001,
   /**
-     * North America.
-     */
+   * North America.
+   */
   AREA_CODE_NA = 0x00000002,
   /**
-     * Europe.
-     */
+   * Europe.
+   */
   AREA_CODE_EU = 0x00000004,
   /**
-     * Asia, excluding Mainland China.
-     */
+   * Asia, excluding Mainland China.
+   */
   AREA_CODE_AS = 0x00000008,
   /**
-     * Japan.
-     */
+   * Japan.
+   */
   AREA_CODE_JP = 0x00000010,
   /**
-     * India.
-     */
+   * India.
+   */
   AREA_CODE_IN = 0x00000020,
   /**
-     * (Default) Global.
-     */
-  AREA_CODE_GLOB = 0xFFFFFFFF
+   * (Default) Global.
+   */
+  AREA_CODE_GLOB = 0xffffffff,
 }
 
 /** The publishing state.
  */
 export enum STREAM_PUBLISH_STATE {
   /** 0: The initial publishing state after joining the channel.
-     */
+   */
   PUB_STATE_IDLE = 0,
   /** 1: Fails to publish the local stream. Possible reasons:
-     * - The local user calls \ref IRtcEngine::muteLocalAudioStream "muteLocalAudioStream(true)" or \ref IRtcEngine::muteLocalVideoStream "muteLocalVideoStream(true)" to stop sending local streams.
-     * - The local user calls \ref IRtcEngine::disableAudio "disableAudio" or \ref IRtcEngine::disableVideo "disableVideo" to disable the entire audio or video module.
-     * - The local user calls \ref IRtcEngine::enableLocalAudio "enableLocalAudio(false)" or \ref IRtcEngine::enableLocalVideo "enableLocalVideo(false)" to disable the local audio sampling or video capturing.
-     * - The role of the local user is `AUDIENCE`.
-     */
+   * - The local user calls \ref IRtcEngine::muteLocalAudioStream "muteLocalAudioStream(true)" or \ref IRtcEngine::muteLocalVideoStream "muteLocalVideoStream(true)" to stop sending local streams.
+   * - The local user calls \ref IRtcEngine::disableAudio "disableAudio" or \ref IRtcEngine::disableVideo "disableVideo" to disable the entire audio or video module.
+   * - The local user calls \ref IRtcEngine::enableLocalAudio "enableLocalAudio(false)" or \ref IRtcEngine::enableLocalVideo "enableLocalVideo(false)" to disable the local audio sampling or video capturing.
+   * - The role of the local user is `AUDIENCE`.
+   */
   PUB_STATE_NO_PUBLISHED = 1,
   /** 2: Publishing.
-     */
+   */
   PUB_STATE_PUBLISHING = 2,
   /** 3: Publishes successfully.
-     */
-  PUB_STATE_PUBLISHED = 3
+   */
+  PUB_STATE_PUBLISHED = 3,
 }
 
 /** Audio output routing. */
 export enum AUDIO_ROUTE_TYPE {
   /** Default.
-     */
+   */
   AUDIO_ROUTE_DEFAULT = -1,
   /** Headset.
-     */
+   */
   AUDIO_ROUTE_HEADSET = 0,
   /** Earpiece.
-     */
+   */
   AUDIO_ROUTE_EARPIECE = 1,
   /** Headset with no microphone.
-     */
+   */
   AUDIO_ROUTE_HEADSET_NO_MIC = 2,
   /** Speakerphone.
-     */
+   */
   AUDIO_ROUTE_SPEAKERPHONE = 3,
   /** Loudspeaker.
-     */
+   */
   AUDIO_ROUTE_LOUDSPEAKER = 4,
   /** Bluetooth headset.
-     */
+   */
   AUDIO_ROUTE_BLUETOOTH = 5,
   /** USB peripheral (macOS only).
-     */
+   */
   AUDIO_ROUTE_USB = 6,
   /** HDMI peripheral (macOS only).
-     */
+   */
   AUDIO_ROUTE_HDMI = 7,
   /** DisplayPort peripheral (macOS only).
-     */
+   */
   AUDIO_ROUTE_DISPLAYPORT = 8,
   /** Apple AirPlay (macOS only).
-     */
+   */
   AUDIO_ROUTE_AIRPLAY = 9,
 }
 /**
@@ -2534,219 +2515,210 @@ export enum LOG_LEVEL {
 }
 
 export interface RtcContext {
-  logConfig: LogConfig
+  logConfig: LogConfig;
 }
 
 export interface RtcEngineContext {
-  appId: string,
-  areaCode: AREA_CODE,
-  logConfig: LogConfig
+  appId: string;
+  areaCode?: AREA_CODE;
+  logConfig?: LogConfig;
 }
 
 export interface LogConfig {
-  filePath: string,
-  fileSize: number,
-  level: LOG_LEVEL
+  filePath: string;
+  fileSize: number;
+  level: LOG_LEVEL;
 }
 
-export enum USER_OFFLINE_REASON_TYPE
-{
-    /** 0: The user quits the call. */
-    USER_OFFLINE_QUIT = 0,
-    /** 1: The SDK times out and the user drops offline because no data packet is received within a certain period of time. If the user quits the call and the message is not passed to the SDK (due to an unreliable channel), the SDK assumes the user dropped offline. */
-    USER_OFFLINE_DROPPED = 1,
-      /** 2: (`LIVE_BROADCASTING` only.) The client role switched from the host to the audience. */
-    USER_OFFLINE_BECOME_AUDIENCE = 2,
+export enum USER_OFFLINE_REASON_TYPE {
+  /** 0: The user quits the call. */
+  USER_OFFLINE_QUIT = 0,
+  /** 1: The SDK times out and the user drops offline because no data packet is received within a certain period of time. If the user quits the call and the message is not passed to the SDK (due to an unreliable channel), the SDK assumes the user dropped offline. */
+  USER_OFFLINE_DROPPED = 1,
+  /** 2: (`LIVE_BROADCASTING` only.) The client role switched from the host to the audience. */
+  USER_OFFLINE_BECOME_AUDIENCE = 2,
 }
-
 
 /** Local audio state types.
  */
-export enum LOCAL_AUDIO_STREAM_STATE
-{
-    /** 0: The local audio is in the initial state.
-    */
-    LOCAL_AUDIO_STREAM_STATE_STOPPED = 0,
-    /** 1: The capturing device starts successfully.
-    */
-    LOCAL_AUDIO_STREAM_STATE_RECORDING = 1,
-    /** 2: The first audio frame encodes successfully.
-    */
-    LOCAL_AUDIO_STREAM_STATE_ENCODING = 2,
-    /** 3: The local audio fails to start.
-    */
-    LOCAL_AUDIO_STREAM_STATE_FAILED = 3
-}
- 
- /** Local audio state error codes.
-  */
-export enum LOCAL_AUDIO_STREAM_ERROR
-{
-    /** 0: The local audio is normal.
-    */
-    LOCAL_AUDIO_STREAM_ERROR_OK = 0,
-    /** 1: No specified reason for the local audio failure.
-    */
-    LOCAL_AUDIO_STREAM_ERROR_FAILURE = 1,
-    /** 2: No permission to use the local audio device.
-    */
-    LOCAL_AUDIO_STREAM_ERROR_DEVICE_NO_PERMISSION = 2,
-    /** 3: The microphone is in use.
-    */
-    LOCAL_AUDIO_STREAM_ERROR_DEVICE_BUSY = 3,
-    /** 4: The local audio capturing fails. Check whether the capturing device
-    * is working properly.
-    */
-    LOCAL_AUDIO_STREAM_ERROR_RECORD_FAILURE = 4,
-    /** 5: The local audio encoding fails.
-    */
-    LOCAL_AUDIO_STREAM_ERROR_ENCODE_FAILURE = 5
+export enum LOCAL_AUDIO_STREAM_STATE {
+  /** 0: The local audio is in the initial state.
+   */
+  LOCAL_AUDIO_STREAM_STATE_STOPPED = 0,
+  /** 1: The capturing device starts successfully.
+   */
+  LOCAL_AUDIO_STREAM_STATE_RECORDING = 1,
+  /** 2: The first audio frame encodes successfully.
+   */
+  LOCAL_AUDIO_STREAM_STATE_ENCODING = 2,
+  /** 3: The local audio fails to start.
+   */
+  LOCAL_AUDIO_STREAM_STATE_FAILED = 3,
 }
 
-export interface AudioVolumeInfo
-{
-   /**
-    * The user ID.
-    * - In the local user's callback, `uid = 0`.
-    * - In the remote users' callback, `uid` is the ID of a remote user whose instantaneous volume is one of the three highest.
-    */
-    uid: number,
-   /** The volume of each user after audio mixing. The value ranges between 0 (lowest volume) and 255 (highest volume).
-    * In the local user's callback, `volume = totalVolume`.
-    */
-    volume: number
-    /** Voice activity status of the local user.
-     * - `0`: The local user is not speaking.
-     * - `1`: The local user is speaking.
-     *
-     * @note
-     * - The `vad` parameter cannot report the voice activity status of remote users.
-     * In the remote users' callback, `vad` is always `0`.
-     * - To use this parameter, you must set the `report_vad` parameter to `true`
-     * when calling \ref agora::rtc::IRtcEngine::enableAudioVolumeIndication(int, int, bool) "enableAudioVolumeIndication".
-     */
-    vad: number
-    /** The name of the channel where the user is in.
-     */
-    channelId: string
+/** Local audio state error codes.
+ */
+export enum LOCAL_AUDIO_STREAM_ERROR {
+  /** 0: The local audio is normal.
+   */
+  LOCAL_AUDIO_STREAM_ERROR_OK = 0,
+  /** 1: No specified reason for the local audio failure.
+   */
+  LOCAL_AUDIO_STREAM_ERROR_FAILURE = 1,
+  /** 2: No permission to use the local audio device.
+   */
+  LOCAL_AUDIO_STREAM_ERROR_DEVICE_NO_PERMISSION = 2,
+  /** 3: The microphone is in use.
+   */
+  LOCAL_AUDIO_STREAM_ERROR_DEVICE_BUSY = 3,
+  /** 4: The local audio capturing fails. Check whether the capturing device
+   * is working properly.
+   */
+  LOCAL_AUDIO_STREAM_ERROR_RECORD_FAILURE = 4,
+  /** 5: The local audio encoding fails.
+   */
+  LOCAL_AUDIO_STREAM_ERROR_ENCODE_FAILURE = 5,
+}
+
+export interface AudioVolumeInfo {
+  /**
+   * The user ID.
+   * - In the local user's callback, `uid = 0`.
+   * - In the remote users' callback, `uid` is the ID of a remote user whose instantaneous volume is one of the three highest.
+   */
+  uid: number;
+  /** The volume of each user after audio mixing. The value ranges between 0 (lowest volume) and 255 (highest volume).
+   * In the local user's callback, `volume = totalVolume`.
+   */
+  volume: number;
+  /** Voice activity status of the local user.
+   * - `0`: The local user is not speaking.
+   * - `1`: The local user is speaking.
+   *
+   * @note
+   * - The `vad` parameter cannot report the voice activity status of remote users.
+   * In the remote users' callback, `vad` is always `0`.
+   * - To use this parameter, you must set the `report_vad` parameter to `true`
+   * when calling \ref agora::rtc::IRtcEngine::enableAudioVolumeIndication(int, int, bool) "enableAudioVolumeIndication".
+   */
+  vad: number;
+  /** The name of the channel where the user is in.
+   */
+  channelId: string;
 }
 
 /** The states of the local user's audio mixing file.
-*/
-export enum AUDIO_MIXING_STATE_TYPE{
+ */
+export enum AUDIO_MIXING_STATE_TYPE {
   /** 710: The audio mixing file is playing after the method call of
    * \ref IRtcEngine::startAudioMixing "startAudioMixing" or \ref IRtcEngine::resumeAudioMixing "resumeAudioMixing" succeeds.
    */
   AUDIO_MIXING_STATE_PLAYING = 710,
   /** 711: The audio mixing file pauses playing after the method call of \ref IRtcEngine::pauseAudioMixing "pauseAudioMixing" succeeds.
-  */
+   */
   AUDIO_MIXING_STATE_PAUSED = 711,
   /** 713: The audio mixing file stops playing after the method call of \ref IRtcEngine::stopAudioMixing "stopAudioMixing" succeeds.
-  */
+   */
   AUDIO_MIXING_STATE_STOPPED = 713,
   /** 714: An exception occurs during the playback of the audio mixing file. See the `errorCode` for details.
-  */
+   */
   AUDIO_MIXING_STATE_FAILED = 714,
 }
 
 /** The error codes of the local user's audio mixing file.
-*/
-export enum AUDIO_MIXING_ERROR_TYPE{
+ */
+export enum AUDIO_MIXING_ERROR_TYPE {
   /** 701: The SDK cannot open the audio mixing file.
-  */
+   */
   AUDIO_MIXING_ERROR_CAN_NOT_OPEN = 701,
   /** 702: The SDK opens the audio mixing file too frequently.
-  */
+   */
   AUDIO_MIXING_ERROR_TOO_FREQUENT_CALL = 702,
   /** 703: The audio mixing file playback is interrupted.
    */
   AUDIO_MIXING_ERROR_INTERRUPTED_EOF = 703,
   /** 0: The SDK can open the audio mixing file.
-  */
+   */
   AUDIO_MIXING_ERROR_OK = 0,
 }
 
 /** Local video state types
  */
-export enum LOCAL_VIDEO_STREAM_STATE
-{
-    /** 0: Initial state */
-    LOCAL_VIDEO_STREAM_STATE_STOPPED = 0,
-    /** 1: The local video capturing device starts successfully.
-    *
-    * The SDK also reports this state when you share a maximized window by calling \ref IRtcEngine::startScreenCaptureByWindowId "startScreenCaptureByWindowId".
-    */
-    LOCAL_VIDEO_STREAM_STATE_CAPTURING = 1,
-    /** 2: The first video frame is successfully encoded. */
-    LOCAL_VIDEO_STREAM_STATE_ENCODING = 2,
-    /** 3: The local video fails to start. */
-    LOCAL_VIDEO_STREAM_STATE_FAILED = 3
-}
- 
- /** Local video state error codes
-  */
-export enum LOCAL_VIDEO_STREAM_ERROR 
-{
-     /** 0: The local video is normal. */
-     LOCAL_VIDEO_STREAM_ERROR_OK = 0,
-     /** 1: No specified reason for the local video failure. */
-     LOCAL_VIDEO_STREAM_ERROR_FAILURE = 1,
-     /** 2: No permission to use the local video capturing device. */
-     LOCAL_VIDEO_STREAM_ERROR_DEVICE_NO_PERMISSION = 2,
-     /** 3: The local video capturing device is in use. */
-     LOCAL_VIDEO_STREAM_ERROR_DEVICE_BUSY = 3,
-     /** 4: The local video capture fails. Check whether the capturing device is working properly. */
-     LOCAL_VIDEO_STREAM_ERROR_CAPTURE_FAILURE = 4,
-     /** 5: The local video encoding fails. */
-     LOCAL_VIDEO_STREAM_ERROR_ENCODE_FAILURE = 5,
-     /** 11: The shared window is minimized when you call \ref IRtcEngine::startScreenCaptureByWindowId "startScreenCaptureByWindowId" to share a window.
-      */
-     LOCAL_VIDEO_STREAM_ERROR_SCREEN_CAPTURE_WINDOW_MINIMIZED = 11,
-     /** 12: The error code indicates that a window shared by the window ID has been closed, or a full-screen window
-      * shared by the window ID has exited full-screen mode.
-      * After exiting full-screen mode, remote users cannot see the shared window. To prevent remote users from seeing a
-      * black screen, Agora recommends that you immediately stop screen sharing.
-      *
-      * Common scenarios for reporting this error code:
-      * - When the local user closes the shared window, the SDK reports this error code.
-      * - The local user shows some slides in full-screen mode first, and then shares the windows of the slides. After
-      * the user exits full-screen mode, the SDK reports this error code.
-      * - The local user watches web video or reads web document in full-screen mode first, and then shares the window of
-      * the web video or document. After the user exits full-screen mode, the SDK reports this error code.
-      */
-     LOCAL_VIDEO_STREAM_ERROR_SCREEN_CAPTURE_WINDOW_CLOSED = 12,
+export enum LOCAL_VIDEO_STREAM_STATE {
+  /** 0: Initial state */
+  LOCAL_VIDEO_STREAM_STATE_STOPPED = 0,
+  /** 1: The local video capturing device starts successfully.
+   *
+   * The SDK also reports this state when you share a maximized window by calling \ref IRtcEngine::startScreenCaptureByWindowId "startScreenCaptureByWindowId".
+   */
+  LOCAL_VIDEO_STREAM_STATE_CAPTURING = 1,
+  /** 2: The first video frame is successfully encoded. */
+  LOCAL_VIDEO_STREAM_STATE_ENCODING = 2,
+  /** 3: The local video fails to start. */
+  LOCAL_VIDEO_STREAM_STATE_FAILED = 3,
 }
 
-export enum SUPER_RESOLUTION_STATE_REASON
-{
-    /** 0: The super-resolution algorithm is successfully enabled.
-     */
-    SR_STATE_REASON_SUCCESS = 0,
-    /** 1: The origin resolution of the remote video is beyond the range where
-     * the super-resolution algorithm can be applied.
-     */
-    SR_STATE_REASON_STREAM_OVER_LIMITATION = 1,
-    /** 2: Another user is already using the super-resolution algorithm.
-     */
-    SR_STATE_REASON_USER_COUNT_OVER_LIMITATION = 2,
-    /** 3: The device does not support the super-resolution algorithm.
-     */
-    SR_STATE_REASON_DEVICE_NOT_SUPPORTED = 3,
+/** Local video state error codes
+ */
+export enum LOCAL_VIDEO_STREAM_ERROR {
+  /** 0: The local video is normal. */
+  LOCAL_VIDEO_STREAM_ERROR_OK = 0,
+  /** 1: No specified reason for the local video failure. */
+  LOCAL_VIDEO_STREAM_ERROR_FAILURE = 1,
+  /** 2: No permission to use the local video capturing device. */
+  LOCAL_VIDEO_STREAM_ERROR_DEVICE_NO_PERMISSION = 2,
+  /** 3: The local video capturing device is in use. */
+  LOCAL_VIDEO_STREAM_ERROR_DEVICE_BUSY = 3,
+  /** 4: The local video capture fails. Check whether the capturing device is working properly. */
+  LOCAL_VIDEO_STREAM_ERROR_CAPTURE_FAILURE = 4,
+  /** 5: The local video encoding fails. */
+  LOCAL_VIDEO_STREAM_ERROR_ENCODE_FAILURE = 5,
+  /** 11: The shared window is minimized when you call \ref IRtcEngine::startScreenCaptureByWindowId "startScreenCaptureByWindowId" to share a window.
+   */
+  LOCAL_VIDEO_STREAM_ERROR_SCREEN_CAPTURE_WINDOW_MINIMIZED = 11,
+  /** 12: The error code indicates that a window shared by the window ID has been closed, or a full-screen window
+   * shared by the window ID has exited full-screen mode.
+   * After exiting full-screen mode, remote users cannot see the shared window. To prevent remote users from seeing a
+   * black screen, Agora recommends that you immediately stop screen sharing.
+   *
+   * Common scenarios for reporting this error code:
+   * - When the local user closes the shared window, the SDK reports this error code.
+   * - The local user shows some slides in full-screen mode first, and then shares the windows of the slides. After
+   * the user exits full-screen mode, the SDK reports this error code.
+   * - The local user watches web video or reads web document in full-screen mode first, and then shares the window of
+   * the web video or document. After the user exits full-screen mode, the SDK reports this error code.
+   */
+  LOCAL_VIDEO_STREAM_ERROR_SCREEN_CAPTURE_WINDOW_CLOSED = 12,
+}
+
+export enum SUPER_RESOLUTION_STATE_REASON {
+  /** 0: The super-resolution algorithm is successfully enabled.
+   */
+  SR_STATE_REASON_SUCCESS = 0,
+  /** 1: The origin resolution of the remote video is beyond the range where
+   * the super-resolution algorithm can be applied.
+   */
+  SR_STATE_REASON_STREAM_OVER_LIMITATION = 1,
+  /** 2: Another user is already using the super-resolution algorithm.
+   */
+  SR_STATE_REASON_USER_COUNT_OVER_LIMITATION = 2,
+  /** 3: The device does not support the super-resolution algorithm.
+   */
+  SR_STATE_REASON_DEVICE_NOT_SUPPORTED = 3,
 }
 
 /**
  States of the RTMP streaming.
 */
-export enum RTMP_STREAM_PUBLISH_STATE
-{
+export enum RTMP_STREAM_PUBLISH_STATE {
   /** The RTMP streaming has not started or has ended. This state is also triggered after you remove an RTMP address from the CDN by calling removePublishStreamUrl.
-  */
+   */
   RTMP_STREAM_PUBLISH_STATE_IDLE = 0,
   /** The SDK is connecting to Agora's streaming server and the RTMP server. This state is triggered after you call the \ref IRtcEngine::addPublishStreamUrl "addPublishStreamUrl" method.
-  */
+   */
   RTMP_STREAM_PUBLISH_STATE_CONNECTING = 1,
   /** The RTMP streaming publishes. The SDK successfully publishes the RTMP streaming and returns this state.
-  */
+   */
   RTMP_STREAM_PUBLISH_STATE_RUNNING = 2,
   /** The RTMP streaming is recovering. When exceptions occur to the CDN, or the streaming is interrupted, the SDK tries to resume RTMP streaming and returns this state.
  
@@ -2755,15 +2727,14 @@ export enum RTMP_STREAM_PUBLISH_STATE
   */
   RTMP_STREAM_PUBLISH_STATE_RECOVERING = 3,
   /** The RTMP streaming fails. See the errCode parameter for the detailed error information. You can also call the \ref IRtcEngine::addPublishStreamUrl "addPublishStreamUrl" method to publish the RTMP streaming again.
-  */
+   */
   RTMP_STREAM_PUBLISH_STATE_FAILURE = 4,
-};
+}
 
 /**
 Error codes of the RTMP streaming.
 */
-export enum RTMP_STREAM_PUBLISH_ERROR
-{
+export enum RTMP_STREAM_PUBLISH_ERROR {
   /** The RTMP streaming publishes successfully. */
   RTMP_STREAM_PUBLISH_ERROR_OK = 0,
   /** Invalid argument used. If, for example, you do not call the \ref IRtcEngine::setLiveTranscoding "setLiveTranscoding" method to configure the LiveTranscoding parameters before calling the addPublishStreamUrl method, the SDK returns this error. Check whether you set the parameters in the *setLiveTranscoding* method properly. */
@@ -2786,11 +2757,10 @@ export enum RTMP_STREAM_PUBLISH_ERROR
   RTMP_STREAM_PUBLISH_ERROR_STREAM_NOT_FOUND = 9,
   /** The format of the RTMP streaming URL is not supported. Check whether the URL format is correct. */
   RTMP_STREAM_PUBLISH_ERROR_FORMAT_NOT_SUPPORTED = 10,
-};
+}
 
 /** Network type. */
-export enum NETWORK_TYPE
-{
+export enum NETWORK_TYPE {
   /** -1: The network type is unknown. */
   NETWORK_TYPE_UNKNOWN = -1,
   /** 0: The SDK disconnects from the network. */
@@ -2807,284 +2777,62 @@ export enum NETWORK_TYPE
   NETWORK_TYPE_MOBILE_4G = 5,
 }
 
-export enum ApiTypeEngine {
-  kEngineInitialize,
-  kEngineRelease,
-  kEngineSetChannelProfile,
-  kEngineSetClientRole,
-  kEngineJoinChannel,
-  kEngineSwitchChannel,
-  kEngineLeaveChannel,
-  kEngineRenewToken,
-  kEngineRegisterLocalUserAccount,
-  kEngineJoinChannelWithUserAccount,
-  kEngineGetUserInfoByUserAccount,
-  kEngineGetUserInfoByUid,
-  kEngineStartEchoTest,
-  kEngineStopEchoTest,
-  kEngineSetCloudProxy,
-  kEngineEnableVideo,
-  kEngineDisableVideo,
-  kEngineSetVideoProfile,
-  kEngineSetVideoEncoderConfiguration,
-  kEngineSetCameraCapturerConfiguration,
-  kEngineSetupLocalVideo,
-  kEngineSetupRemoteVideo,
-  kEngineStartPreview,
-  kEngineSetRemoteUserPriority,
-  kEngineStopPreview,
-  kEngineEnableAudio,
-  kEngineEnableLocalAudio,
-  kEngineDisableAudio,
-  kEngineSetAudioProfile,
-  kEngineMuteLocalAudioStream,
-  kEngineMuteAllRemoteAudioStreams,
-  kEngineSetDefaultMuteAllRemoteAudioStreams,
-  kEngineAdjustUserPlaybackSignalVolume,
-  kEngineMuteRemoteAudioStream,
-  kEngineMuteLocalVideoStream,
-  kEngineEnableLocalVideo,
-  kEngineMuteAllRemoteVideoStreams,
-  kEngineSetDefaultMuteAllRemoteVideoStreams,
-  kEngineMuteRemoteVideoStream,
-  kEngineSetRemoteVideoStreamType,
-  kEngineSetRemoteDefaultVideoStreamType,
-  kEngineEnableAudioVolumeIndication,
-  kEngineStartAudioRecording,
-  kEngineStopAudioRecording,
-  kEngineStartAudioMixing,
-  kEngineStopAudioMixing,
-  kEnginePauseAudioMixing,
-  kEngineResumeAudioMixing,
-  kEngineSetHighQualityAudioParameters,
-  kEngineAdjustAudioMixingVolume,
-  kEngineAdjustAudioMixingPlayoutVolume,
-  kEngineGetAudioMixingPlayoutVolume,
-  kEngineAdjustAudioMixingPublishVolume,
-  kEngineGetAudioMixingPublishVolume,
-  kEngineGetAudioMixingDuration,
-  kEngineGetAudioMixingCurrentPosition,
-  kEngineSetAudioMixingPosition,
-  kEngineSetAudioMixingPitch,
-  kEngineGetEffectsVolume,
-  kEngineSetEffectsVolume,
-  kEngineSetVolumeOfEffect,
-  kEngineEnableFaceDetection,
-  kEnginePlayEffect,
-  kEngineStopEffect,
-  kEngineStopAllEffects,
-  kEnginePreloadEffect,
-  kEngineUnloadEffect,
-  kEnginePauseEffect,
-  kEnginePauseAllEffects,
-  kEngineResumeEffect,
-  kEngineResumeAllEffects,
-  kEngineEnableDeepLearningDenoise,
-  kEngineEnableSoundPositionIndication,
-  kEngineSetRemoteVoicePosition,
-  kEngineSetLocalVoicePitch,
-  kEngineSetLocalVoiceEqualization,
-  kEngineSetLocalVoiceReverb,
-  kEngineSetLocalVoiceChanger,
-  kEngineSetLocalVoiceReverbPreset,
-  kEngineSetVoiceBeautifierPreset,
-  kEngineSetAudioEffectPreset,
-  kEngineSetVoiceConversionPreset,
-  kEngineSetAudioEffectParameters,
-  kEngineSetVoiceBeautifierParameters,
-  kEngineSetLogFile,
-  kEngineSetLogFilter,
-  kEngineSetLogFileSize,
-  kEngineUploadLogFile,
-  kEngineSetLocalRenderMode,
-  kEngineSetRemoteRenderMode,
-  kEngineSetLocalVideoMirrorMode,
-  kEngineEnableDualStreamMode,
-  kEngineSetExternalAudioSource,
-  kEngineSetExternalAudioSink,
-  kEngineSetRecordingAudioFrameParameters,
-  kEngineSetPlaybackAudioFrameParameters,
-  kEngineSetMixedAudioFrameParameters,
-  kEngineAdjustRecordingSignalVolume,
-  kEngineAdjustPlaybackSignalVolume,
-  kEngineEnableWebSdkInteroperability,
-  kEngineSetVideoQualityParameters,
-  kEngineSetLocalPublishFallbackOption,
-  kEngineSetRemoteSubscribeFallbackOption,
-  kEngineSwitchCamera,
-  kEngineSetDefaultAudioRouteToSpeakerPhone,
-  kEngineSetEnableSpeakerPhone,
-  kEngineEnableInEarMonitoring,
-  kEngineSetInEarMonitoringVolume,
-  kEngineIsSpeakerPhoneEnabled,
-  kEngineSetAudioSessionOperationRestriction,
-  kEngineEnableLoopBackRecording,
-  kEngineStartScreenCaptureByDisplayId,
-  kEngineStartScreenCaptureByScreenRect,
-  kEngineStartScreenCaptureByWindowId,
-  kEngineSetScreenCaptureContentHint,
-  kEngineUpdateScreenCaptureParameters,
-  kEngineUpdateScreenCaptureRegion,
-  kEngineStopScreenCapture,
-  kEngineStartScreenCapture,
-  kEngineSetVideoSource,
-  kEngineGetCallId,
-  kEngineRate,
-  kEngineComplain,
-  kEngineGetVersion,
-  kEngineEnableLastMileTest,
-  kEngineDisableLastMileTest,
-  kEngineStartLastMileProbeTest,
-  kEngineStopLastMileProbeTest,
-  kEngineGetErrorDescription,
-  kEngineSetEncryptionSecret,
-  kEngineSetEncryptionMode,
-  kEngineEnableEncryption,
-  kEngineRegisterPacketObserver,
-  kEngineCreateDataStream,
-  kEngineSendStreamMessage,
-  kEngineAddPublishStreamUrl,
-  kEngineRemovePublishStreamUrl,
-  kEngineSetLiveTranscoding,
-  kEngineAddVideoWaterMark,
-  kEngineClearVideoWaterMarks,
-  kEngineSetBeautyEffectOptions,
-  kEngineAddInjectStreamUrl,
-  kEngineStartChannelMediaRelay,
-  kEngineUpdateChannelMediaRelay,
-  kEngineStopChannelMediaRelay,
-  kEngineRemoveInjectStreamUrl,
-  kEngineSendCustomReportMessage,
-  kEngineGetConnectionState,
-  kEngineEnableRemoteSuperResolution,
-  kEngineRegisterMediaMetadataObserver,
-  kEngineSetParameters,
-
-  kEngineUnRegisterMediaMetadataObserver,
-  kEngineSetMaxMetadataSize,
-  kEngineSendMetadata,
-  kEngineSetAppType,
-
-  kMediaPushAudioFrame,
-  kMediaPullAudioFrame,
-  kMediaSetExternalVideoSource,
-  kMediaPushVideoFrame,
-}
-
-export enum ApiTypeChannel {
-  kChannelCreateChannel,
-  kChannelRelease,
-  kChannelJoinChannel,
-  kChannelJoinChannelWithUserAccount,
-  kChannelLeaveChannel,
-  kChannelPublish,
-  kChannelUnPublish,
-  kChannelChannelId,
-  kChannelGetCallId,
-  kChannelRenewToken,
-  kChannelSetEncryptionSecret,
-  kChannelSetEncryptionMode,
-  kChannelEnableEncryption,
-  kChannelRegisterPacketObserver,
-  kChannelRegisterMediaMetadataObserver,
-  kChannelUnRegisterMediaMetadataObserver,
-  kChannelSetMaxMetadataSize,
-  kChannelSendMetadata,
-  kChannelSetClientRole,
-  kChannelSetRemoteUserPriority,
-  kChannelSetRemoteVoicePosition,
-  kChannelSetRemoteRenderMode,
-  kChannelSetDefaultMuteAllRemoteAudioStreams,
-  kChannelSetDefaultMuteAllRemoteVideoStreams,
-  kChannelMuteAllRemoteAudioStreams,
-  kChannelAdjustUserPlaybackSignalVolume,
-  kChannelMuteRemoteAudioStream,
-  kChannelMuteAllRemoteVideoStreams,
-  kChannelMuteRemoteVideoStream,
-  kChannelSetRemoteVideoStreamType,
-  kChannelSetRemoteDefaultVideoStreamType,
-  kChannelCreateDataStream,
-  kChannelSendStreamMessage,
-  kChannelAddPublishStreamUrl,
-  kChannelRemovePublishStreamUrl,
-  kChannelSetLiveTranscoding,
-  kChannelAddInjectStreamUrl,
-  kChannelRemoveInjectStreamUrl,
-  kChannelStartChannelMediaRelay,
-  kChannelUpdateChannelMediaRelay,
-  kChannelStopChannelMediaRelay,
-  kChannelGetConnectionState,
-  kChannelEnableRemoteSuperResolution,
-}
-
-export enum ApiTypeAudioDeviceManager {
-  kGetAudioPlaybackDeviceCount,
-  kGetAudioPlaybackDeviceInfoByIndex,
-  kSetCurrentAudioPlaybackDeviceId,
-  kGetCurrentAudioPlaybackDeviceId,
-  kGetCurrentAudioPlaybackDeviceInfo,
-  kSetAudioPlaybackDeviceVolume,
-  kGetAudioPlaybackDeviceVolume,
-  kSetAudioPlaybackDeviceMute,
-  kGetAudioPlaybackDeviceMute,
-  kStartAudioPlaybackDeviceTest,
-  kStopAudioPlaybackDeviceTest,
-
-  kGetAudioRecordingDeviceCount,
-  kGetAudioRecordingDeviceInfoByIndex,
-  kSetCurrentAudioRecordingDeviceId,
-  kGetCurrentAudioRecordingDeviceId,
-  kGetCurrentAudioRecordingDeviceInfo,
-  kSetAudioRecordingDeviceVolume,
-  kGetAudioRecordingDeviceVolume,
-  kSetAudioRecordingDeviceMute,
-  kGetAudioRecordingDeviceMute,
-  kStartAudioRecordingDeviceTest,
-  kStopAudioRecordingDeviceTest,
-
-  kStartAudioDeviceLoopbackTest,
-  kStopAudioDeviceLoopbackTest,
-}
-
-export enum ApiTypeVideoDeviceManager {
-  kGetVideoDeviceCount,
-  kGetVideoDeviceInfoByIndex,
-  kSetCurrentVideoDeviceId,
-  kGetCurrentVideoDeviceId,
-  kStartVideoDeviceTest,
-  kStopVideoDeviceTest,
-}
-
 /**
  * interface for c++ addon (.node)
  * @ignore
  */
 export interface NodeIrisEngine {
-  CallApi(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
-  CallApiWithBuffer(apiType: ApiTypeEngine, params: string, buffer: string): { retCode: number, result: string };
+  CallApi(
+    apiType: ApiTypeEngine,
+    params: string
+  ): { retCode: number; result: string };
+  CallApiWithBuffer(
+    apiType: ApiTypeEngine,
+    params: string,
+    buffer: string
+  ): { retCode: number; result: string };
   OnEvent(callbackName: string, callback: Function): void;
   GetChannel(): NodeIrisChannel;
   GetDeviceManager(): NodeIrisDeviceManager;
   GetScreenDisplaysInfo(): Array<Object>;
   GetScreenWindowsInfo(): Array<Object>;
-  VideoSourceInitialize(params: string): { retCode: number, result: string };
-  VideoSourceCallApi(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
-  VideoSourceCallApiWithBuffer(apiType: ApiTypeEngine, params: string): { retCode: number, result: string };
-  VideoSourceRelease(): { retCode: number, result: string };
-  SetAddonLogFile(filePath: string): { retCode: number, result: number};
+  VideoSourceInitialize(params: string): { retCode: number; result: string };
+  VideoSourceCallApi(
+    apiType: ApiTypeEngine,
+    params: string
+  ): { retCode: number; result: string };
+  VideoSourceCallApiWithBuffer(
+    apiType: ApiTypeEngine,
+    params: string
+  ): { retCode: number; result: string };
+  VideoSourceRelease(): { retCode: number; result: string };
+  SetAddonLogFile(filePath: string): { retCode: number; result: number };
 }
 /**
  * @ignore
  */
 export interface NodeIrisChannel {
-  CallApi(apiType: ApiTypeChannel, params: string): { retCode: number, result: string };
-  CallApiWithBuffer(apiType: ApiTypeChannel, params: string, buffer: string): { retCode: number, result: string };
+  CallApi(
+    apiType: ApiTypeChannel,
+    params: string
+  ): { retCode: number; result: string };
+  CallApiWithBuffer(
+    apiType: ApiTypeChannel,
+    params: string,
+    buffer: string
+  ): { retCode: number; result: string };
   OnEvent(callbackName: string, callback: Function): void;
 }
 /**
  * @ignore
  */
 export interface NodeIrisDeviceManager {
-  CallApiAudioDevice(apiType: ApiTypeAudioDeviceManager, params: string): { retCode: number, result: string };
-  CallApiVideoDevice(apiType: ApiTypeVideoDeviceManager, params: string): { retCode: number, result: string };
+  CallApiAudioDevice(
+    apiType: ApiTypeAudioDeviceManager,
+    params: string
+  ): { retCode: number; result: string };
+  CallApiVideoDevice(
+    apiType: ApiTypeVideoDeviceManager,
+    params: string
+  ): { retCode: number; result: string };
 }

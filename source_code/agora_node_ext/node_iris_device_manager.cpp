@@ -6,6 +6,8 @@ namespace agora {
         namespace electron {
             using namespace iris;
 
+            Nan_Persistent<v8_Function> NodeIrisDeviceManager::_constructor;
+
             NodeIrisDeviceManager::NodeIrisDeviceManager(v8_Isolate* isolate, IrisDeviceManager* deviceManager):_isolate(isolate), _deviceManager(deviceManager)
             {
                 node::AddEnvironmentCleanupHook(isolate, Release, this);

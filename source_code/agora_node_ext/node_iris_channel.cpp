@@ -8,6 +8,8 @@ namespace agora
         {
             using namespace iris;
 
+            Nan_Persistent<v8_Function> NodeIrisChannel::_constructor;
+
             NodeIrisChannel::NodeIrisChannel(v8_Isolate *isolate, IrisChannel *channel)
             {
                 node::AddEnvironmentCleanupHook(isolate, Release, this);

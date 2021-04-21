@@ -8,6 +8,8 @@ namespace agora
         {
             using namespace iris;
 
+            Nan_Persistent<v8_Function> NodeIrisEngine::_constructor;
+
             NodeIrisEngine::NodeIrisEngine(v8_Isolate *isolate) : _isolate(isolate)
             {
                 _iris_event_handler.reset(new NodeIrisEventHandler());
@@ -51,6 +53,8 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "SetAddonLogFile", SetAddonLogFile);
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
                 _module->Set(_context, Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
+
+                LOG_F(INFO, "Init");
             }
 
             void NodeIrisEngine::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
@@ -58,6 +62,7 @@ namespace agora
                 auto _isolate = args.GetIsolate();
                 if (args.IsConstructCall())
                 {
+                    LOG_F(INFO, "CreateInstance");
                     auto _iris_engine = new NodeIrisEngine(_isolate);
                     _iris_engine->Wrap(args.This());
                     args.GetReturnValue().Set(args.This());
@@ -79,6 +84,7 @@ namespace agora
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
                 char _result[512];
                 memset(_result, '\0', 512);
+                LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
                 auto _ret = _engine->_iris_engine.get()->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
 
                 auto _retObj = v8_Object::New(_isolate);
@@ -153,6 +159,7 @@ namespace agora
 
             void NodeIrisEngine::GetChannel(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
+                LOG_F(INFO, " NodeIrisEngine::GetChannel");
                 auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
 
@@ -324,7 +331,7 @@ namespace agora
 
             void NodeIrisEngine::InitializePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-
+                
             }
 
             void NodeIrisEngine::ReleasePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args)

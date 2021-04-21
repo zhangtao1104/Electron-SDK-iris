@@ -73,7 +73,7 @@ namespace agora
     {                                                                                                             \
         auto propName = v8_String::NewFromUtf8(isolate, name, v8::NewStringType::kInternalized).ToLocalChecked(); \
         auto arrayBuffer = v8_ArrayBuffer::New(isolate, size);                                                    \
-        memcpy(arrayBuffer->GetBackingStore()->Data(), buffer, size);                                             \
+        memcpy(arrayBuffer->GetContents().Data(), buffer, size);                                             \
         auto uint8Array = v8_Uint8Array::New(arrayBuffer, 0, size);                                               \
         auto result = obj->Set(isolate->GetCurrentContext(), propName, uint8Array);                               \
         v8_MAYBE_CHECK_RESULT(result);                                                                            \

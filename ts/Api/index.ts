@@ -2,8 +2,16 @@
   SoftwareRenderer,
   GlRenderer,
   IRenderer,
-  CustomRenderer
-} from '../Renderer';
+  CustomRenderer,
+} from "../Renderer";
+
+import {
+  ApiTypeEngine,
+  ApiTypeChannel,
+  ApiTypeAudioDeviceManager,
+  ApiTypeVideoDeviceManager
+} from './api_type'
+
 import {
   NodeIrisChannel,
   RtcStats,
@@ -33,7 +41,6 @@ import {
   PRIORITY_TYPE,
   CameraCapturerConfiguration,
   ScreenSymbol,
-  CaptureRect,
   ScreenCaptureParameters,
   VideoContentHint,
   VideoEncoderConfiguration,
@@ -53,7 +60,6 @@ import {
   CLOUD_PROXY_TYPE,
   LogConfig,
   RtcEngineContext,
-  ApiTypeEngine,
   NodeIrisEngine,
   BeautyOptions,
   AUDIO_PROFILE_TYPE,
@@ -61,10 +67,7 @@ import {
   VIDEO_MIRROR_MODE_TYPE,
   STREAM_FALLBACK_OPTIONS,
   Rect,
-  ApiTypeChannel,
   NodeIrisDeviceManager,
-  ApiTypeAudioDeviceManager,
-  ApiTypeVideoDeviceManager,
   Rectangle,
   USER_OFFLINE_REASON_TYPE,
   LOCAL_AUDIO_STREAM_STATE,
@@ -77,22 +80,19 @@ import {
   SUPER_RESOLUTION_STATE_REASON,
   RTMP_STREAM_PUBLISH_STATE,
   RTMP_STREAM_PUBLISH_ERROR,
-  NETWORK_TYPE
-} from './native_type';
-import { EventEmitter } from 'events';
-import { deprecate, config, Config } from '../Utils';
-import { ChannelMediaOptions, WatermarkOptions } from './native_type';
-import {
+  NETWORK_TYPE,
+  ChannelMediaOptions,
+  WatermarkOptions,
   CHANNEL_MEDIA_RELAY_EVENT,
   CHANNEL_MEDIA_RELAY_STATE,
   CHANNEL_MEDIA_RELAY_ERROR,
-  ChannelMediaRelayConfiguration
-} from './native_type';
-import {
-  PluginInfo,
-  Plugin
-} from './plugin';
-const agora = require('../../build/Release/agora_node_ext');
+  ChannelMediaRelayConfiguration,
+} from "./native_type";
+import { EventEmitter } from "events";
+import { deprecate } from "../Utils";
+import { PluginInfo, Plugin } from "./plugin";
+
+const agora = require("../../build/Debug/agora_node_ext");
 
 /**
  * The AgoraRtcEngine class.
@@ -106,6 +106,7 @@ class AgoraRtcEngine extends EventEmitter {
   customRenderer: any;
   constructor() {
     super();
+    console.log("new AgoraRtcEngine");
     this.rtcEngine = new agora.NodeIrisEngine();
     this.initEventHandler();
     this.rtcChannel = this.rtcEngine.GetChannel();
@@ -116,14 +117,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   setAddonLogFile(filePath: string): number {
-    let ret = this.rtcEngine.SetAddonLogFile(filePath)
-    return ret.retCode
-  }
-  /**
-   * return sdk config object
-   */
-  getConfigObject(): Config {
-    return config
+    let ret = this.rtcEngine.SetAddonLogFile(filePath);
+    return ret.retCode;
   }
 
   /**
@@ -154,7 +149,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {boolean}
    */
   _checkWebGL(): boolean {
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     let gl;
 
     canvas.width = 1;
@@ -166,7 +161,7 @@ class AgoraRtcEngine extends EventEmitter {
       depth: false,
       stencil: false,
       antialias: false,
-      preferLowPowerToHighPerformance: true
+      preferLowPowerToHighPerformance: true,
 
       // Still dithering on whether to use this.
       // Recommend avoiding it, as it's overly conservative
@@ -175,8 +170,8 @@ class AgoraRtcEngine extends EventEmitter {
 
     try {
       gl =
-        canvas.getContext('webgl', options) ||
-        canvas.getContext('experimental-webgl', options);
+        canvas.getContext("webgl", options) ||
+        canvas.getContext("experimental-webgl", options);
     } catch (e) {
       return false;
     }
@@ -201,655 +196,1021 @@ class AgoraRtcEngine extends EventEmitter {
       });
     };
 
-    this.rtcEngine.OnEvent('call_back', (_eventName: string, _eventData: string) => {
-      switch (_eventName) {
-        case 'fireApiError':
-          {
-            fire('apiError', _eventData)
-          }
-          break
-
-        case 'onWarning':
-          {
-            let data: {warn: number, msg: string} = JSON.parse(_eventData)
-            fire('warning', data.warn, data.msg)
-          }
-          break
-
-        case 'onError':
-          {
-            let data: {err: number, msg: string} = JSON.parse(_eventData)
-            fire('error', data.err, data.msg)
-          }
-          break
-
-        case 'onJoinChannelSuccess':
-          {
-            let data: {channel: string, uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('joinedChannel', data.channel, data.uid, data.elapsed)
-            fire('joinedchannel', data.channel, data.uid, data.elapsed)
-          }
-          break
-
-        case 'onRejoinChannelSuccess':
-          {
-            let data: {channel: string, uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('rejoinedChannel', data.channel, data.uid, data.elapsed)
-            fire('rejoinedchannel', data.channel, data.uid, data.elapsed)
-          }
-          break
-
-        case 'onLeaveChannel':
-          {
-            let data: {stats: RtcStats} = JSON.parse(_eventData)
-            fire('leaveChannel', data.stats)
-            fire('leavechannel', data.stats)
-          }
-          break
-
-        case 'onClientRoleChanged':
-          {
-            let data: {oldRole: CLIENT_ROLE_TYPE, newRole: CLIENT_ROLE_TYPE} = JSON.parse(_eventData)
-            fire('clientRoleChanged', data.oldRole, data.newRole)
-            fire('clientrolechanged', data.oldRole, data.newRole)
-          }
-          break
-
-        case 'onUserJoined':
-          {
-            let data: {uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('userJoined', data.uid, data.elapsed)
-            fire('userjoined', data.uid, data.elapsed)
-          }
-          break
-
-        case 'onUserOffline':
-          {
-            let data: {uid: number, reason: USER_OFFLINE_REASON_TYPE} = JSON.parse(_eventData)
-            fire('userOffline', data.uid, data.reason)
-            fire('userfffline', data.uid, data.reason)
-          }
-          break
-
-        case 'onLastmileQuality':
-          {
-            let data: {quality: QUALITY_TYPE} = JSON.parse(_eventData)
-            fire('lastmilequality', data.quality)
-            fire('lastmileQuality', data.quality)
-          }
-          break
-
-        case 'onLastmileProbeResult':
-          {
-            let data: {result: LastmileProbeResult} = JSON.parse(_eventData)
-            fire('lastmileProbeResult', data.result)
-            fire('lastmileproberesult', data.result)
-          }
-          break
-
-        case 'onConnectionInterrupted':
-          {
-            fire('connectioninterrupted')
-            fire('connectionInterrupted')      
-          }
-          break
-        
-        case 'onConnectionLost':
-          {
-            fire('connectionlost')
-            fire('connectionLost')
-          }
-          break
-
-        case 'onConnectionBanned':
-          {
-            fire('connectionbanned')
-            fire('connectionBanned')
-          }
-          break
-
-        case 'onApiCallExecuted':
-          {
-            let data: {err: number, api: string, result: string} = JSON.parse(_eventData)
-            fire('apiCallExecuted', data.api, data.err, data.result)
-            fire('apicallexecuted', data.api, data.err, data.result)
-          }
-          break
-
-        case 'onRequestToken':
-          {
-            fire('requestToken')
-          }
-          break
-
-        case 'onTokenPrivilegeWillExpire':
-          {
-            let data: {token: string} = JSON.parse(_eventData)
-            fire('tokenPrivilegeWillExpire', data.token)
-          }
-          break
-        
-        case 'onAudioQuality':
-          {
-            let data: {uid: number, quality: QUALITY_TYPE, delay: number, lost: number} = JSON.parse(_eventData)
-            fire('audioQuality', data.uid, data.quality, data.delay, data.lost)
-          }
-          break
-        
-        case 'onRtcStats':
-          {
-            let data: {stats: RtcStats} = JSON.parse(_eventData)
-            fire('rtcstats', data.stats)
-            fire('rtcStats', data.stats)
-          }
-          break
-        
-        case 'onNetworkQuality':
-          {
-            let data: {uid: number, txQuality: QUALITY_TYPE, rxQuality: QUALITY_TYPE} = JSON.parse(_eventData)
-            fire('networkquality', data.uid, data.txQuality, data.rxQuality)
-            fire('networkQuality', data.uid, data.txQuality, data.rxQuality)
-          }
-          break
-
-        case 'onLocalVideoStats':
-          {
-            let data: {stats: LocalVideoStats} = JSON.parse(_eventData)
-            fire('localVideoStats', data.stats)
-          }
-          break
-        
-        case 'onRemoteVideoStats':
-          {
-            let data: {stats: RemoteVideoStats} = JSON.parse(_eventData)
-            fire('remoteVideoStats', data.stats)
-          }
-          break
-
-        case 'onLocalAudioStats':
-          {
-            let data: {stats: LocalAudioStats} = JSON.parse(_eventData)
-            fire('localAudioStats', data.stats)
-          }
-          break
-
-        case 'onRemoteAudioStats':
-          {
-            let data: {stats: RemoteAudioStats} = JSON.parse(_eventData)
-            fire('remoteAudioStats', data.stats)
-          }
-          break
-
-        case 'onLocalAudioStateChanged':
-          {
-            let data: {state: LOCAL_AUDIO_STREAM_STATE, error: LOCAL_AUDIO_STREAM_ERROR} = JSON.parse(_eventData)
-            fire('localAudioStateChanged', data.state, data.error)
-          }
-          break
-
-        case 'onRemoteAudioStateChanged':
-          {
-            let data: {uid: number, state: REMOTE_AUDIO_STATE, reason: REMOTE_AUDIO_STATE_REASON, elapsed: number} = JSON.parse(_eventData)
-            fire('remoteAudioStateChanged', data.uid, data.state, data.reason, data.elapsed)
-          }
-          break
-
-        case 'onAudioPublishStateChanged':
-          {
-            let data: {channel: string, oldState: STREAM_PUBLISH_STATE, newState: STREAM_PUBLISH_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('audioPublishStateChanged', data.channel, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
-
-        case 'onVideoPublishStateChanged':
-          {
-            let data: {channel: string, oldState: STREAM_PUBLISH_STATE, newState: STREAM_PUBLISH_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('videoPublishStateChanged', data.channel, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
-
-        case 'onAudioSubscribeStateChanged':
-          {
-            let data: {channel: string, uid: number, oldState: STREAM_SUBSCRIBE_STATE, newState: STREAM_SUBSCRIBE_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('audioSubscribeStateChanged', data.channel, data.uid, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
-
-        case 'onVideoSubscribeStateChanged':
-          {
-            let data: {channel: string, uid: number, oldState: STREAM_SUBSCRIBE_STATE, newState: STREAM_SUBSCRIBE_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('videoSubscribeStateChanged', data.channel, data.uid, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
-
-        case 'onAudioVolumeIndication':
-          {
-            let data: {speakers: AudioVolumeInfo[], speakerNumber: number, totalVolume: number} = JSON.parse(_eventData)
-            fire('audioVolumeIndication', data.speakers, data.speakerNumber, data.totalVolume)
-            fire('groupAudioVolumeIndication', data.speakers, data.speakerNumber, data.totalVolume)
-          }
-          break
-
-        case 'onActiveSpeaker':
-          {
-            let data: {uid: number} = JSON.parse(_eventData)
-            fire('activeSpeaker', data.uid)
-          }
-          break
-
-        case 'onVideoStopped':
-          {
-            fire('videostopped')
-            fire('videoStopped')
-          }
-          break
-
-        case 'onFirstLocalVideoFrame':
-          {
-            let data: {width: number, height: number, elapsed: number} = JSON.parse(_eventData)
-            fire('firstlocalvideoframe', data.width, data.height, data.elapsed)
-            fire('firstLocalVideoFrame', data.width, data.height, data.elapsed)
-          }
-          break
-      
-        case 'onFirstLocalVideoFramePublished':
-          {
-            let data: {elapsed: number} = JSON.parse(_eventData)
-            fire('firstLocalVideoFramePublished', data.elapsed)
-          }
-          break
-
-        case 'onFirstRemoteVideoDecoded':
-          {
-            let data: {uid: number, width: number, height: number, elapsed: number} = JSON.parse(_eventData)
-            fire('firstRemoteVideoDecoded', data.uid, data.width, data.height, data.elapsed)
-            fire('addstream', data.uid, data.elapsed)
-            fire('addStream', data.uid, data.elapsed)
-          }
-          break
-
-        case 'onFirstRemoteVideoFrame':
-          {
-            let data: {uid: number, width: number, height: number, elapsed: number} = JSON.parse(_eventData)
-            fire('firstremotevideoframe', data.uid, data.width, data.height, data.elapsed)
-            fire('firstRemoteVideoFrame', data.uid, data.width, data.height, data.elapsed)
-          }
-          break
-
-        case 'onUserMuteAudio':
-          {
-            let data: {uid: number, muted: boolean} = JSON.parse(_eventData)
-            fire('usermuteaudio', data.uid, data.muted)
-            fire('userMuteAudio', data.uid, data.muted)
-          }
-          break
-        
-        case 'onUserMuteVideo':
-          {
-            let data: {uid: number, muted: boolean} = JSON.parse(_eventData)
-            fire('usermutevideo', data.uid, data.muted)
-            fire('userMuteVideo', data.uid, data.muted)
-          }
-          break
-        
-        case 'onUserEnableVideo':
-          {
-            let data: {uid: number, enabled: boolean} = JSON.parse(_eventData)
-            fire('userenablevideo', data.uid, data.enabled)
-            fire('userEnableVideo', data.uid, data.enabled)
-          }
-          break
-
-        case 'onAudioDeviceStateChanged':
-          {
-            let data: {deviceId: string, deviceType: number, deviceState: number} = JSON.parse(_eventData)
-            fire('audiodevicestatechanged', data.deviceId, data.deviceType, data.deviceState)
-            fire('audioDeviceStateChanged', data.deviceId, data.deviceType, data.deviceState)
-          }
-          break
-
-        case 'onAudioDeviceVolumeChanged':
-          {
-            let data: {deviceType: MEDIA_DEVICE_TYPE, volume: number, muted: number} = JSON.parse(_eventData)
-            fire('audiodevicevolumechanged', data.deviceType, data.volume, data.muted)
-            fire('audioDeviceVolumeChanged', data.deviceType, data.volume, data.muted)
-          }
-          break
-
-        case 'onCameraReady':
-          {
-            fire('cameraready')
-            fire('cameraReady')
-          }
-          break
-
-        case 'onCameraFocusAreaChanged':
-          {
-            let data: {x: number, y: number, width: number, height: number} = JSON.parse(_eventData)
-            fire('cameraFocusAreaChanged', data.x, data.y, data.width, data.height)
-          }
-          break
-
-        case 'onCameraExposureAreaChanged':
-          {
-            let data: {x: number, y: number, width: number, height: number} = JSON.parse(_eventData)
-            fire('cameraExposureAreaChanged', data.x, data.y, data.width, data.height)
-          }
-          break
-
-        case 'onAudioMixingFinished':
-          {
-            fire('audiomixingfinished')
-            fire('audioMixingFinished')
-          }
-          break
-        
-        case 'onAudioMixingStateChanged':
-          {
-            let data: {state: AUDIO_MIXING_STATE_TYPE, errorCode: AUDIO_MIXING_ERROR_TYPE} = JSON.parse(_eventData)
-            fire('audioMixingStateChanged', data.state, data.errorCode)
-          }
-          break
-
-        case 'onRemoteAudioMixingBegin':
-          {
-            fire('remoteaudiomixingbegin')
-            fire('remoteAudioMixingBegin')
-          }
-          break
-
-        case 'onRemoteAudioMixingEnd':
-          {
-            fire('remoteaudiomixingend')
-            fire('remoteAudioMixingEnd')
-          }
-          break
-
-        case 'onAudioEffectFinished':
-          {
-            let data: {soundId: number} = JSON.parse(_eventData)
-            fire('audioeffectfinished', data.soundId)
-            fire('audioEffectFinished', data.soundId)
-          }
-          break
-
-        case 'onFirstRemoteAudioDecoded':
-          {
-            let data: {uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('firstRemoteAudioDecoded', data.uid, data.elapsed)
-          }
-          break
-
-        case 'onVideoDeviceStateChanged':
-          {
-            let data: {deviceId: string, deviceType: number, deviceState: number} = JSON.parse(_eventData)
-            fire('videodevicestatechanged', data.deviceId, data.deviceType, data.deviceState)
-            fire('videoDeviceStateChanged', data.deviceId, data.deviceType, data.deviceState)
-          }
-          break
-        
-        case 'onLocalVideoStateChanged':
-          {
-            let data: {localVideoState: LOCAL_VIDEO_STREAM_STATE, error: LOCAL_VIDEO_STREAM_ERROR} = JSON.parse(_eventData)
-            fire('localVideoStateChanged', data.localVideoState, data.error)
-          }
-          break
-
-        case 'onVideoSizeChanged':
-          {
-            let data: {uid: number, width: number, height: number, rotation: number} = JSON.parse(_eventData)
-            fire('videosizechanged', data.uid, data.width, data.height, data.rotation)
-            fire('videoSizeChanged', data.uid, data.width, data.height, data.rotation)
-          }
-          break
-        
-        case 'onRemoteVideoStateChanged':
-          {
-            let data: {uid: number, state: REMOTE_VIDEO_STATE, reason: REMOTE_VIDEO_STATE_REASON, elapsed: number} = JSON.parse(_eventData)
-            fire('remoteVideoStateChanged', data.uid, data.state, data.reason, data.elapsed)
-          }
-          break
-
-        case 'onUserEnableLocalVideo':
-          {
-            let data: {uid: number, enabled: boolean} = JSON.parse(_eventData)
-            fire('userenablelocalvideo', data.uid, data.enabled)
-            fire('userEnableLocalVideo', data.uid, data.enabled)
-          }
-          break
-        
-        case 'onStreamMessageError':
-          {
-            let data: {uid: number, streamId: number, code: number, missed: number, cached: number} = JSON.parse(_eventData)
-            fire('streammessageerror', data.uid, data.streamId, data.code, data.missed, data.cached)
-            fire('streamMessageError', data.uid, data.streamId, data.code, data.missed, data.cached)
-          }
-          break
-
-        case 'onMediaEngineLoadSuccess':
-          {
-            fire('mediaEngineLoadSuccess')
-          }
-          break
-
-        case 'onMediaEngineStartCallSuccess':
-          {
-            fire('mediaEngineStartCallSuccess')
-          }
-          break
-
-        case 'onUserSuperResolutionEnabled':
-          {
-            let data: {uid: number, enabled: boolean, reason: SUPER_RESOLUTION_STATE_REASON} = JSON.parse(_eventData)
-            fire('userSuperResolutionEnabled', data.uid, data.enabled, data.reason)
-          }
-          break
-
-        case 'onChannelMediaRelayStateChanged':
-          {
-            let data: {state: CHANNEL_MEDIA_RELAY_STATE, code: CHANNEL_MEDIA_RELAY_ERROR} = JSON.parse(_eventData)
-            fire('channelMediaRelayStateChanged', data.state, data.code)
-          }
-          break
-
-        case 'onChannelMediaRelayEvent':
-          {
-            let data: {code: CHANNEL_MEDIA_RELAY_EVENT} = JSON.parse(_eventData)
-            fire('channelMediaRelayEvent', data.code)
-          }
-          break
-
-        case 'onFirstLocalAudioFrame':
-          {
-            let data: {elapsed: number} = JSON.parse(_eventData)
-            fire('firstlocalaudioframe', data.elapsed);
-            fire('firstLocalAudioFrame', data.elapsed);
-          }
-          break
-
-        case 'onFirstLocalAudioFramePublished':
-          {
-            let data: {elapsed: number} = JSON.parse(_eventData)
-            fire('firstLocalAudioFramePublished', data.elapsed);
-          }
-          break
-        
-        case 'onFirstRemoteAudioFrame':
-          {
-            let data: {uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('firstRemoteAudioFrame', data.uid, data.elapsed);
-          }
-          break
-
-        case 'onRtmpStreamingStateChanged':
-          {
-            let data: {url: string, state: RTMP_STREAM_PUBLISH_STATE, errCode: RTMP_STREAM_PUBLISH_ERROR} = JSON.parse(_eventData)
-            fire('rtmpStreamingStateChanged', data.url, data.state, data.errCode)
-          }
-          break
-
-        case 'onRtmpStreamingEvent':
-          {
-            let data: {url: string, eventCode: RTMP_STREAMING_EVENT} = JSON.parse(_eventData)
-            fire('rtmpStreamingEvent', data.url, data.eventCode)
-          }
-          break
-
-        case 'onStreamPublished':
-          {
-            let data: {url: string, error: number} = JSON.parse(_eventData)
-            fire('streamPublished', data.url, data.error);
-          }
-          break
-
-        case 'onStreamUnpublished':
-          {
-            let data: {url: string} = JSON.parse(_eventData)
-            fire('streamUnpublished', data.url)
-          }
-          break
-
-        case 'onTranscodingUpdated':
-          {
-            fire('transcodingUpdated')
-          }
-          break
-
-        case 'onStreamInjectedStatus':
-          {
-            let data: {url: string, uid: number, status: number} = JSON.parse(_eventData)
-            fire('streamInjectedStatus', data.url, data.uid, data.status)
-          }
-          break
-
-        case 'onAudioRouteChanged':
-          {
-            let data: {routing: AUDIO_ROUTE_TYPE} = JSON.parse(_eventData)
-            fire('audioRouteChanged', data.routing)
-          }
-          break
-        
-        case 'onLocalPublishFallbackToAudioOnly':
-          {
-            let data: {isFallbackOrRecover: boolean} = JSON.parse(_eventData)
-            fire('localPublishFallbackToAudioOnly', data.isFallbackOrRecover)
-          }
-          break
-
-        case 'onRemoteSubscribeFallbackToAudioOnly': 
-          {
-            let data: {uid: number, isFallbackOrRecover: boolean} = JSON.parse(_eventData)
-            fire('remoteSubscribeFallbackToAudioOnly', data.uid, data.isFallbackOrRecover)
-          }
-          break
-
-        case 'onRemoteAudioTransportStats':
-          {
-            let data: {uid: number, delay: number, lost: number, rxKBitRate: number} = JSON.parse(_eventData)
-            fire('remoteAudioTransportStats', data.uid, data.delay, data.lost, data.rxKBitRate)
-          }
-          break
-
-        case 'onRemoteVideoTransportStats':
-          {
-            let data: {uid: number, delay: number, lost: number, rxKBitRate: number} = JSON.parse(_eventData)
-            fire('remoteVideoTransportStats', data.uid, data.delay, data.lost, data.rxKBitRate)
-          }
-          break
-
-        case 'onMicrophoneEnabled':
-          {
-            let data: {enabled: boolean} = JSON.parse(_eventData)
-            fire('microphoneEnabled', data.enabled)
-          }
-          break
-
-        case 'onConnectionStateChanged':
-          {
-            let data: {state: CONNECTION_STATE_TYPE, reason: CONNECTION_CHANGED_REASON_TYPE} = JSON.parse(_eventData)
-            fire('connectionStateChanged', data.state, data.reason)
-          }
-          break
-        
-        case 'onNetworkTypeChanged':
-          {
-            let data: {type: NETWORK_TYPE} = JSON.parse(_eventData)
-            fire('networkTypeChanged', data.type)
-          }
-          break
-
-        case 'onLocalUserRegistered':
-          {
-            let data: {uid: number, userAccount: string} = JSON.parse(_eventData)
-            fire('localUserRegistered', data.uid, data.userAccount)
-          }
-          break
-        
-        case 'onUserInfoUpdated':
-          {
-            let data: {uid: number, info: UserInfo} = JSON.parse(_eventData)
-            fire('userInfoUpdated', data.uid, data.info)
-          }
-          break
-        
-        default:
-          break
+    this.rtcEngine.OnEvent(
+      "call_back",
+      (_eventName: string, _eventData: string) => {
+        switch (_eventName) {
+          case "fireApiError":
+            {
+              fire("apiError", _eventData);
+            }
+            break;
+
+          case "onWarning":
+            {
+              let data: { warn: number; msg: string } = JSON.parse(_eventData);
+              fire("warning", data.warn, data.msg);
+            }
+            break;
+
+          case "onError":
+            {
+              let data: { err: number; msg: string } = JSON.parse(_eventData);
+              fire("error", data.err, data.msg);
+            }
+            break;
+
+          case "onJoinChannelSuccess":
+            {
+              let data: {
+                channel: string;
+                uid: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire("joinedChannel", data.channel, data.uid, data.elapsed);
+              fire("joinedchannel", data.channel, data.uid, data.elapsed);
+            }
+            break;
+
+          case "onRejoinChannelSuccess":
+            {
+              let data: {
+                channel: string;
+                uid: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire("rejoinedChannel", data.channel, data.uid, data.elapsed);
+              fire("rejoinedchannel", data.channel, data.uid, data.elapsed);
+            }
+            break;
+
+          case "onLeaveChannel":
+            {
+              let data: { stats: RtcStats } = JSON.parse(_eventData);
+              fire("leaveChannel", data.stats);
+              fire("leavechannel", data.stats);
+            }
+            break;
+
+          case "onClientRoleChanged":
+            {
+              let data: {
+                oldRole: CLIENT_ROLE_TYPE;
+                newRole: CLIENT_ROLE_TYPE;
+              } = JSON.parse(_eventData);
+              fire("clientRoleChanged", data.oldRole, data.newRole);
+              fire("clientrolechanged", data.oldRole, data.newRole);
+            }
+            break;
+
+          case "onUserJoined":
+            {
+              let data: { uid: number; elapsed: number } = JSON.parse(
+                _eventData
+              );
+              fire("userJoined", data.uid, data.elapsed);
+              fire("userjoined", data.uid, data.elapsed);
+            }
+            break;
+
+          case "onUserOffline":
+            {
+              let data: {
+                uid: number;
+                reason: USER_OFFLINE_REASON_TYPE;
+              } = JSON.parse(_eventData);
+              fire("userOffline", data.uid, data.reason);
+              fire("userfffline", data.uid, data.reason);
+            }
+            break;
+
+          case "onLastmileQuality":
+            {
+              let data: { quality: QUALITY_TYPE } = JSON.parse(_eventData);
+              fire("lastmilequality", data.quality);
+              fire("lastmileQuality", data.quality);
+            }
+            break;
+
+          case "onLastmileProbeResult":
+            {
+              let data: { result: LastmileProbeResult } = JSON.parse(
+                _eventData
+              );
+              fire("lastmileProbeResult", data.result);
+              fire("lastmileproberesult", data.result);
+            }
+            break;
+
+          case "onConnectionInterrupted":
+            {
+              fire("connectioninterrupted");
+              fire("connectionInterrupted");
+            }
+            break;
+
+          case "onConnectionLost":
+            {
+              fire("connectionlost");
+              fire("connectionLost");
+            }
+            break;
+
+          case "onConnectionBanned":
+            {
+              fire("connectionbanned");
+              fire("connectionBanned");
+            }
+            break;
+
+          case "onApiCallExecuted":
+            {
+              let data: {
+                err: number;
+                api: string;
+                result: string;
+              } = JSON.parse(_eventData);
+              fire("apiCallExecuted", data.api, data.err, data.result);
+              fire("apicallexecuted", data.api, data.err, data.result);
+            }
+            break;
+
+          case "onRequestToken":
+            {
+              fire("requestToken");
+            }
+            break;
+
+          case "onTokenPrivilegeWillExpire":
+            {
+              let data: { token: string } = JSON.parse(_eventData);
+              fire("tokenPrivilegeWillExpire", data.token);
+            }
+            break;
+
+          case "onAudioQuality":
+            {
+              let data: {
+                uid: number;
+                quality: QUALITY_TYPE;
+                delay: number;
+                lost: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audioQuality",
+                data.uid,
+                data.quality,
+                data.delay,
+                data.lost
+              );
+            }
+            break;
+
+          case "onRtcStats":
+            {
+              let data: { stats: RtcStats } = JSON.parse(_eventData);
+              fire("rtcstats", data.stats);
+              fire("rtcStats", data.stats);
+            }
+            break;
+
+          case "onNetworkQuality":
+            {
+              let data: {
+                uid: number;
+                txQuality: QUALITY_TYPE;
+                rxQuality: QUALITY_TYPE;
+              } = JSON.parse(_eventData);
+              fire("networkquality", data.uid, data.txQuality, data.rxQuality);
+              fire("networkQuality", data.uid, data.txQuality, data.rxQuality);
+            }
+            break;
+
+          case "onLocalVideoStats":
+            {
+              let data: { stats: LocalVideoStats } = JSON.parse(_eventData);
+              fire("localVideoStats", data.stats);
+            }
+            break;
+
+          case "onRemoteVideoStats":
+            {
+              let data: { stats: RemoteVideoStats } = JSON.parse(_eventData);
+              fire("remoteVideoStats", data.stats);
+            }
+            break;
+
+          case "onLocalAudioStats":
+            {
+              let data: { stats: LocalAudioStats } = JSON.parse(_eventData);
+              fire("localAudioStats", data.stats);
+            }
+            break;
+
+          case "onRemoteAudioStats":
+            {
+              let data: { stats: RemoteAudioStats } = JSON.parse(_eventData);
+              fire("remoteAudioStats", data.stats);
+            }
+            break;
+
+          case "onLocalAudioStateChanged":
+            {
+              let data: {
+                state: LOCAL_AUDIO_STREAM_STATE;
+                error: LOCAL_AUDIO_STREAM_ERROR;
+              } = JSON.parse(_eventData);
+              fire("localAudioStateChanged", data.state, data.error);
+            }
+            break;
+
+          case "onRemoteAudioStateChanged":
+            {
+              let data: {
+                uid: number;
+                state: REMOTE_AUDIO_STATE;
+                reason: REMOTE_AUDIO_STATE_REASON;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteAudioStateChanged",
+                data.uid,
+                data.state,
+                data.reason,
+                data.elapsed
+              );
+            }
+            break;
+
+          case "onAudioPublishStateChanged":
+            {
+              let data: {
+                channel: string;
+                oldState: STREAM_PUBLISH_STATE;
+                newState: STREAM_PUBLISH_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audioPublishStateChanged",
+                data.channel,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
+
+          case "onVideoPublishStateChanged":
+            {
+              let data: {
+                channel: string;
+                oldState: STREAM_PUBLISH_STATE;
+                newState: STREAM_PUBLISH_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videoPublishStateChanged",
+                data.channel,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
+
+          case "onAudioSubscribeStateChanged":
+            {
+              let data: {
+                channel: string;
+                uid: number;
+                oldState: STREAM_SUBSCRIBE_STATE;
+                newState: STREAM_SUBSCRIBE_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audioSubscribeStateChanged",
+                data.channel,
+                data.uid,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
+
+          case "onVideoSubscribeStateChanged":
+            {
+              let data: {
+                channel: string;
+                uid: number;
+                oldState: STREAM_SUBSCRIBE_STATE;
+                newState: STREAM_SUBSCRIBE_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videoSubscribeStateChanged",
+                data.channel,
+                data.uid,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
+
+          case "onAudioVolumeIndication":
+            {
+              let data: {
+                speakers: AudioVolumeInfo[];
+                speakerNumber: number;
+                totalVolume: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audioVolumeIndication",
+                data.speakers,
+                data.speakerNumber,
+                data.totalVolume
+              );
+              fire(
+                "groupAudioVolumeIndication",
+                data.speakers,
+                data.speakerNumber,
+                data.totalVolume
+              );
+            }
+            break;
+
+          case "onActiveSpeaker":
+            {
+              let data: { uid: number } = JSON.parse(_eventData);
+              fire("activeSpeaker", data.uid);
+            }
+            break;
+
+          case "onVideoStopped":
+            {
+              fire("videostopped");
+              fire("videoStopped");
+            }
+            break;
+
+          case "onFirstLocalVideoFrame":
+            {
+              let data: {
+                width: number;
+                height: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "firstlocalvideoframe",
+                data.width,
+                data.height,
+                data.elapsed
+              );
+              fire(
+                "firstLocalVideoFrame",
+                data.width,
+                data.height,
+                data.elapsed
+              );
+            }
+            break;
+
+          case "onFirstLocalVideoFramePublished":
+            {
+              let data: { elapsed: number } = JSON.parse(_eventData);
+              fire("firstLocalVideoFramePublished", data.elapsed);
+            }
+            break;
+
+          case "onFirstRemoteVideoDecoded":
+            {
+              let data: {
+                uid: number;
+                width: number;
+                height: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "firstRemoteVideoDecoded",
+                data.uid,
+                data.width,
+                data.height,
+                data.elapsed
+              );
+              fire("addstream", data.uid, data.elapsed);
+              fire("addStream", data.uid, data.elapsed);
+            }
+            break;
+
+          case "onFirstRemoteVideoFrame":
+            {
+              let data: {
+                uid: number;
+                width: number;
+                height: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "firstremotevideoframe",
+                data.uid,
+                data.width,
+                data.height,
+                data.elapsed
+              );
+              fire(
+                "firstRemoteVideoFrame",
+                data.uid,
+                data.width,
+                data.height,
+                data.elapsed
+              );
+            }
+            break;
+
+          case "onUserMuteAudio":
+            {
+              let data: { uid: number; muted: boolean } = JSON.parse(
+                _eventData
+              );
+              fire("usermuteaudio", data.uid, data.muted);
+              fire("userMuteAudio", data.uid, data.muted);
+            }
+            break;
+
+          case "onUserMuteVideo":
+            {
+              let data: { uid: number; muted: boolean } = JSON.parse(
+                _eventData
+              );
+              fire("usermutevideo", data.uid, data.muted);
+              fire("userMuteVideo", data.uid, data.muted);
+            }
+            break;
+
+          case "onUserEnableVideo":
+            {
+              let data: { uid: number; enabled: boolean } = JSON.parse(
+                _eventData
+              );
+              fire("userenablevideo", data.uid, data.enabled);
+              fire("userEnableVideo", data.uid, data.enabled);
+            }
+            break;
+
+          case "onAudioDeviceStateChanged":
+            {
+              let data: {
+                deviceId: string;
+                deviceType: number;
+                deviceState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audiodevicestatechanged",
+                data.deviceId,
+                data.deviceType,
+                data.deviceState
+              );
+              fire(
+                "audioDeviceStateChanged",
+                data.deviceId,
+                data.deviceType,
+                data.deviceState
+              );
+            }
+            break;
+
+          case "onAudioDeviceVolumeChanged":
+            {
+              let data: {
+                deviceType: MEDIA_DEVICE_TYPE;
+                volume: number;
+                muted: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audiodevicevolumechanged",
+                data.deviceType,
+                data.volume,
+                data.muted
+              );
+              fire(
+                "audioDeviceVolumeChanged",
+                data.deviceType,
+                data.volume,
+                data.muted
+              );
+            }
+            break;
+
+          case "onCameraReady":
+            {
+              fire("cameraready");
+              fire("cameraReady");
+            }
+            break;
+
+          case "onCameraFocusAreaChanged":
+            {
+              let data: {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "cameraFocusAreaChanged",
+                data.x,
+                data.y,
+                data.width,
+                data.height
+              );
+            }
+            break;
+
+          case "onCameraExposureAreaChanged":
+            {
+              let data: {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "cameraExposureAreaChanged",
+                data.x,
+                data.y,
+                data.width,
+                data.height
+              );
+            }
+            break;
+
+          case "onAudioMixingFinished":
+            {
+              fire("audiomixingfinished");
+              fire("audioMixingFinished");
+            }
+            break;
+
+          case "onAudioMixingStateChanged":
+            {
+              let data: {
+                state: AUDIO_MIXING_STATE_TYPE;
+                errorCode: AUDIO_MIXING_ERROR_TYPE;
+              } = JSON.parse(_eventData);
+              fire("audioMixingStateChanged", data.state, data.errorCode);
+            }
+            break;
+
+          case "onRemoteAudioMixingBegin":
+            {
+              fire("remoteaudiomixingbegin");
+              fire("remoteAudioMixingBegin");
+            }
+            break;
+
+          case "onRemoteAudioMixingEnd":
+            {
+              fire("remoteaudiomixingend");
+              fire("remoteAudioMixingEnd");
+            }
+            break;
+
+          case "onAudioEffectFinished":
+            {
+              let data: { soundId: number } = JSON.parse(_eventData);
+              fire("audioeffectfinished", data.soundId);
+              fire("audioEffectFinished", data.soundId);
+            }
+            break;
+
+          case "onFirstRemoteAudioDecoded":
+            {
+              let data: { uid: number; elapsed: number } = JSON.parse(
+                _eventData
+              );
+              fire("firstRemoteAudioDecoded", data.uid, data.elapsed);
+            }
+            break;
+
+          case "onVideoDeviceStateChanged":
+            {
+              let data: {
+                deviceId: string;
+                deviceType: number;
+                deviceState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videodevicestatechanged",
+                data.deviceId,
+                data.deviceType,
+                data.deviceState
+              );
+              fire(
+                "videoDeviceStateChanged",
+                data.deviceId,
+                data.deviceType,
+                data.deviceState
+              );
+            }
+            break;
+
+          case "onLocalVideoStateChanged":
+            {
+              let data: {
+                localVideoState: LOCAL_VIDEO_STREAM_STATE;
+                error: LOCAL_VIDEO_STREAM_ERROR;
+              } = JSON.parse(_eventData);
+              fire("localVideoStateChanged", data.localVideoState, data.error);
+            }
+            break;
+
+          case "onVideoSizeChanged":
+            {
+              let data: {
+                uid: number;
+                width: number;
+                height: number;
+                rotation: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videosizechanged",
+                data.uid,
+                data.width,
+                data.height,
+                data.rotation
+              );
+              fire(
+                "videoSizeChanged",
+                data.uid,
+                data.width,
+                data.height,
+                data.rotation
+              );
+            }
+            break;
+
+          case "onRemoteVideoStateChanged":
+            {
+              let data: {
+                uid: number;
+                state: REMOTE_VIDEO_STATE;
+                reason: REMOTE_VIDEO_STATE_REASON;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteVideoStateChanged",
+                data.uid,
+                data.state,
+                data.reason,
+                data.elapsed
+              );
+            }
+            break;
+
+          case "onUserEnableLocalVideo":
+            {
+              let data: { uid: number; enabled: boolean } = JSON.parse(
+                _eventData
+              );
+              fire("userenablelocalvideo", data.uid, data.enabled);
+              fire("userEnableLocalVideo", data.uid, data.enabled);
+            }
+            break;
+
+          case "onStreamMessageError":
+            {
+              let data: {
+                uid: number;
+                streamId: number;
+                code: number;
+                missed: number;
+                cached: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "streammessageerror",
+                data.uid,
+                data.streamId,
+                data.code,
+                data.missed,
+                data.cached
+              );
+              fire(
+                "streamMessageError",
+                data.uid,
+                data.streamId,
+                data.code,
+                data.missed,
+                data.cached
+              );
+            }
+            break;
+
+          case "onMediaEngineLoadSuccess":
+            {
+              fire("mediaEngineLoadSuccess");
+            }
+            break;
+
+          case "onMediaEngineStartCallSuccess":
+            {
+              fire("mediaEngineStartCallSuccess");
+            }
+            break;
+
+          case "onUserSuperResolutionEnabled":
+            {
+              let data: {
+                uid: number;
+                enabled: boolean;
+                reason: SUPER_RESOLUTION_STATE_REASON;
+              } = JSON.parse(_eventData);
+              fire(
+                "userSuperResolutionEnabled",
+                data.uid,
+                data.enabled,
+                data.reason
+              );
+            }
+            break;
+
+          case "onChannelMediaRelayStateChanged":
+            {
+              let data: {
+                state: CHANNEL_MEDIA_RELAY_STATE;
+                code: CHANNEL_MEDIA_RELAY_ERROR;
+              } = JSON.parse(_eventData);
+              fire("channelMediaRelayStateChanged", data.state, data.code);
+            }
+            break;
+
+          case "onChannelMediaRelayEvent":
+            {
+              let data: { code: CHANNEL_MEDIA_RELAY_EVENT } = JSON.parse(
+                _eventData
+              );
+              fire("channelMediaRelayEvent", data.code);
+            }
+            break;
+
+          case "onFirstLocalAudioFrame":
+            {
+              let data: { elapsed: number } = JSON.parse(_eventData);
+              fire("firstlocalaudioframe", data.elapsed);
+              fire("firstLocalAudioFrame", data.elapsed);
+            }
+            break;
+
+          case "onFirstLocalAudioFramePublished":
+            {
+              let data: { elapsed: number } = JSON.parse(_eventData);
+              fire("firstLocalAudioFramePublished", data.elapsed);
+            }
+            break;
+
+          case "onFirstRemoteAudioFrame":
+            {
+              let data: { uid: number; elapsed: number } = JSON.parse(
+                _eventData
+              );
+              fire("firstRemoteAudioFrame", data.uid, data.elapsed);
+            }
+            break;
+
+          case "onRtmpStreamingStateChanged":
+            {
+              let data: {
+                url: string;
+                state: RTMP_STREAM_PUBLISH_STATE;
+                errCode: RTMP_STREAM_PUBLISH_ERROR;
+              } = JSON.parse(_eventData);
+              fire(
+                "rtmpStreamingStateChanged",
+                data.url,
+                data.state,
+                data.errCode
+              );
+            }
+            break;
+
+          case "onRtmpStreamingEvent":
+            {
+              let data: {
+                url: string;
+                eventCode: RTMP_STREAMING_EVENT;
+              } = JSON.parse(_eventData);
+              fire("rtmpStreamingEvent", data.url, data.eventCode);
+            }
+            break;
+
+          case "onStreamPublished":
+            {
+              let data: { url: string; error: number } = JSON.parse(_eventData);
+              fire("streamPublished", data.url, data.error);
+            }
+            break;
+
+          case "onStreamUnpublished":
+            {
+              let data: { url: string } = JSON.parse(_eventData);
+              fire("streamUnpublished", data.url);
+            }
+            break;
+
+          case "onTranscodingUpdated":
+            {
+              fire("transcodingUpdated");
+            }
+            break;
+
+          case "onStreamInjectedStatus":
+            {
+              let data: {
+                url: string;
+                uid: number;
+                status: number;
+              } = JSON.parse(_eventData);
+              fire("streamInjectedStatus", data.url, data.uid, data.status);
+            }
+            break;
+
+          case "onAudioRouteChanged":
+            {
+              let data: { routing: AUDIO_ROUTE_TYPE } = JSON.parse(_eventData);
+              fire("audioRouteChanged", data.routing);
+            }
+            break;
+
+          case "onLocalPublishFallbackToAudioOnly":
+            {
+              let data: { isFallbackOrRecover: boolean } = JSON.parse(
+                _eventData
+              );
+              fire("localPublishFallbackToAudioOnly", data.isFallbackOrRecover);
+            }
+            break;
+
+          case "onRemoteSubscribeFallbackToAudioOnly":
+            {
+              let data: {
+                uid: number;
+                isFallbackOrRecover: boolean;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteSubscribeFallbackToAudioOnly",
+                data.uid,
+                data.isFallbackOrRecover
+              );
+            }
+            break;
+
+          case "onRemoteAudioTransportStats":
+            {
+              let data: {
+                uid: number;
+                delay: number;
+                lost: number;
+                rxKBitRate: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteAudioTransportStats",
+                data.uid,
+                data.delay,
+                data.lost,
+                data.rxKBitRate
+              );
+            }
+            break;
+
+          case "onRemoteVideoTransportStats":
+            {
+              let data: {
+                uid: number;
+                delay: number;
+                lost: number;
+                rxKBitRate: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteVideoTransportStats",
+                data.uid,
+                data.delay,
+                data.lost,
+                data.rxKBitRate
+              );
+            }
+            break;
+
+          case "onMicrophoneEnabled":
+            {
+              let data: { enabled: boolean } = JSON.parse(_eventData);
+              fire("microphoneEnabled", data.enabled);
+            }
+            break;
+
+          case "onConnectionStateChanged":
+            {
+              let data: {
+                state: CONNECTION_STATE_TYPE;
+                reason: CONNECTION_CHANGED_REASON_TYPE;
+              } = JSON.parse(_eventData);
+              fire("connectionStateChanged", data.state, data.reason);
+            }
+            break;
+
+          case "onNetworkTypeChanged":
+            {
+              let data: { type: NETWORK_TYPE } = JSON.parse(_eventData);
+              fire("networkTypeChanged", data.type);
+            }
+            break;
+
+          case "onLocalUserRegistered":
+            {
+              let data: { uid: number; userAccount: string } = JSON.parse(
+                _eventData
+              );
+              fire("localUserRegistered", data.uid, data.userAccount);
+            }
+            break;
+
+          case "onUserInfoUpdated":
+            {
+              let data: { uid: number; info: UserInfo } = JSON.parse(
+                _eventData
+              );
+              fire("userInfoUpdated", data.uid, data.info);
+            }
+            break;
+
+          default:
+            break;
+        }
       }
-    })
+    );
 
-    this.rtcEngine.OnEvent('call_back_with_buffer', (_eventName: string, _eventData: string, _eventBuffer: string)=>{
-      switch (_eventName) {
-        case 'onStreamMessage':
-          {
-            let data: {uid: number, streamId: number} = JSON.parse(_eventData)
-            fire('streamMessage', data.uid, data.streamId, _eventBuffer)
-          }
-          break
-        
-        case 'onMetadataReceived':
-          {
-            let data: {metadata: Metadata} = JSON.parse(_eventData)
-            data.metadata.buffer = _eventBuffer
-            fire('metadataReceived', data.metadata)
-          }
-          break
-        
-        default:
-          break
+    this.rtcEngine.OnEvent(
+      "call_back_with_buffer",
+      (_eventName: string, _eventData: string, _eventBuffer: string) => {
+        switch (_eventName) {
+          case "onStreamMessage":
+            {
+              let data: { uid: number; streamId: number } = JSON.parse(
+                _eventData
+              );
+              fire("streamMessage", data.uid, data.streamId, _eventBuffer);
+            }
+            break;
+
+          case "onMetadataReceived":
+            {
+              let data: { metadata: Metadata } = JSON.parse(_eventData);
+              data.metadata.buffer = _eventBuffer;
+              fire("metadataReceived", data.metadata);
+            }
+            break;
+
+          default:
+            break;
+        }
       }
-    })
+    );
 
-    this.rtcEngine.OnEvent('video_source_call_back_with_buffer', (_eventName: string, _eventData: string) => {
+    this.rtcEngine.OnEvent(
+      "video_source_call_back_with_buffer",
+      (_eventName: string, _eventData: string) => {}
+    );
 
-    })
-
-    this.rtcEngine.OnEvent('video_source_on_event_with_buffer', (_eventName: string, _eventData: string, buffer: string) => {
-      
-    })
-  }
+    this.rtcEngine.OnEvent(
+      "video_source_on_event_with_buffer",
+      (_eventName: string, _eventData: string, buffer: string) => {}
+    );
+  } //TODO(input)
 
   /**
    * @private
    * @ignore
    * @param {number} type 0-local 1-remote 2-device_test 3-video_source
    * @param {number} uid uid get from native engine, differ from electron engine's uid
-   */ //TODO(input)
-  _getRenderers(type: number, uid: number, channelId: string | undefined): IRenderer[] | undefined {
-    let channelStreams = this._getChannelRenderers(channelId || "")
+   */ _getRenderers(
+    type: number,
+    uid: number,
+    channelId: string | undefined
+  ): IRenderer[] | undefined {
+    let channelStreams = this._getChannelRenderers(channelId || "");
     if (type < 2) {
       if (uid === 0) {
-        return channelStreams.get('local');
+        return channelStreams.get("local");
       } else {
         return channelStreams.get(String(uid));
       }
     } else if (type === 2) {
       // return this.streams.devtest;
-      console.warn('Type 2 not support in production mode.');
+      console.warn("Type 2 not support in production mode.");
       return;
     } else if (type === 3) {
-      return channelStreams.get('videosource');
+      return channelStreams.get("videosource");
     } else {
-      console.warn('Invalid type for getRenderer, only accept 0~3.');
+      console.warn("Invalid type for getRenderer, only accept 0~3.");
       return;
     }
   }
@@ -857,13 +1218,13 @@ class AgoraRtcEngine extends EventEmitter {
   _getChannelRenderers(channelId: string): Map<string, IRenderer[]> {
     let channel: Map<string, IRenderer[]>;
     if (!this.streams.has(channelId)) {
-      channel = new Map()
-      this.streams.set(channelId, channel)
+      channel = new Map();
+      this.streams.set(channelId, channel);
     } else {
-      channel = this.streams.get(channelId) as Map<string, IRenderer[]>
+      channel = this.streams.get(channelId) as Map<string, IRenderer[]>;
     }
-    return channel
-  }
+    return channel;
+  } //TODO(input)
 
   /**
    * check if data is valid
@@ -873,23 +1234,22 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {*} ydata
    * @param {*} udata
    * @param {*} vdata
-   *///TODO(input)
-  _checkData(
+   */ _checkData(
     header: ArrayBuffer,
     ydata: ArrayBuffer,
     udata: ArrayBuffer,
     vdata: ArrayBuffer
   ) {
     if (header.byteLength != 20) {
-      console.error('invalid image header ' + header.byteLength);
+      console.error("invalid image header " + header.byteLength);
       return false;
     }
     if (ydata.byteLength === 20) {
-      console.error('invalid image yplane ' + ydata.byteLength);
+      console.error("invalid image yplane " + ydata.byteLength);
       return false;
     }
     if (udata.byteLength === 20) {
-      console.error('invalid image uplanedata ' + udata.byteLength);
+      console.error("invalid image uplanedata " + udata.byteLength);
       return false;
     }
     if (
@@ -897,12 +1257,12 @@ class AgoraRtcEngine extends EventEmitter {
       udata.byteLength != vdata.byteLength
     ) {
       console.error(
-        'invalid image header ' +
-        ydata.byteLength +
-        ' ' +
-        udata.byteLength +
-        ' ' +
-        vdata.byteLength
+        "invalid image header " +
+          ydata.byteLength +
+          " " +
+          udata.byteLength +
+          " " +
+          vdata.byteLength
       );
       return false;
     }
@@ -923,14 +1283,14 @@ class AgoraRtcEngine extends EventEmitter {
       const { type, uid, channelId, header, ydata, udata, vdata } = info;
       if (!header || !ydata || !udata || !vdata) {
         console.log(
-          'Invalid data param ： ' +
-          header +
-          ' ' +
-          ydata +
-          ' ' +
-          udata +
-          ' ' +
-          vdata
+          "Invalid data param ： " +
+            header +
+            " " +
+            ydata +
+            " " +
+            udata +
+            " " +
+            vdata
         );
         continue;
       }
@@ -941,14 +1301,14 @@ class AgoraRtcEngine extends EventEmitter {
       }
 
       if (this._checkData(header, ydata, udata, vdata)) {
-        renderers.forEach(renderer => {
+        renderers.forEach((renderer) => {
           renderer.drawFrame({
             header,
             yUint8Array: ydata,
             uUint8Array: udata,
-            vUint8Array: vdata
+            vUint8Array: vdata,
           });
-        })
+        });
       }
     }
   }
@@ -964,11 +1324,14 @@ class AgoraRtcEngine extends EventEmitter {
    * @param key Key for the map that store the renderers,
    * e.g, `uid` or `videosource` or `local`.
    */
-  resizeRender(key: 'local' | 'videosource' | number, channelId: string | undefined) {
-    let channelStreams = this._getChannelRenderers(channelId || "")
+  resizeRender(
+    key: "local" | "videosource" | number,
+    channelId: string | undefined
+  ) {
+    let channelStreams = this._getChannelRenderers(channelId || "");
     if (channelStreams.has(String(key))) {
       const renderers = channelStreams.get(String(key)) || [];
-      renderers.forEach(renderer => renderer.refreshCanvas())
+      renderers.forEach((renderer) => renderer.refreshCanvas());
     }
   }
 
@@ -978,26 +1341,31 @@ class AgoraRtcEngine extends EventEmitter {
    * e.g, uid or `videosource` or `local`.
    * @param view The Dom elements to render the video.
    */
-  initRender(key: 'local' | 'videosource' | number, view: Element, channelId: string | undefined, options?: RendererOptions) {
+  initRender(
+    key: "local" | "videosource" | number,
+    view: Element,
+    channelId: string | undefined,
+    options?: RendererOptions
+  ) {
     let rendererOptions = {
-      append: options ? options.append : false
-    }
-    let channelStreams = this._getChannelRenderers(channelId || "")
+      append: options ? options.append : false,
+    };
+    let channelStreams = this._getChannelRenderers(channelId || "");
 
     if (channelStreams.has(String(key))) {
       if (!rendererOptions.append) {
         this.destroyRender(key, channelId || "");
       } else {
-        let renderers = channelStreams.get(String(key)) || []
+        let renderers = channelStreams.get(String(key)) || [];
         for (let i = 0; i < renderers.length; i++) {
           if (renderers[i].equalsElement(view)) {
-            console.log(`view exists in renderer list, ignore`)
-            return
+            console.log(`view exists in renderer list, ignore`);
+            return;
           }
         }
       }
     }
-    channelStreams = this._getChannelRenderers(channelId || "")
+    channelStreams = this._getChannelRenderers(channelId || "");
     let renderer: IRenderer;
     if (this.renderMode === 1) {
       renderer = new GlRenderer();
@@ -1006,7 +1374,7 @@ class AgoraRtcEngine extends EventEmitter {
     } else if (this.renderMode === 3) {
       renderer = new this.customRenderer();
     } else {
-      console.warn('Unknown render mode, fallback to 1');
+      console.warn("Unknown render mode, fallback to 1");
       renderer = new GlRenderer();
     }
     renderer.bind(view);
@@ -1014,45 +1382,49 @@ class AgoraRtcEngine extends EventEmitter {
     if (!rendererOptions.append) {
       channelStreams.set(String(key), [renderer]);
     } else {
-      let renderers = channelStreams.get(String(key)) || []
-      renderers.push(renderer)
-      channelStreams.set(String(key), renderers)
+      let renderers = channelStreams.get(String(key)) || [];
+      renderers.push(renderer);
+      channelStreams.set(String(key), renderers);
     }
   }
   //TODO(input)
   destroyRenderView(
-    key: 'local' | 'videosource' | number, channelId: string | undefined, view: Element,
+    key: "local" | "videosource" | number,
+    channelId: string | undefined,
+    view: Element,
     onFailure?: (err: Error) => void
   ) {
-    let channelStreams = this._getChannelRenderers(channelId || "")
+    let channelStreams = this._getChannelRenderers(channelId || "");
     if (!channelStreams.has(String(key))) {
       return;
     }
     const renderers = channelStreams.get(String(key)) || [];
-    const matchRenderers = renderers.filter(renderer => renderer.equalsElement(view))
-    const otherRenderers = renderers.filter(renderer => !renderer.equalsElement(view))
+    const matchRenderers = renderers.filter((renderer) =>
+      renderer.equalsElement(view)
+    );
+    const otherRenderers = renderers.filter(
+      (renderer) => !renderer.equalsElement(view)
+    );
 
     if (matchRenderers.length > 0) {
-      let renderer = matchRenderers[0]
+      let renderer = matchRenderers[0];
       try {
         (renderer as IRenderer).unbind();
         if (otherRenderers.length > 0) {
           // has other renderers left, update
-          channelStreams.set(String(key), otherRenderers)
+          channelStreams.set(String(key), otherRenderers);
         } else {
           // removed renderer is the only one, remove
           channelStreams.delete(String(key));
         }
         if (channelStreams.size === 0) {
-          this.streams.delete(channelId || "")
+          this.streams.delete(channelId || "");
         }
       } catch (err) {
-        onFailure && onFailure(err)
+        onFailure && onFailure(err);
       }
     }
-
   }
-
 
   /**
    * Destroys the renderer.
@@ -1062,31 +1434,32 @@ class AgoraRtcEngine extends EventEmitter {
    * method.
    */
   destroyRender(
-    key: 'local' | 'videosource' | number, channelId: string | undefined,
+    key: "local" | "videosource" | number,
+    channelId: string | undefined,
     onFailure?: (err: Error) => void
   ) {
-    let channelStreams = this._getChannelRenderers(channelId || "")
+    let channelStreams = this._getChannelRenderers(channelId || "");
     if (!channelStreams.has(String(key))) {
       return;
     }
     const renderers = channelStreams.get(String(key)) || [];
 
-    let exception = null
+    let exception = null;
     for (let i = 0; i < renderers.length; i++) {
-      let renderer = renderers[i]
+      let renderer = renderers[i];
       try {
         (renderer as IRenderer).unbind();
         channelStreams.delete(String(key));
         if (channelStreams.size === 0) {
-          this.streams.delete(channelId || "")
+          this.streams.delete(channelId || "");
         }
       } catch (err) {
-        exception = err
-        console.error(`${err.stack}`)
+        exception = err;
+        console.error(`${err.stack}`);
       }
     }
     if (exception) {
-      onFailure && onFailure(exception)
+      onFailure && onFailure(exception);
     }
   }
 
@@ -1113,14 +1486,26 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  initialize(appId: string, areaCode: AREA_CODE = (0xFFFFFFFF), logConfig?: LogConfig): number {
-    let context = {
-      appId,
-      areaCode,
-      logConfig
+  initialize(
+    appId: string,
+    areaCode?: AREA_CODE,
+    logConfig?: LogConfig
+  ): number {
+    deprecate("initializeWithContext")
+    let context: RtcEngineContext = {
+      appId: appId,
+      areaCode: areaCode,
+      logConfig: logConfig
     }
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineInitialize, JSON.stringify(context))
+    return this.initializeWithContext(context)
+  }
+
+  initializeWithContext(context: RtcEngineContext): number {
+    let parameter = {
+      context
+    }
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineInitialize, JSON.stringify(parameter))
     return ret.retCode
   }
 
@@ -1155,13 +1540,16 @@ class AgoraRtcEngine extends EventEmitter {
    * - If the method call succeeds, returns the `AgoraRtcChannel` object.
    * - If the method call fails, returns empty or `ERR_REFUSED (5)`.
    */
-  createChannel(channelId: string): (AgoraRtcChannel | null) {
+  createChannel(channelId: string): AgoraRtcChannel | null {
     let param = {
-      channelId
-    }
-    this.rtcChannel.CallApi(ApiTypeChannel.kChannelCreateChannel, JSON.stringify(param));
+      channelId,
+    };
+    this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelCreateChannel,
+      JSON.stringify(param)
+    );
 
-    return new AgoraRtcChannel(this.rtcChannel);;
+    return new AgoraRtcChannel(this.rtcChannel);
   }
 
   /**
@@ -1169,8 +1557,8 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The version of the current SDK.
    */
   getVersion(): string {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetVersion, "")
-    return (ret.retCode === 0) ? ret.result : ret.retCode.toString()
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetVersion, "");
+    return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
   /**
@@ -1180,10 +1568,13 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getErrorDescription(errorCode: number): string {
     let param = {
-      code: errorCode
-    }
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetErrorDescription, JSON.stringify(param))
-    return (ret.retCode === 0) ? ret.result : ret.retCode.toString()
+      code: errorCode,
+    };
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetErrorDescription,
+      JSON.stringify(param)
+    );
+    return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
   /**
@@ -1191,8 +1582,11 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {ConnectionState} Connect states. See {@link ConnectionState}.
    */
   getConnectionState(): CONNECTION_STATE_TYPE {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetConnectionState, "")
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetConnectionState,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1260,11 +1654,14 @@ class AgoraRtcEngine extends EventEmitter {
       channelId,
       info,
       uid,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineJoinChannel, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineJoinChannel,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1291,8 +1688,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "")
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "");
+    return ret.retCode;
   }
 
   /**
@@ -1310,8 +1707,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   release(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "")
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
+    return ret.retCode;
   }
 
   /**
@@ -1343,26 +1740,35 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       fullband,
       stereo,
-      fullBitrate
-    }
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetHighQualityAudioParameters, JSON.stringify(param))
-    return ret.retCode
-  }
+      fullBitrate,
+    };
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetHighQualityAudioParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
+  } //TODO(input)
 
-  /**
-   * Subscribes to a remote user and initializes the corresponding renderer.
-   * @param {number} uid The user ID of the remote user.
-   * @param {Element} view The Dom where to initialize the renderer.
-   * @return
-   * - 0: Success.
-   * - < 0: Failure.
-   */ //TODO(input)
-  subscribe(uid: number, view: Element, options?: RendererOptions): number {
-    this.initRender(uid, view, "", options);
-    return 0;
-  }
+  // /**
+  //  * Subscribes to a remote user and initializes the corresponding renderer.
+  //  * @param {number} uid The user ID of the remote user.
+  //  * @param {Element} view The Dom where to initialize the renderer.
+  //  * @return
+  //  * - 0: Success.
+  //  * - < 0: Failure.
+  //  */ 
+  // subscribe(uid: number, view: Element, options?: RendererOptions): number {
+  //   //this.initRender(uid, view, "", options);
+  //   return 0;
+  // }
+
   //TODO(input)
-  setupRemoteVideo(uid: number, view?: Element, channel?: string, options?: RendererOptions): number {
+  setupRemoteVideo(
+    uid: number,
+    view?: Element,
+    channel?: string,
+    options?: RendererOptions
+  ): number {
     if (view) {
       //bind
       this.initRender(uid, view, channel, options);
@@ -1372,7 +1778,7 @@ class AgoraRtcEngine extends EventEmitter {
       this.destroyRender(uid, channel);
       return 0;
     }
-  }
+  } //TODO(input)
 
   /**
    * Sets the local video view and the corresponding renderer.
@@ -1380,9 +1786,9 @@ class AgoraRtcEngine extends EventEmitter {
    * @return
    * - 0: Success.
    * - < 0: Failure.
-   *///TODO(input)
+   */ 
   setupLocalVideo(view: Element, options?: RendererOptions): number {
-    this.initRender('local', view, "", options);
+    this.initRender("local", view, "", options);
     return 0;
   }
 
@@ -1406,7 +1812,6 @@ class AgoraRtcEngine extends EventEmitter {
     width: number,
     height: number
   ) {
-
     // this.rtcEngine.setVideoRenderDimension(rendertype, uid, width, height);
   }
 
@@ -1479,11 +1884,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - -1: Failure.
    */
   setupViewContentMode(
-    uid: number | 'local' | 'videosource',
+    uid: number | "local" | "videosource",
     mode: 0 | 1,
     channelId: string | undefined
   ): number {
-    let channelStreams = this._getChannelRenderers(channelId || "")
+    let channelStreams = this._getChannelRenderers(channelId || "");
     if (channelStreams.has(String(uid))) {
       const renderers = channelStreams.get(String(uid)) || [];
       for (let i = 0; i < renderers.length; i++) {
@@ -1516,10 +1921,13 @@ class AgoraRtcEngine extends EventEmitter {
    */
   renewToken(token: string): number {
     let param = {
-      token
-    }
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRenewToken, JSON.stringify(param))
-    return ret.retCode
+      token,
+    };
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineRenewToken,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1541,9 +1949,12 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setChannelProfile(profile: number): number {
     let param = {
-      profile
-    }
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetChannelProfile, JSON.stringify(param))
+      profile,
+    };
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetChannelProfile,
+      JSON.stringify(param)
+    );
     return ret.retCode;
   }
 
@@ -1570,11 +1981,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setClientRole(role: CLIENT_ROLE_TYPE): number {
     let param = {
-      role
-    }
+      role,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetClientRole, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetClientRole,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Sets the role of a user in interactive live streaming.
@@ -1608,14 +2022,20 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setClientRoleWithOptions(role: CLIENT_ROLE_TYPE, options: ClientRoleOptions): number {
+  setClientRoleWithOptions(
+    role: CLIENT_ROLE_TYPE,
+    options: ClientRoleOptions
+  ): number {
     let param = {
       role,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetClientRole, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetClientRole,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1645,8 +2065,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startEchoTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartEchoTest, "")
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartEchoTest, "");
+    return ret.retCode;
   }
 
   /**
@@ -1656,8 +2076,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopEchoTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopEchoTest, "")
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopEchoTest, "");
+    return ret.retCode;
   }
 
   /**
@@ -1686,11 +2106,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   startEchoTestWithInterval(intervalInSeconds: number): number {
     let param = {
-      intervalInSeconds
-    }
+      intervalInSeconds,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartEchoTest, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartEchoTest,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * @since v3.0.0
@@ -1744,11 +2167,14 @@ class AgoraRtcEngine extends EventEmitter {
   addVideoWatermark(watermarkUrl: string, options: WatermarkOptions): number {
     let param = {
       watermarkUrl,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAddVideoWaterMark, JSON.stringify(options))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAddVideoWaterMark,
+      JSON.stringify(options)
+    );
+    return ret.retCode;
   }
   /**
    * Removes the watermark image from the video stream added by the
@@ -1759,8 +2185,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   clearVideoWatermarks(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineClearVideoWaterMarks, "")
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineClearVideoWaterMarks,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1795,8 +2224,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableLastmileTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableLastMileTest, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableLastMileTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1806,8 +2238,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableLastmileTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableLastMileTest, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineDisableLastMileTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1844,8 +2279,11 @@ class AgoraRtcEngine extends EventEmitter {
    * network probe test. See {@link LastmileProbeConfig}.
    */
   startLastmileProbeTest(config: LastmileProbeConfig): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartLastMileProbeTest, JSON.stringify(config))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartLastMileProbeTest,
+      JSON.stringify(config)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1855,8 +2293,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopLastmileProbeTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopLastMileProbeTest, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStopLastMileProbeTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -1890,8 +2331,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableVideo(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableVideo, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableVideo, "");
+    return ret.retCode;
   }
 
   /**
@@ -1924,8 +2365,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableVideo(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableVideo, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableVideo, "");
+    return ret.retCode;
   }
 
   /**
@@ -1944,8 +2385,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startPreview(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartPreview, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartPreview, "");
+    return ret.retCode;
   }
 
   /**
@@ -1955,8 +2396,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopPreview(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopPreview, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopPreview, "");
+    return ret.retCode;
   }
 
   /**
@@ -1981,11 +2422,14 @@ class AgoraRtcEngine extends EventEmitter {
   ): number {
     let param = {
       profile,
-      swapWidthAndHeight
-    }
+      swapWidthAndHeight,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetVideoProfile, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetVideoProfile,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2018,8 +2462,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   setCameraCapturerConfiguration(config: CameraCapturerConfiguration): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetCameraCapturerConfiguration, JSON.stringify(config))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetCameraCapturerConfiguration,
+      JSON.stringify(config)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2044,21 +2491,21 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setVideoEncoderConfiguration(config: VideoEncoderConfiguration): number {
     const {
-      dimensions: {
-        width = 640,
-        height = 360
-      },
+      dimensions: { width = 640, height = 360 },
       frameRate = 15,
       minFrameRate = -1,
       bitrate = 0,
       minBitrate = -1,
       orientationMode = 0,
       degradationPreference = 0,
-      mirrorMode = 0
-    } = config
+      mirrorMode = 0,
+    } = config;
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetVideoEncoderConfiguration, JSON.stringify(config))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetVideoEncoderConfiguration,
+      JSON.stringify(config)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2091,17 +2538,17 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setBeautyEffectOptions(
-    enabled: boolean,
-    options: BeautyOptions
-  ): number {
+  setBeautyEffectOptions(enabled: boolean, options: BeautyOptions): number {
     let param = {
       enabled,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetBeautyEffectOptions, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetBeautyEffectOptions,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2123,11 +2570,14 @@ class AgoraRtcEngine extends EventEmitter {
   setRemoteUserPriority(uid: number, userPriority: PRIORITY_TYPE) {
     let param = {
       uid,
-      userPriority
-    }
+      userPriority,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetRemoteUserPriority, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetRemoteUserPriority,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2155,8 +2605,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableAudio(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableAudio, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableAudio, "");
+    return ret.retCode;
   }
 
   /**
@@ -2182,8 +2632,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableAudio(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableAudio, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableAudio, "");
+    return ret.retCode;
   }
 
   /**
@@ -2241,11 +2691,14 @@ class AgoraRtcEngine extends EventEmitter {
   ): number {
     let param = {
       profile,
-      scenario
-    }
+      scenario,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetAudioProfile, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetAudioProfile,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2263,11 +2716,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setVideoQualityParameters(preferFrameRateOverImageQuality: boolean): number {
     let param = {
-      preferFrameRateOverImageQuality
-    }
+      preferFrameRateOverImageQuality,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetVideoQualityParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetVideoQualityParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2295,11 +2751,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setEncryptionSecret(secret: string): number {
     let param = {
-      secret
-    }
+      secret,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetEncryptionSecret, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetEncryptionSecret,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2331,11 +2790,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setEncryptionMode(encryptionMode: string): number {
     let param = {
-      encryptionMode
-    }
+      encryptionMode,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetEncryptionMode, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetEncryptionMode,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2361,11 +2823,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   muteLocalAudioStream(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineMuteLocalAudioStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineMuteLocalAudioStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2380,11 +2845,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   muteAllRemoteAudioStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineMuteAllRemoteAudioStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineMuteAllRemoteAudioStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2411,11 +2879,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setDefaultMuteAllRemoteAudioStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetDefaultMuteAllRemoteAudioStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetDefaultMuteAllRemoteAudioStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2432,11 +2903,14 @@ class AgoraRtcEngine extends EventEmitter {
   muteRemoteAudioStream(userId: number, mute: boolean): number {
     let param = {
       userId,
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineMuteRemoteAudioStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineMuteRemoteAudioStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2462,11 +2936,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   muteLocalVideoStream(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineMuteLocalVideoStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineMuteLocalVideoStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2498,11 +2975,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   enableLocalVideo(enabled: boolean): number {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableLocalVideo, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableLocalVideo,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2542,11 +3022,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   enableLocalAudio(enabled: boolean): number {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableLocalAudio, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableLocalAudio,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2562,11 +3045,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   muteAllRemoteVideoStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineMuteAllRemoteVideoStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineMuteAllRemoteVideoStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2594,11 +3080,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setDefaultMuteAllRemoteVideoStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetDefaultMuteAllRemoteVideoStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetDefaultMuteAllRemoteVideoStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2631,15 +3120,22 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  enableAudioVolumeIndication(interval: number, smooth: number, report_vad: boolean = false): number {
+  enableAudioVolumeIndication(
+    interval: number,
+    smooth: number,
+    report_vad: boolean = false
+  ): number {
     let param = {
       interval,
       smooth,
-      report_vad
-    }
+      report_vad,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableAudioVolumeIndication, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableAudioVolumeIndication,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2656,11 +3152,14 @@ class AgoraRtcEngine extends EventEmitter {
   muteRemoteVideoStream(userId: number, mute: boolean): number {
     let param = {
       userId,
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineMuteRemoteVideoStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineMuteRemoteVideoStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2671,7 +3170,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   pauseAudio() {
-    deprecate('disableAudio');
+    deprecate("disableAudio");
   }
 
   /**
@@ -2682,7 +3181,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   resumeAudio() {
-    deprecate('enableAudio');
+    deprecate("enableAudio");
   }
 
   /**
@@ -2699,11 +3198,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLogFile(filePath: string): number {
     let param = {
-      filePath
-    }
+      filePath,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLogFile, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLogFile,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Sets the size of a log file that the SDK outputs.
@@ -2737,11 +3239,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLogFileSize(fileSizeInKBytes: number): number {
     let param = {
-      fileSizeInKBytes
-    }
+      fileSizeInKBytes,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLogFileSize, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLogFileSize,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2768,11 +3273,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLogFilter(filter: number): number {
     let param = {
-      filter
-    }
+      filter,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLogFilter, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLogFilter,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2790,11 +3298,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   enableDualStreamMode(enabled: boolean): number {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableDualStreamMode, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableDualStreamMode,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2825,14 +3336,20 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setRemoteVideoStreamType(userId: number, streamType: REMOTE_VIDEO_STREAM_TYPE): number {
+  setRemoteVideoStreamType(
+    userId: number,
+    streamType: REMOTE_VIDEO_STREAM_TYPE
+  ): number {
     let param = {
       userId,
-      streamType
-    }
+      streamType,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetRemoteVideoStreamType, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetRemoteVideoStreamType,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2845,13 +3362,18 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setRemoteDefaultVideoStreamType(streamType: REMOTE_VIDEO_STREAM_TYPE): number {
+  setRemoteDefaultVideoStreamType(
+    streamType: REMOTE_VIDEO_STREAM_TYPE
+  ): number {
     let param = {
-      streamType
-    }
+      streamType,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetRemoteDefaultVideoStreamType, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetRemoteDefaultVideoStreamType,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2877,11 +3399,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   enableWebSdkInteroperability(enabled: boolean): number {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableWebSdkInteroperability, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableWebSdkInteroperability,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2900,11 +3425,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLocalVideoMirrorMode(mirrorMode: VIDEO_MIRROR_MODE_TYPE): number {
     let param = {
-      mirrorMode
-    }
+      mirrorMode,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalVideoMirrorMode, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalVideoMirrorMode,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2918,11 +3446,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLocalVoicePitch(pitch: number): number {
     let param = {
-      pitch
-    }
+      pitch,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalVoicePitch, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalVoicePitch,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2941,11 +3472,14 @@ class AgoraRtcEngine extends EventEmitter {
   setLocalVoiceEqualization(bandFrequency: number, bandGain: number): number {
     let param = {
       bandFrequency,
-      bandGain
-    }
+      bandGain,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalVoiceEqualization, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalVoiceEqualization,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2971,11 +3505,14 @@ class AgoraRtcEngine extends EventEmitter {
   setLocalVoiceReverb(reverbKey: number, value: number): number {
     let param = {
       reverbKey,
-      value
-    }
+      value,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalVoiceReverb, JSON.stringify(value))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalVoiceReverb,
+      JSON.stringify(value)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -2989,11 +3526,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLocalVoiceChanger(voiceChanger: VOICE_CHANGER_PRESET): number {
     let param = {
-      voiceChanger
-    }
+      voiceChanger,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalVoiceChanger, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalVoiceChanger,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3012,11 +3552,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLocalVoiceReverbPreset(reverbPreset: AUDIO_REVERB_PRESET) {
     let param = {
-      reverbPreset
-    }
+      reverbPreset,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalVoiceReverbPreset, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalVoiceReverbPreset,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3058,11 +3601,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setLocalPublishFallbackOption(option: STREAM_FALLBACK_OPTIONS): number {
     let param = {
-      option
-    }
+      option,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLocalPublishFallbackOption, JSON.stringify(option))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLocalPublishFallbackOption,
+      JSON.stringify(option)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3101,11 +3647,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setRemoteSubscribeFallbackOption(option: STREAM_FALLBACK_OPTIONS): number {
     let param = {
-      option
-    }
+      option,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetRemoteSubscribeFallbackOption, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetRemoteSubscribeFallbackOption,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Registers a user account.
@@ -3159,11 +3708,14 @@ class AgoraRtcEngine extends EventEmitter {
   registerLocalUserAccount(appId: string, userAccount: string): number {
     let param = {
       appId,
-      userAccount
-    }
+      userAccount,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRegisterLocalUserAccount, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineRegisterLocalUserAccount,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Joins the channel with a user account.
@@ -3221,11 +3773,14 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       token,
       channelId,
-      userAccount
-    }
+      userAccount,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineJoinChannelWithUserAccount, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineJoinChannelWithUserAccount,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Gets the user information by passing in the user account.
@@ -3250,17 +3805,20 @@ class AgoraRtcEngine extends EventEmitter {
     userAccount: string
   ): { errCode: number; userInfo: UserInfo } {
     let param = {
-      userAccount
-    }
+      userAccount,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetUserInfoByUserAccount, JSON.stringify(param))
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetUserInfoByUserAccount,
+      JSON.stringify(param)
+    );
 
     let returnValue = {
       errCode: ret.retCode,
-      userInfo: JSON.parse(ret.result)
-    }
+      userInfo: JSON.parse(ret.result),
+    };
 
-    return returnValue
+    return returnValue;
   }
   /**
    * Gets the user information by passing in the user ID.
@@ -3282,16 +3840,19 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getUserInfoByUid(uid: number): { errCode: number; userInfo: UserInfo } {
     let param = {
-      uid
-    }
+      uid,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetUserInfoByUid, JSON.stringify(param))
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetUserInfoByUid,
+      JSON.stringify(param)
+    );
 
     let returnValue = {
       errCode: ret.retCode,
-      userInfo: JSON.parse(ret.result)
-    }
-    return returnValue
+      userInfo: JSON.parse(ret.result),
+    };
+    return returnValue;
   }
   /**
    * Switches to a different channel.
@@ -3329,15 +3890,22 @@ class AgoraRtcEngine extends EventEmitter {
    *  - `ERR_NOT_READY (3)`
    *  - `ERR_REFUSED (5)`
    */
-  switchChannel(token: string, channelId: string, options?: ChannelMediaOptions): number {
+  switchChannel(
+    token: string,
+    channelId: string,
+    options?: ChannelMediaOptions
+  ): number {
     let param = {
       token,
       channelId,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSwitchChannel, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSwitchChannel,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3355,11 +3923,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   adjustRecordingSignalVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAdjustRecordingSignalVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAdjustRecordingSignalVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Adjusts the playback volume of the voice.
@@ -3376,11 +3947,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   adjustPlaybackSignalVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAdjustPlaybackSignalVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAdjustPlaybackSignalVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Adjusts the playback volume of a specified remote user.
@@ -3410,20 +3984,27 @@ class AgoraRtcEngine extends EventEmitter {
   adjustUserPlaybackSignalVolume(uid: number, volume: number): number {
     let param = {
       uid,
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAdjustUserPlaybackSignalVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAdjustUserPlaybackSignalVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
-  convertDeviceInfoToObject(deviceInfo: string): { deviceid: string, devicename: string } {
-    let _device: {deviceName: string, deviceId: string} = JSON.parse(deviceInfo)
+  convertDeviceInfoToObject(
+    deviceInfo: string
+  ): { deviceid: string; devicename: string } {
+    let _device: { deviceName: string; deviceId: string } = JSON.parse(
+      deviceInfo
+    );
     let realDevice = {
       devicename: _device.deviceName,
-      deviceid: _device.deviceId
-    }
-    return realDevice
+      deviceid: _device.deviceId,
+    };
+    return realDevice;
   }
 
   // ===========================================================================
@@ -3433,20 +4014,28 @@ class AgoraRtcEngine extends EventEmitter {
    * Gets the list of the video devices.
    * @return {Array} The array of the video devices.
    */
-  getVideoDevices(): Array<{ deviceid: string, devicename: string }> {
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(ApiTypeVideoDeviceManager.kGetVideoDeviceCount, '')
+  getVideoDevices(): Array<{ deviceid: string; devicename: string }> {
+    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+      ApiTypeVideoDeviceManager.kGetVideoDeviceCount,
+      ""
+    );
 
-    let deviceList = new Array<{ deviceid: string, devicename: string }>(ret.retCode);
+    let deviceList = new Array<{ deviceid: string; devicename: string }>(
+      ret.retCode
+    );
     for (let i = 0; i < ret.retCode; i++) {
       let param = {
-        index: i
-      }
+        index: i,
+      };
 
-      let ret = this.rtcDeviceManager.CallApiVideoDevice(ApiTypeVideoDeviceManager.kGetVideoDeviceInfoByIndex, JSON.stringify(param))
-      let deviceObject = this.convertDeviceInfoToObject(ret.result)
+      let ret = this.rtcDeviceManager.CallApiVideoDevice(
+        ApiTypeVideoDeviceManager.kGetVideoDeviceInfoByIndex,
+        JSON.stringify(param)
+      );
+      let deviceObject = this.convertDeviceInfoToObject(ret.result);
       deviceList.push(deviceObject);
     }
-    return deviceList
+    return deviceList;
   }
 
   /**
@@ -3458,11 +4047,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setVideoDevice(deviceId: string): number {
     let param = {
-      deviceId
-    }
+      deviceId,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(ApiTypeVideoDeviceManager.kSetCurrentVideoDeviceId, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+      ApiTypeVideoDeviceManager.kSetCurrentVideoDeviceId,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3470,12 +4062,15 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Object} The video device.
    */
   getCurrentVideoDevice(): Object {
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(ApiTypeVideoDeviceManager.kGetCurrentVideoDeviceId, '')
+    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+      ApiTypeVideoDeviceManager.kGetCurrentVideoDeviceId,
+      ""
+    );
 
     let param = {
-      deviceId: ret.result
-    }
-    return param
+      deviceId: ret.result,
+    };
+    return param;
   }
 
   /**
@@ -3491,11 +4086,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   startVideoDeviceTest(): number {
     let param = {
-      hwnd: 1
-    }
+      hwnd: 1,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(ApiTypeVideoDeviceManager.kStartVideoDeviceTest, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+      ApiTypeVideoDeviceManager.kStartVideoDeviceTest,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3511,28 +4109,39 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopVideoDeviceTest(): number {
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(ApiTypeVideoDeviceManager.kStopVideoDeviceTest, '')
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+      ApiTypeVideoDeviceManager.kStopVideoDeviceTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
    * Retrieves the audio playback device associated with the device ID.
    * @return {Array} The array of the audio playback device.
    */
-  getAudioPlaybackDevices(): Array<{ deviceid: string, devicename: string }> {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceCount, '')
+  getAudioPlaybackDevices(): Array<{ deviceid: string; devicename: string }> {
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceCount,
+      ""
+    );
 
-    let deviceList = new Array<{ deviceid: string, devicename: string }>(ret.retCode);
+    let deviceList = new Array<{ deviceid: string; devicename: string }>(
+      ret.retCode
+    );
     for (let i = 0; i < ret.retCode; i++) {
       let param = {
-        index: i
-      }
+        index: i,
+      };
 
-      let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceInfoByIndex, JSON.stringify(param))
-      let deviceObject = this.convertDeviceInfoToObject(ret.result)
+      let ret = this.rtcDeviceManager.CallApiAudioDevice(
+        ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceInfoByIndex,
+        JSON.stringify(param)
+      );
+      let deviceObject = this.convertDeviceInfoToObject(ret.result);
       deviceList.push(deviceObject);
     }
-    return deviceList
+    return deviceList;
   }
 
   /**
@@ -3544,14 +4153,18 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioPlaybackDevice(deviceId: string): number {
     let param = {
-      deviceId
-    }
+      deviceId,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kSetCurrentAudioPlaybackDeviceId, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kSetCurrentAudioPlaybackDeviceId,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
+   * @deprecated
    * Retrieves the audio playback device information associated with the
    * device ID and device name.
    * @param {string} deviceId The device ID of the audio playback device.
@@ -3561,20 +4174,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
 
-  getPlaybackDeviceInfo(): Array<{ deviceid: string, devicename: string }> {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceCount, '')
-
-    let deviceList = new Array<{ deviceid: string, devicename: string }>(ret.retCode);
-    for (let i = 0; i < ret.retCode; i++) {
-      let param = {
-        index: i
-      }
-
-      let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceInfoByIndex, JSON.stringify(param))
-      let deviceObject = this.convertDeviceInfoToObject(ret.result)
-      deviceList.push(deviceObject);
-    }
-    return deviceList
+  getPlaybackDeviceInfo(): Array<{ deviceid: string; devicename: string }> {
+    return this.getAudioPlaybackDevices();
   }
 
   /**
@@ -3582,12 +4183,15 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Object} The current audio playback device.
    */
   getCurrentAudioPlaybackDevice(): { deviceId: String } {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceId, '')
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceId,
+      ""
+    );
 
     let device = {
-      deviceId : ret.result
-    }
-    return device
+      deviceId: ret.result,
+    };
+    return device;
   }
 
   /**
@@ -3600,11 +4204,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioPlaybackVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kSetAudioPlaybackDeviceVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kSetAudioPlaybackDeviceVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3612,28 +4219,39 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The audio playback device volume.
    */
   getAudioPlaybackVolume(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceVolume, '')
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceVolume,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
    * Retrieves the audio recording device associated with the device ID.
    * @return {Array} The array of the audio recording device.
    */
-  getAudioRecordingDevices(): Array<{ deviceid: string, devicename: string }> {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceCount, '')
+  getAudioRecordingDevices(): Array<{ deviceid: string; devicename: string }> {
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceCount,
+      ""
+    );
 
-    let deviceList = new Array<{ deviceid: string, devicename: string }>(ret.retCode);
+    let deviceList = new Array<{ deviceid: string; devicename: string }>(
+      ret.retCode
+    );
     for (let i = 0; i < ret.retCode; i++) {
       let param = {
-        index: i
-      }
+        index: i,
+      };
 
-      let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceInfoByIndex, JSON.stringify(param))
-      let deviceObject = this.convertDeviceInfoToObject(ret.result)
+      let ret = this.rtcDeviceManager.CallApiAudioDevice(
+        ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceInfoByIndex,
+        JSON.stringify(param)
+      );
+      let deviceObject = this.convertDeviceInfoToObject(ret.result);
       deviceList.push(deviceObject);
     }
-    return deviceList
+    return deviceList;
   }
 
   /**
@@ -3645,14 +4263,18 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioRecordingDevice(deviceId: string): number {
     let param = {
-      deviceId
-    }
+      deviceId,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kSetCurrentAudioRecordingDeviceId, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kSetCurrentAudioRecordingDeviceId,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
+   * @deprecated
    * Retrieves the audio recording device information associated with the
    * device ID and device name.
    * @param {string} deviceId The device ID of the recording audio device.
@@ -3661,32 +4283,21 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  getRecordingDeviceInfo(): Array<{ deviceid: string, devicename: string }> {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceCount, '')
-
-    let deviceList = new Array<{ deviceid: string, devicename: string }>(ret.retCode);
-    for (let i = 0; i < ret.retCode; i++) {
-      let param = {
-        index: i
-      }
-
-      let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceInfoByIndex, JSON.stringify(param))
-      let deviceObject = this.convertDeviceInfoToObject(ret.result)
-      deviceList.push(deviceObject);
-    }
-    return deviceList
+  getRecordingDeviceInfo(): Array<{ deviceid: string; devicename: string }> {
+    return this.getAudioRecordingDevices();
   }
-
-
 
   /**
    * Gets the current audio recording device.
    * @return {Object} The audio recording device.
    */
-  getCurrentAudioRecordingDevice(): { deviceid: string, devicename: string } {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceInfo, '')
-    let deviceObject = this.convertDeviceInfoToObject(ret.result)
-    return deviceObject
+  getCurrentAudioRecordingDevice(): { deviceid: string; devicename: string } {
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceInfo,
+      ""
+    );
+    let deviceObject = this.convertDeviceInfoToObject(ret.result);
+    return deviceObject;
   }
 
   /**
@@ -3695,8 +4306,11 @@ class AgoraRtcEngine extends EventEmitter {
    * 0 (lowest volume) and 255 (highest volume).
    */
   getAudioRecordingVolume(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceVolume, '')
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceVolume,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3709,11 +4323,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioRecordingVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kSetAudioRecordingDeviceVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kSetAudioRecordingDeviceVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3732,11 +4349,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   startAudioPlaybackDeviceTest(testAudioFilePath: string): number {
     let param = {
-      testAudioFilePath
-    }
+      testAudioFilePath,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kStartAudioPlaybackDeviceTest, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kStartAudioPlaybackDeviceTest,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3750,8 +4370,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioPlaybackDeviceTest(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kStopAudioPlaybackDeviceTest, '')
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kStopAudioPlaybackDeviceTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3771,11 +4394,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   startAudioDeviceLoopbackTest(indicationInterval: number): number {
     let param = {
-      indicationInterval
-    }
+      indicationInterval,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kStartAudioDeviceLoopbackTest, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kStartAudioDeviceLoopbackTest,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3790,8 +4416,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioDeviceLoopbackTest(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kStopAudioDeviceLoopbackTest, '')
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kStopAudioDeviceLoopbackTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /** Enables loopback audio capturing.
@@ -3821,11 +4450,14 @@ class AgoraRtcEngine extends EventEmitter {
   ): number {
     let param = {
       enabled,
-      deviceName
-    }
+      deviceName,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableLoopBackRecording, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableLoopBackRecording,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * @since v3.0.0
@@ -3868,15 +4500,22 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  startAudioRecording(filePath: string, sampleRate: number, quality: number): number {
+  startAudioRecording(
+    filePath: string,
+    sampleRate: number,
+    quality: number
+  ): number {
     let param = {
       filePath,
       sampleRate,
-      quality
-    }
+      quality,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartAudioRecording, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartAudioRecording,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops an audio recording on the client.
@@ -3889,8 +4528,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   stopAudioRecording(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAudioRecording, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStopAudioRecording,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3904,11 +4546,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   startAudioRecordingDeviceTest(testAudioFilePath: string): number {
     let param = {
-      testAudioFilePath
-    }
+      testAudioFilePath,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kStartAudioRecordingDeviceTest, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kStartAudioRecordingDeviceTest,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3923,8 +4568,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioRecordingDeviceTest(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kStopAudioRecordingDeviceTest, '')
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kStopAudioRecordingDeviceTest,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3932,8 +4580,11 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {boolean} muted/unmuted
    */
   getAudioPlaybackDeviceMute(): boolean {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceMute, '')
-    return ret.retCode != 0
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceMute,
+      ""
+    );
+    return ret.retCode != 0;
   }
 
   /**
@@ -3948,11 +4599,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioPlaybackDeviceMute(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kSetAudioPlaybackDeviceMute, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kSetAudioPlaybackDeviceMute,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -3962,8 +4616,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - false: Unmutes.
    */
   getAudioRecordingDeviceMute(): boolean {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceMute, '')
-    return ret.retCode != 0
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceMute,
+      ""
+    );
+    return ret.retCode != 0;
   }
 
   /**
@@ -3978,11 +4635,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioRecordingDeviceMute(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(ApiTypeAudioDeviceManager.kSetAudioRecordingDeviceMute, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      ApiTypeAudioDeviceManager.kSetAudioRecordingDeviceMute,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4025,15 +4685,22 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  startScreenCaptureByWindow(windowId: number, regionRect: CaptureRect, captureParams: ScreenCaptureParameters): number {
+  startScreenCaptureByWindow(
+    windowId: number,
+    regionRect: Rectangle,
+    captureParams: ScreenCaptureParameters
+  ): number {
     let param = {
       windowId,
       regionRect,
-      captureParams
-    }
+      captureParams,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByWindowId, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Shares the whole or part of a screen by specifying the screen symbol.
@@ -4050,26 +4717,36 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  startScreenCaptureByScreen(screenSymbol: ScreenSymbol, regionRect: CaptureRect, captureParams: ScreenCaptureParameters): number {
+  startScreenCaptureByScreen(
+    screenSymbol: ScreenSymbol,
+    regionRect: Rectangle,
+    captureParams: ScreenCaptureParameters
+  ): number {
     if (process.platform == "win32") {
       let param = {
         displayId: screenSymbol,
         regionRect,
-        captureParams
-      }
+        captureParams,
+      };
 
-      let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByDisplayId, JSON.stringify(param))
-      return ret.retCode
-    } else (process.platform == "darwin")
+      let ret = this.rtcEngine.CallApi(
+        ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
+        JSON.stringify(param)
+      );
+      return ret.retCode;
+    } else process.platform == "darwin";
     {
       let param = {
         screenRect: screenSymbol,
         regionRect,
-        captureParams
-      }
+        captureParams,
+      };
 
-      let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByScreenRect, JSON.stringify(param))
-      return ret.retCode
+      let ret = this.rtcEngine.CallApi(
+        ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
+        JSON.stringify(param)
+      );
+      return ret.retCode;
     }
   }
   /**
@@ -4082,13 +4759,18 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  updateScreenCaptureParameters(captureParams: ScreenCaptureParameters): number {
+  updateScreenCaptureParameters(
+    captureParams: ScreenCaptureParameters
+  ): number {
     let param = {
-      captureParams
-    }
+      captureParams,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUpdateScreenCaptureParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineUpdateScreenCaptureParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the content hint for screen sharing.
@@ -4105,11 +4787,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setScreenCaptureContentHint(contentHint: VideoContentHint): number {
     let param = {
-      contentHint
-    }
+      contentHint,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetScreenCaptureContentHint, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetScreenCaptureContentHint,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4119,8 +4804,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopScreenCapture(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopScreenCapture, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStopScreenCapture,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4133,11 +4821,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   updateScreenCaptureRegion(regionRect: Rectangle): number {
     let param = {
-      regionRect
-    }
+      regionRect,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUpdateScreenCaptureRegion, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineUpdateScreenCaptureRegion,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -4192,11 +4883,14 @@ class AgoraRtcEngine extends EventEmitter {
       filePath,
       loopback,
       replace,
-      cycle
-    }
+      cycle,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartAudioMixing, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartAudioMixing,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4208,8 +4902,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioMixing(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAudioMixing, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAudioMixing, "");
+    return ret.retCode;
   }
 
   /**
@@ -4221,8 +4915,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   pauseAudioMixing(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAudioMixing, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAudioMixing, "");
+    return ret.retCode;
   }
 
   /**
@@ -4234,8 +4928,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   resumeAudioMixing(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineResumeAudioMixing, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineResumeAudioMixing,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4254,11 +4951,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   adjustAudioMixingVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAdjustAudioMixingVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAdjustAudioMixingVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4271,11 +4971,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   adjustAudioMixingPlayoutVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAdjustAudioMixingPlayoutVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAdjustAudioMixingPlayoutVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4288,11 +4991,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   adjustAudioMixingPublishVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAdjustAudioMixingPublishVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAdjustAudioMixingPublishVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4304,8 +5010,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingDuration(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetAudioMixingDuration, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetAudioMixingDuration,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4318,8 +5027,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingCurrentPosition(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetAudioMixingCurrentPosition, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetAudioMixingCurrentPosition,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4333,8 +5045,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingPlayoutVolume(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetAudioMixingPlayoutVolume, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetAudioMixingPlayoutVolume,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4348,8 +5063,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingPublishVolume(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetAudioMixingPublishVolume, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetAudioMixingPublishVolume,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4367,11 +5085,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioMixingPosition(pos: number): number {
     let param = {
-      pos
-    }
+      pos,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetAudioMixingPosition, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetAudioMixingPosition,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Sets the pitch of the local music file.
@@ -4397,11 +5118,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioMixingPitch(pitch: number): number {
     let param = {
-      pitch
-    }
+      pitch,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetAudioMixingPitch, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetAudioMixingPitch,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -4440,11 +5164,14 @@ class AgoraRtcEngine extends EventEmitter {
   addPublishStreamUrl(url: string, transcodingEnabled: boolean): number {
     let param = {
       url,
-      transcodingEnabled
-    }
+      transcodingEnabled,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAddPublishStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAddPublishStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4463,11 +5190,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   removePublishStreamUrl(url: string): number {
     let param = {
-      url
-    }
+      url,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRemovePublishStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineRemovePublishStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4493,8 +5223,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   setLiveTranscoding(transcoding: LiveTranscoding): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetLiveTranscoding, JSON.stringify(transcoding))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetLiveTranscoding,
+      JSON.stringify(transcoding)
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -4548,11 +5281,14 @@ class AgoraRtcEngine extends EventEmitter {
   addInjectStreamUrl(url: string, config: InjectStreamConfig): number {
     let param = {
       url,
-      config
-    }
+      config,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineAddInjectStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineAddInjectStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4566,11 +5302,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   removeInjectStreamUrl(url: string): number {
     let param = {
-      url
-    }
+      url,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRemoveInjectStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineRemoveInjectStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -4604,11 +5343,14 @@ class AgoraRtcEngine extends EventEmitter {
   createDataStream(reliable: boolean, ordered: boolean): number {
     let param = {
       reliable,
-      ordered
-    }
+      ordered,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineCreateDataStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineCreateDataStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -4642,11 +5384,15 @@ class AgoraRtcEngine extends EventEmitter {
   sendStreamMessage(streamId: number, msg: string): number {
     let param = {
       streamId,
-      length : msg.length
-    }
+      length: msg.length,
+    };
 
-    let ret = this.rtcEngine.CallApiWithBuffer(ApiTypeEngine.kEngineSendStreamMessage, JSON.stringify(param), msg)
-    return ret.retCode
+    let ret = this.rtcEngine.CallApiWithBuffer(
+      ApiTypeEngine.kEngineSendStreamMessage,
+      JSON.stringify(param),
+      msg
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -4688,8 +5434,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startChannelMediaRelay(config: ChannelMediaRelayConfiguration): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartChannelMediaRelay, JSON.stringify(config))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartChannelMediaRelay,
+      JSON.stringify(config)
+    );
+    return ret.retCode;
   }
   /**
    * Updates the channels for media stream relay.
@@ -4715,8 +5464,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   updateChannelMediaRelay(config: ChannelMediaRelayConfiguration): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUpdateChannelMediaRelay, JSON.stringify(config))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineUpdateChannelMediaRelay,
+      JSON.stringify(config)
+    );
+    return ret.retCode;
   }
   /**
    * Stops the media stream relay.
@@ -4740,8 +5492,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   stopChannelMediaRelay(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopChannelMediaRelay, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStopChannelMediaRelay,
+      ""
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -4756,8 +5511,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getEffectsVolume(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetEffectsVolume, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetEffectsVolume, "");
+    return ret.retCode;
   }
   /**
    * Sets the volume of the audio effects.
@@ -4769,11 +5524,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setEffectsVolume(volume: number): number {
     let param = {
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetEffectsVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetEffectsVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the volume of a specified audio effect.
@@ -4788,11 +5546,14 @@ class AgoraRtcEngine extends EventEmitter {
   setVolumeOfEffect(soundId: number, volume: number): number {
     let param = {
       soundId,
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetVolumeOfEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetVolumeOfEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Plays a specified local or online audio effect file.
@@ -4858,11 +5619,14 @@ class AgoraRtcEngine extends EventEmitter {
       pitch,
       pan,
       gain,
-      publish
-    }
+      publish,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePlayEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEnginePlayEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops playing a specified audio effect.
@@ -4874,11 +5638,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   stopEffect(soundId: number): number {
     let param = {
-      soundId
-    }
+      soundId,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStopEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops playing all audio effects.
@@ -4887,8 +5654,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAllEffects(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAllEffects, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAllEffects, "");
+    return ret.retCode;
   }
   /**
    * Preloads a specified audio effect file into the memory.
@@ -4912,11 +5679,14 @@ class AgoraRtcEngine extends EventEmitter {
   preloadEffect(soundId: number, filePath: string): number {
     let param = {
       soundId,
-      filePath
-    }
+      filePath,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePreloadEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEnginePreloadEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Releases a specified preloaded audio effect from the memory.
@@ -4928,11 +5698,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   unloadEffect(soundId: number): number {
     let param = {
-      soundId
-    }
+      soundId,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUnloadEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineUnloadEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Pauses a specified audio effect.
@@ -4944,11 +5717,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   pauseEffect(soundId: number): number {
     let param = {
-      soundId
-    }
+      soundId,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEnginePauseEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Pauses all the audio effects.
@@ -4957,8 +5733,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   pauseAllEffects(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAllEffects, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAllEffects, "");
+    return ret.retCode;
   }
   /**
    * Resumes playing a specified audio effect.
@@ -4969,11 +5745,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   resumeEffect(soundId: number): number {
     let param = {
-      soundId
-    }
+      soundId,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineResumeEffect, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineResumeEffect,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Resumes playing all audio effects.
@@ -4982,8 +5761,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   resumeAllEffects(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineResumeAllEffects, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineResumeAllEffects, "");
+    return ret.retCode;
   }
 
   /**
@@ -5004,11 +5783,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   enableSoundPositionIndication(enabled: boolean) {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableSoundPositionIndication, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableSoundPositionIndication,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5045,11 +5827,14 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       uid,
       pan,
-      gain
-    }
+      gain,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetRemoteVoicePosition, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetRemoteVoicePosition,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   // ===========================================================================
@@ -5071,8 +5856,8 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The current call ID.
    */
   getCallId(): string {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetCallId, '')
-    return ret.retCode === 0 ? ret.result : ret.retCode.toString()
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetCallId, "");
+    return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
   /**
@@ -5091,11 +5876,14 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       callId,
       rating,
-      description
-    }
+      description,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRate, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineRate,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5110,43 +5898,60 @@ class AgoraRtcEngine extends EventEmitter {
   complain(callId: string, description: string): number {
     let param = {
       callId,
-      description
-    }
+      description,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineComplain, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineComplain,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
-  setRecordingAudioFrameParameters(sampleRate: number, channel: 1 | 2, mode: 0 | 1 | 2, samplesPerCall: number): number {
+  setRecordingAudioFrameParameters(
+    sampleRate: number,
+    channel: 1 | 2,
+    mode: 0 | 1 | 2,
+    samplesPerCall: number
+  ): number {
     let param = {
       sampleRate,
       channel,
       mode,
-      samplesPerCall
-    }
+      samplesPerCall,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetRecordingAudioFrameParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetRecordingAudioFrameParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   setParameters(parameters: string): number {
     let param = {
-      parameters
-    }
+      parameters,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Unregisters a media metadata observer.
-    *
-    * @return
-    * - 0: Success.
-    * - < 0: Failure.
-    */
-  unRegisterMediaMetadataObserver(): number {
-    let param = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUnRegisterMediaMetadataObserver, '')
-    return param.retCode
+   *
+   * @return
+   * - 0: Success.
+   * - < 0: Failure.
+   */
+  unregisterMediaMetadataObserver(): number {
+    let param = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineUnRegisterMediaMetadataObserver,
+      ""
+    );
+    return param.retCode;
   }
   /** Registers a media metadata observer.
    *
@@ -5155,8 +5960,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   registerMediaMetadataObserver(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRegisterMediaMetadataObserver, '')
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineRegisterMediaMetadataObserver,
+      ""
+    );
+    return ret.retCode;
   }
   /** Sends the media metadata.
    *
@@ -5175,13 +5983,17 @@ class AgoraRtcEngine extends EventEmitter {
    */
   sendMetadata(metadata: Metadata): number {
     let param = {
-      uid : metadata.uid,
-      size : metadata.size,
-      timeStampMs : metadata.timeStampMs
-    }
+      uid: metadata.uid,
+      size: metadata.size,
+      timeStampMs: metadata.timeStampMs,
+    };
 
-    let ret = this.rtcEngine.CallApiWithBuffer(ApiTypeEngine.kEngineSendMetadata, JSON.stringify(param), metadata.buffer)
-    return ret.retCode
+    let ret = this.rtcEngine.CallApiWithBuffer(
+      ApiTypeEngine.kEngineSendMetadata,
+      JSON.stringify(param),
+      metadata.buffer
+    );
+    return ret.retCode;
   }
   /** Sets the maximum size of the media metadata.
    *
@@ -5196,11 +6008,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setMaxMetadataSize(size: number): number {
     let param = {
-      size
-    }
+      size,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetMaxMetadataSize, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetMaxMetadataSize,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Agora supports reporting and analyzing customized messages.
    *
@@ -5214,17 +6029,26 @@ class AgoraRtcEngine extends EventEmitter {
    * To try out this function, contact support@agora.io and discuss the
    * format of customized messages with us.
    */
-  sendCustomReportMessage(id: string, category: string, event: string, label: string, value: number): number {
+  sendCustomReportMessage(
+    id: string,
+    category: string,
+    event: string,
+    label: string,
+    value: number
+  ): number {
     let param = {
       id,
       category,
       event,
       label,
-      value
-    }
+      value,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSendCustomReportMessage, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSendCustomReportMessage,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Enables/Disables the built-in encryption.
    *
@@ -5256,11 +6080,14 @@ class AgoraRtcEngine extends EventEmitter {
   enableEncryption(enabled: boolean, config: EncryptionConfig): number {
     let param = {
       enabled,
-      config
-    }
+      config,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableEncryption, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableEncryption,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Sets an SDK preset audio effect.
    *
@@ -5306,11 +6133,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setAudioEffectPreset(preset: AUDIO_EFFECT_PRESET): number {
     let param = {
-      preset
-    }
+      preset,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetAudioEffectPreset, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetAudioEffectPreset,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Sets an SDK preset voice beautifier effect.
@@ -5354,11 +6184,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setVoiceBeautifierPreset(preset: VOICE_BEAUTIFIER_PRESET): number {
     let param = {
-      preset
-    }
+      preset,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetVoiceBeautifierPreset, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetVoiceBeautifierPreset,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Sets parameters for SDK preset audio effects.
@@ -5452,50 +6285,70 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setAudioEffectParameters(preset: AUDIO_EFFECT_PRESET, param1: number, param2: number): number {
+  setAudioEffectParameters(
+    preset: AUDIO_EFFECT_PRESET,
+    param1: number,
+    param2: number
+  ): number {
     let param = {
       preset,
       param1,
-      param2
-    }
+      param2,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetAudioEffectParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetAudioEffectParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   // 3.3.0 apis
   setCloudProxy(type: CLOUD_PROXY_TYPE): number {
     let param = {
-      type
-    }
+      type,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetCloudProxy, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetCloudProxy,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   enableDeepLearningDenoise(enable: boolean): number {
     let param = {
-      enable
-    }
+      enable,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableDeepLearningDenoise, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineEnableDeepLearningDenoise,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
-  setVoiceBeautifierParameters(preset: VOICE_BEAUTIFIER_PRESET, param1: number, param2: number): number {
+  setVoiceBeautifierParameters(
+    preset: VOICE_BEAUTIFIER_PRESET,
+    param1: number,
+    param2: number
+  ): number {
     let param = {
       preset,
       param1,
-      param2
-    }
+      param2,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineSetVoiceBeautifierParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineSetVoiceBeautifierParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   uploadLogFile(): string {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUploadLogFile, '')
-    return ret.result
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUploadLogFile, "");
+    return ret.result;
   }
 
   // ===========================================================================
@@ -5517,15 +6370,23 @@ class AgoraRtcEngine extends EventEmitter {
    *  - `ERR_INVALID_APP_ID (101)`: The app ID is invalid. Check if it is in
    * the correct format.
    */
-  videoSourceInitialize(appId: string, areaCode: AREA_CODE = (0xFFFFFFFF), logConfig?: LogConfig): number {
-    let param = {
+  videoSourceInitialize(
+    appId: string,
+    areaCode?: AREA_CODE,
+    logConfig?: LogConfig
+  ): number {
+    let context = {
       appId,
       areaCode,
-      logConfig
-    }
+      logConfig,
+    };
 
-    let ret = this.rtcEngine.VideoSourceInitialize(JSON.stringify(param))
-    return ret.retCode
+    let parameter = {
+      context,
+    };
+
+    let ret = this.rtcEngine.VideoSourceInitialize(JSON.stringify(parameter));
+    return ret.retCode;
   }
 
   /**
@@ -5540,11 +6401,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceSetLogFile(filePath: string) {
     let param = {
-      filePath
-    }
+      filePath,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetLogFile, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetLogFile,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5553,7 +6417,7 @@ class AgoraRtcEngine extends EventEmitter {
    * displayed.
    */
   setupLocalVideoSource(view: Element): void {
-    this.initRender('videosource', view, "");
+    this.initRender("videosource", view, "");
   }
 
   /**
@@ -5579,11 +6443,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceEnableWebSdkInteroperability(enabled: boolean): number {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableWebSdkInteroperability, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineEnableWebSdkInteroperability,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5628,11 +6495,14 @@ class AgoraRtcEngine extends EventEmitter {
       channelId,
       info,
       uid,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineJoinChannel, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineJoinChannel,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5646,8 +6516,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceLeave(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineLeaveChannel, '')
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineLeaveChannel,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5664,11 +6537,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceRenewToken(token: string): number {
     let param = {
-      token
-    }
+      token,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineRenewToken, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineRenewToken,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5685,11 +6561,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceSetChannelProfile(profile: number): number {
     let param = {
-      profile
-    }
+      profile,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetChannelProfile, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetChannelProfile,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5710,11 +6589,14 @@ class AgoraRtcEngine extends EventEmitter {
   ): number {
     let param = {
       profile,
-      swapWidthAndHeight
-    }
+      swapWidthAndHeight,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetVideoProfile, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetVideoProfile,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5728,11 +6610,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceEnableDualStreamMode(enabled: boolean): number {
     let param = {
-      enabled
-    }
+      enabled,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableDualStreamMode, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineEnableDualStreamMode,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5744,11 +6629,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceSetParameters(parameters: string): number {
     let param = {
-      parameters
-    }
+      parameters,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5761,11 +6649,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceUpdateScreenCaptureRegion(rect: Rectangle) {
     let param = {
-      rect
-    }
+      rect,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineUpdateScreenCaptureRegion, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineUpdateScreenCaptureRegion,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Enables loopback audio capturing.
    *
@@ -5788,14 +6679,20 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  videoSourceEnableLoopbackRecording(enabled = false, deviceName: string | null = null): number {
+  videoSourceEnableLoopbackRecording(
+    enabled = false,
+    deviceName: string | null = null
+  ): number {
     let param = {
       enabled,
-      deviceName
-    }
+      deviceName,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableLoopBackRecording, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineEnableLoopBackRecording,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Enables the audio module.
@@ -5822,8 +6719,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceEnableAudio(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableAudio, '')
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineEnableAudio,
+      ""
+    );
+    return ret.retCode;
   }
   /** Enables/Disables the built-in encryption.
    *
@@ -5852,14 +6752,20 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceEnableEncryption(enabled: boolean, config: EncryptionConfig): number {
+  videoSourceEnableEncryption(
+    enabled: boolean,
+    config: EncryptionConfig
+  ): number {
     let param = {
       enabled,
-      config
-    }
+      config,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineEnableEncryption, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineEnableEncryption,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5880,11 +6786,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceSetEncryptionMode(encryptionMode: string): number {
     let param = {
-      encryptionMode
-    }
+      encryptionMode,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetEncryptionMode, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetEncryptionMode,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Enables built-in encryption with an encryption password before users
    * join a channel.
@@ -5900,11 +6809,14 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceSetEncryptionSecret(secret: string): number {
     let param = {
-      secret
-    }
+      secret,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetEncryptionSecret, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetEncryptionSecret,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5915,7 +6827,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   videoSourceRelease(): number {
     let ret = this.rtcEngine.VideoSourceRelease();
-    return ret.retCode
+    return ret.retCode;
   }
 
   // 2.4 new Apis
@@ -5932,26 +6844,36 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
 
-  videoSourceStartScreenCaptureByScreen(screenSymbol: ScreenSymbol, regionRect: CaptureRect, captureParams: ScreenCaptureParameters): number {
+  videoSourceStartScreenCaptureByScreen(
+    screenSymbol: ScreenSymbol,
+    regionRect: Rectangle,
+    captureParams: ScreenCaptureParameters
+  ): number {
     if (process.platform == "win32") {
       let param = {
         displayId: screenSymbol,
         regionRect,
-        captureParams
-      }
+        captureParams,
+      };
 
-      let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByDisplayId, JSON.stringify(param))
-      return ret.retCode
-    } else (process.platform == "darwin")
+      let ret = this.rtcEngine.CallApi(
+        ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
+        JSON.stringify(param)
+      );
+      return ret.retCode;
+    } else process.platform == "darwin";
     {
       let param = {
         screenRect: screenSymbol,
         regionRect,
-        captureParams
-      }
+        captureParams,
+      };
 
-      let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCaptureByScreenRect, JSON.stringify(param))
-      return ret.retCode
+      let ret = this.rtcEngine.CallApi(
+        ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
+        JSON.stringify(param)
+      );
+      return ret.retCode;
     }
   }
 
@@ -5964,15 +6886,22 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceStartScreenCaptureByWindow(windowId: number, regionRect: CaptureRect, captureParams: ScreenCaptureParameters): number {
+  videoSourceStartScreenCaptureByWindow(
+    windowId: number,
+    regionRect: Rectangle,
+    captureParams: ScreenCaptureParameters
+  ): number {
     let param = {
       windowId,
       regionRect,
-      captureParams
-    }
+      captureParams,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStartScreenCaptureByWindowId, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5982,13 +6911,18 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceUpdateScreenCaptureParameters(captureParams: ScreenCaptureParameters): number {
+  videoSourceUpdateScreenCaptureParameters(
+    captureParams: ScreenCaptureParameters
+  ): number {
     let param = {
-      captureParams
-    }
+      captureParams,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineUpdateScreenCaptureParameters, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineUpdateScreenCaptureParameters,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -5998,16 +6932,21 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceSetScreenCaptureContentHint(contentHint: VideoContentHint): number {
+  videoSourceSetScreenCaptureContentHint(
+    contentHint: VideoContentHint
+  ): number {
     let param = {
-      contentHint
-    }
+      contentHint,
+    };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineSetScreenCaptureContentHint, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineSetScreenCaptureContentHint,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
- /**
+  /**
    * @deprecated This method is deprecated. Use
    * {@link videoSourceStartScreenCaptureByScreen} or
    * {@link videoSourceStartScreenCaptureByWindow} instead.
@@ -6024,11 +6963,21 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  startScreenCapture2(windowId: number, captureFreq: number, rect: Rect, bitrate: number): number {
+  startScreenCapture2(
+    windowId: number,
+    captureFreq: number,
+    rect: Rect,
+    bitrate: number
+  ): number {
     deprecate(
       '"videoSourceStartScreenCaptureByScreen" or "videoSourceStartScreenCaptureByWindow"'
     );
-    return this.videoSourceStartScreenCapture(windowId, captureFreq, rect, bitrate)
+    return this.videoSourceStartScreenCapture(
+      windowId,
+      captureFreq,
+      rect,
+      bitrate
+    );
   }
 
   videoSourceStartScreenCapture(
@@ -6041,11 +6990,14 @@ class AgoraRtcEngine extends EventEmitter {
       windowId,
       captureFreq,
       rect,
-      bitrate
-    }
+      bitrate,
+    };
 
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartScreenCapture, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartScreenCapture,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /**
@@ -6055,15 +7007,16 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopScreenCapture2(): number {
-    deprecate(
-      "videoSourceStopScreenCapture"
-    );
-    return this.videoSourceStopScreenCapture()
+    deprecate("videoSourceStopScreenCapture");
+    return this.videoSourceStopScreenCapture();
   }
 
   videoSourceStopScreenCapture(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStopScreenCapture, '')
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineStopScreenCapture,
+      ""
+    );
+    return ret.retCode;
   }
 
   /**
@@ -6073,33 +7026,35 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   startScreenCapturePreview(): number {
-    deprecate(
-      "videoSourceStartPreview"
-    );
-    return this.videoSourceStartPreview()
+    deprecate("videoSourceStartPreview");
+    return this.videoSourceStartPreview();
   }
 
   videoSourceStartPreview(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStartPreview, '')
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineStartPreview,
+      ""
+    );
+    return ret.retCode;
   }
 
-    /**
+  /**
    * Stops the local video preview when using the video source.
    * @return
    * - 0: Success.
    * - < 0: Failure.
    */
   stopScreenCapturePreview(): number {
-    deprecate(
-      "videoSourceStopPreview"
-    );
-    return this.videoSourceStopPreview()
+    deprecate("videoSourceStopPreview");
+    return this.videoSourceStopPreview();
   }
 
   videoSourceStopPreview(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(ApiTypeEngine.kEngineStopPreview, '')
-    return ret.retCode
+    let ret = this.rtcEngine.VideoSourceCallApi(
+      ApiTypeEngine.kEngineStopPreview,
+      ""
+    );
+    return ret.retCode;
   }
 
   // /**
@@ -6210,18 +7165,18 @@ declare interface AgoraRtcEngine {
    *
    * `err`: Error code that the SDK returns when the method call fails.
    */
-  on(evt: 'apiCallExecuted', cb: (api: string, err: number) => void): this;
+  on(evt: "apiCallExecuted", cb: (api: string, err: number) => void): this;
   /**
    * Reports a warning during SDK runtime.
    * @param cb.warn Warning code.
    * @param cb.msg The warning message.
    */
-  on(evt: 'warning', cb: (warn: number, msg: string) => void): this;
+  on(evt: "warning", cb: (warn: number, msg: string) => void): this;
   /** Reports an error during SDK runtime.
    * @param cb.err Error code.
    * @param cb.msg The error message.
    */
-  on(evt: 'error', cb: (err: number, msg: string) => void): this;
+  on(evt: "error", cb: (err: number, msg: string) => void): this;
   /** Occurs when a user joins a specified channel.
    * @param cb.channel The channel name.
    * @param cb.uid User ID of the user joining the channel.
@@ -6230,7 +7185,7 @@ declare interface AgoraRtcEngine {
    * method until the SDK triggers this callback.
    */
   on(
-    evt: 'joinedChannel',
+    evt: "joinedChannel",
     cb: (channel: string, uid: number, elapsed: number) => void
   ): this;
   /** Occurs when a user rejoins the channel after disconnection due to network
@@ -6245,7 +7200,7 @@ declare interface AgoraRtcEngine {
    * method until the SDK triggers this callback.
    */
   on(
-    evt: 'rejoinedChannel',
+    evt: "rejoinedChannel",
     cb: (channel: string, uid: number, elapsed: number) => void
   ): this;
   // on(evt: 'audioQuality', cb: (
@@ -6256,7 +7211,7 @@ declare interface AgoraRtcEngine {
    * instead.
    */
   on(
-    evt: 'audioVolumeIndication',
+    evt: "audioVolumeIndication",
     cb: (
       uid: number,
       volume: number,
@@ -6314,7 +7269,7 @@ declare interface AgoraRtcEngine {
    * volume of all the remote speakers.
    */
   on(
-    evt: 'groupAudioVolumeIndication',
+    evt: "groupAudioVolumeIndication",
     cb: (
       speakers: {
         uid: number;
@@ -6329,12 +7284,12 @@ declare interface AgoraRtcEngine {
    * {@link leaveChannel} method, the SDK uses
    * this callback to notify the app when the user leaves the channel.
    */
-  on(evt: 'leaveChannel', cb: (stats: RtcStats) => void): this;
+  on(evt: "leaveChannel", cb: (stats: RtcStats) => void): this;
   /** Reports the statistics of the AgoraRtcEngine once every two seconds.
    *
    * @param cb.stats AgoraRtcEngine's statistics, see {@link RtcStats}
    */
-  on(evt: 'rtcStats', cb: (stats: RtcStats) => void): this;
+  on(evt: "rtcStats", cb: (stats: RtcStats) => void): this;
   /**
    * Reports the statistics of the local video streams.
    *
@@ -6347,7 +7302,7 @@ declare interface AgoraRtcEngine {
    * - stats: The statistics of the local video stream. See
    * {@link LocalVideoStats}.
    */
-  on(evt: 'localVideoStats', cb: (stats: LocalVideoStats) => void): this;
+  on(evt: "localVideoStats", cb: (stats: LocalVideoStats) => void): this;
   /**
    * Reports the statistics of the local audio streams.
    *
@@ -6356,19 +7311,19 @@ declare interface AgoraRtcEngine {
    * - stats: The statistics of the local audio stream. See
    * {@link LocalAudioStats}.
    */
-  on(evt: 'localAudioStats', cb: (stats: LocalAudioStats) => void): this;
+  on(evt: "localAudioStats", cb: (stats: LocalAudioStats) => void): this;
   /** Reports the statistics of the video stream from each remote user/host.
    *
    * @param cb.stats Statistics of the received remote video streams. See
    * {@link RemoteVideoState}.
    */
-  on(evt: 'remoteVideoStats', cb: (stats: RemoteVideoStats) => void): this;
+  on(evt: "remoteVideoStats", cb: (stats: RemoteVideoStats) => void): this;
   /** Reports the statistics of the audio stream from each remote user/host.
    *
    * @param cb.stats Statistics of the received remote audio streams. See
    * {@link RemoteAudioStats}.
    */
-  on(evt: 'remoteAudioStats', cb: (stats: RemoteAudioStats) => void): this;
+  on(evt: "remoteAudioStats", cb: (stats: RemoteAudioStats) => void): this;
   /**
    * @deprecated This callback is deprecated. Use remoteVideoStats instead.
    *
@@ -6380,7 +7335,10 @@ declare interface AgoraRtcEngine {
    * - stats: The transport-layer statistics. See
    * {@link RemoteVideoTransportStats}.
    */
-  on(evt: 'remoteVideoTransportStats', cb: (stats: RemoteVideoTransportStats) => void): this;
+  on(
+    evt: "remoteVideoTransportStats",
+    cb: (stats: RemoteVideoTransportStats) => void
+  ): this;
   /**
    * @deprecated This callback is deprecated. Use remoteAudioStats instead.
    *
@@ -6390,7 +7348,7 @@ declare interface AgoraRtcEngine {
    * {@link RemoteAudioTransportStats}.
    */
   on(
-    evt: 'remoteAudioTransportStats',
+    evt: "remoteAudioTransportStats",
     cb: (stats: RemoteAudioTransportStats) => void
   ): this;
   /**
@@ -6405,7 +7363,7 @@ declare interface AgoraRtcEngine {
    *  - 8: The device is unplugged.
    */
   on(
-    evt: 'audioDeviceStateChanged',
+    evt: "audioDeviceStateChanged",
     cb: (deviceId: string, deviceType: number, deviceState: number) => void
   ): this;
   // on(evt: 'audioMixingFinished', cb: () => void): this;
@@ -6423,18 +7381,18 @@ declare interface AgoraRtcEngine {
    *
    */
   on(
-    evt: 'audioMixingStateChanged',
+    evt: "audioMixingStateChanged",
     cb: (state: number, err: number) => void
   ): this;
   /** Occurs when a remote user starts audio mixing.
    * When a remote user calls {@link startAudioMixing} to play the background
    * music, the SDK reports this callback.
    */
-  on(evt: 'remoteAudioMixingBegin', cb: () => void): this;
+  on(evt: "remoteAudioMixingBegin", cb: () => void): this;
   /** Occurs when a remote user finishes audio mixing. */
-  on(evt: 'remoteAudioMixingEnd', cb: () => void): this;
+  on(evt: "remoteAudioMixingEnd", cb: () => void): this;
   /** Occurs when the local audio effect playback finishes. */
-  on(evt: 'audioEffectFinished', cb: (soundId: number) => void): this;
+  on(evt: "audioEffectFinished", cb: (soundId: number) => void): this;
   /**
    * This callback is not work.
    *
@@ -6449,7 +7407,7 @@ declare interface AgoraRtcEngine {
    *  - 8: The device is unplugged.
    */
   on(
-    evt: 'videoDeviceStateChanged',
+    evt: "videoDeviceStateChanged",
     cb: (deviceId: string, deviceType: number, deviceState: number) => void
   ): this;
   /**
@@ -6472,12 +7430,8 @@ declare interface AgoraRtcEngine {
    * See {@link AgoraNetworkQuality}.
    */
   on(
-    evt: 'networkQuality',
-    cb: (
-      uid: number,
-      txquality: QUALITY_TYPE,
-      rxquality: QUALITY_TYPE
-    ) => void
+    evt: "networkQuality",
+    cb: (uid: number, txquality: QUALITY_TYPE, rxquality: QUALITY_TYPE) => void
   ): this;
   /** Reports the last mile network quality of the local user once every two
    * seconds before the user joins the channel.
@@ -6490,7 +7444,7 @@ declare interface AgoraRtcEngine {
    * mile network conditions of the local user before the user joins the
    * channel.
    */
-  on(evt: 'lastMileQuality', cb: (quality: QUALITY_TYPE) => void): this;
+  on(evt: "lastMileQuality", cb: (quality: QUALITY_TYPE) => void): this;
   /** Reports the last-mile network probe result.
    * - result: The uplink and downlink last-mile network probe test result.
    * See {@link LastmileProbeResult}.
@@ -6499,7 +7453,7 @@ declare interface AgoraRtcEngine {
    * the {@link startLastmileProbeTest} method.
    */
   on(
-    evt: 'lastmileProbeResult',
+    evt: "lastmileProbeResult",
     cb: (result: LastmileProbeResult) => void
   ): this;
   /** Occurs when the first local video frame is displayed/rendered on the
@@ -6511,7 +7465,7 @@ declare interface AgoraRtcEngine {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'firstLocalVideoFrame',
+    evt: "firstLocalVideoFrame",
     cb: (width: number, height: number, elapsed: number) => void
   ): this;
   /**
@@ -6532,7 +7486,7 @@ declare interface AgoraRtcEngine {
    * sending the video stream.
    *  - The remote user calls the {@link disableVideo} method to disable video.
    */
-  on(evt: 'addStream', cb: (uid: number, elapsed: number) => void): this;
+  on(evt: "addStream", cb: (uid: number, elapsed: number) => void): this;
   /** Occurs when the video size or rotation of a specified user changes.
    * @param cb.uid User ID of the remote user or local user (0) whose video
    * size or
@@ -6542,7 +7496,7 @@ declare interface AgoraRtcEngine {
    * @param cb.roation New height (pixels) of the video.
    */
   on(
-    evt: 'videoSizeChanged',
+    evt: "videoSizeChanged",
     cb: (uid: number, width: number, height: number, rotation: number) => void
   ): this;
   /** @deprecated This callback is deprecated, please use
@@ -6560,7 +7514,7 @@ declare interface AgoraRtcEngine {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteVideoFrame',
+    evt: "firstRemoteVideoFrame",
     cb: (uid: number, width: number, height: number, elapsed: number) => void
   ): this;
   /** Occurs when the first remote video frame is decoded.
@@ -6573,7 +7527,7 @@ declare interface AgoraRtcEngine {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteVideoDecoded',
+    evt: "firstRemoteVideoDecoded",
     cb: (uid: number, width: number, height: number, elapsed: number) => void
   ): this;
   /** Occurs when a user or host joins the channel.
@@ -6598,7 +7552,7 @@ declare interface AgoraRtcEngine {
    * @param cb.elapsed Time delay (ms) from the local user calling the
    * {@link joinChannel} method until the SDK triggers this callback.
    */
-  on(evt: 'userJoined', cb: (uid: number, elapsed: number) => void): this;
+  on(evt: "userJoined", cb: (uid: number, elapsed: number) => void): this;
   /** Occurs when a remote user leaves the channel.
    * - uid: User ID of the user leaving the channel or going offline.
    * - reason: Reason why the user is offline:
@@ -6619,7 +7573,7 @@ declare interface AgoraRtcEngine {
    * detections, so we recommend using a signaling system for more reliable
    * offline detection.
    */
-  on(evt: 'removeStream', cb: (uid: number, reason: number) => void): this;
+  on(evt: "removeStream", cb: (uid: number, reason: number) => void): this;
   /** Occurs when a remote user (Communication)/host (Live streaming) leaves
    * the channel.
    *
@@ -6643,7 +7597,7 @@ declare interface AgoraRtcEngine {
    *  - (Live streaming only.) The client role switched from the host to the
    * audience.
    */
-  on(evt: 'userOffline', cb: (uid: number, reason: number) => void): this;
+  on(evt: "userOffline", cb: (uid: number, reason: number) => void): this;
   /** @deprecated This callback is deprecated, please use
    * `remoteAudioStateChanged` instead.
    *
@@ -6657,7 +7611,7 @@ declare interface AgoraRtcEngine {
    *  - true: Muted.
    *  - false: Unmuted.
    */
-  on(evt: 'userMuteAudio', cb: (uid: number, muted: boolean) => void): this;
+  on(evt: "userMuteAudio", cb: (uid: number, muted: boolean) => void): this;
 
   /**
    * Occurs when a remote user's video stream playback pauses/resumes.
@@ -6674,7 +7628,7 @@ declare interface AgoraRtcEngine {
    * **Note**: This callback returns invalid when the number of users in a
    * channel exceeds 20.
    */
-  on(evt: 'userMuteVideo', cb: (uid: number, muted: boolean) => void): this;
+  on(evt: "userMuteVideo", cb: (uid: number, muted: boolean) => void): this;
   /**
    * @deprecated This callback is deprecated. Use the remoteVideoStateChanged
    * callback instead.
@@ -6690,7 +7644,7 @@ declare interface AgoraRtcEngine {
    *  - false: Disable. The remote user can only enter a voice session, and
    * cannot send or receive any video stream.
    */
-  on(evt: 'userEnableVideo', cb: (uid: number, enabled: boolean) => void): this;
+  on(evt: "userEnableVideo", cb: (uid: number, enabled: boolean) => void): this;
   /**
    * @deprecated This callback is deprecated. Use the remoteVideoStateChanged
    * callback instead.
@@ -6710,19 +7664,19 @@ declare interface AgoraRtcEngine {
    * receive the video streams from other users.
    */
   on(
-    evt: 'userEnableLocalVideo',
+    evt: "userEnableLocalVideo",
     cb: (uid: number, enabled: boolean) => void
   ): this;
   /**
    * @deprecated Replaced by the localVideoStateChanged callback.
    * Occurs when the camera turns on and is ready to capture the video.
    */
-  on(evt: 'cameraReady', cb: () => void): this;
+  on(evt: "cameraReady", cb: () => void): this;
   /**
    * @deprecated Replaced by the localVideoStateChanged callback.
    * Occurs when the video stops playing.
    */
-  on(evt: 'videoStopped', cb: () => void): this;
+  on(evt: "videoStopped", cb: () => void): this;
   /** Occurs when the SDK cannot reconnect to Agora's edge server 10 seconds
    * after its connection to the server is interrupted.
    *
@@ -6733,13 +7687,13 @@ declare interface AgoraRtcEngine {
    * disconnected from Agora's edge server, the SDK stops rejoining the
    * channel.
    */
-  on(evt: 'connectionLost', cb: () => void): this;
+  on(evt: "connectionLost", cb: () => void): this;
   // on(evt: 'connectionInterrupted', cb: () => void): this;
   /**
    * @deprecated Replaced by the connectionStateChanged callback.
    * Occurs when your connection is banned by the Agora Server.
    */
-  on(evt: 'connectionBanned', cb: () => void): this;
+  on(evt: "connectionBanned", cb: () => void): this;
   // on(evt: 'refreshRecordingServiceStatus', cb: () => void): this;
   /** Occurs when the local user receives the data stream from the remote
    * user within five seconds.
@@ -6753,7 +7707,7 @@ declare interface AgoraRtcEngine {
    * @param cb.len Length of the data in bytes.
    */
   on(
-    evt: 'streamMessage',
+    evt: "streamMessage",
     cb: (uid: number, streamId: number, msg: string, len: number) => void
   ): this;
   /** Occurs when the local user does not receive the data stream from the
@@ -6771,7 +7725,7 @@ declare interface AgoraRtcEngine {
    * is interrupted.
    */
   on(
-    evt: 'streamMessageError',
+    evt: "streamMessageError",
     cb: (
       uid: number,
       streamId: number,
@@ -6781,7 +7735,7 @@ declare interface AgoraRtcEngine {
     ) => void
   ): this;
   /** Occurs when the media engine call starts. */
-  on(evt: 'mediaEngineStartCallSuccess', cb: () => void): this;
+  on(evt: "mediaEngineStartCallSuccess", cb: () => void): this;
   /** Occurs when the token expires.
    *
    * After a token(channel key) is specified by calling the {@link joinChannel}
@@ -6793,7 +7747,7 @@ declare interface AgoraRtcEngine {
    * This callback notifies the application to generate a new token. Call
    * the {@link renewToken} method to renew the token
    */
-  on(evt: 'requestChannelKey', cb: () => void): this;
+  on(evt: "requestChannelKey", cb: () => void): this;
   /** Occurs when the engine sends the first local audio frame.
    *
    * @deprecated This callback is deprecated from v3.2.0. Use
@@ -6803,7 +7757,7 @@ declare interface AgoraRtcEngine {
    * {@link joinChannel} until the
    * SDK triggers this callback.
    */
-  on(evt: 'firstLocalAudioFrame', cb: (elapsed: number) => void): this;
+  on(evt: "firstLocalAudioFrame", cb: (elapsed: number) => void): this;
   /**
    * @deprecated This callback is deprecated. Please use
    * `remoteAudioStateChanged` instead.
@@ -6816,7 +7770,7 @@ declare interface AgoraRtcEngine {
    * SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteAudioFrame',
+    evt: "firstRemoteAudioFrame",
     cb: (uid: number, elapsed: number) => void
   ): this;
   /** @deprecated This callback is deprecated, please use
@@ -6829,7 +7783,7 @@ declare interface AgoraRtcEngine {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteAudioDecoded',
+    evt: "firstRemoteAudioDecoded",
     cb: (uid: number, elapsed: number) => void
   ): this;
   /**
@@ -6849,7 +7803,7 @@ declare interface AgoraRtcEngine {
    * active speaker detected by the audio volume detection module of the SDK.
    *
    */
-  on(evt: 'activeSpeaker', cb: (uid: number) => void): this;
+  on(evt: "activeSpeaker", cb: (uid: number) => void): this;
   /** Occurs when the user role switches in a live streaming.
    *
    * For example,
@@ -6862,7 +7816,7 @@ declare interface AgoraRtcEngine {
    * @param cb.newRole The new role, see {@link CLIENT_ROLE_TYPE}
    */
   on(
-    evt: 'clientRoleChanged',
+    evt: "clientRoleChanged",
     cb: (oldRole: CLIENT_ROLE_TYPE, newRole: CLIENT_ROLE_TYPE) => void
   ): this;
   /** Occurs when the volume of the playback device, microphone, or
@@ -6875,25 +7829,34 @@ declare interface AgoraRtcEngine {
    *  - false: The audio device is not muted.
    */
   on(
-    evt: 'audioDeviceVolumeChanged',
+    evt: "audioDeviceVolumeChanged",
     cb: (deviceType: MEDIA_DEVICE_TYPE, volume: number, muted: boolean) => void
   ): this;
   /** Occurs when the user for sharing screen joined the channel.
    * - uid: The User ID.
    */
-  on(evt: 'videoSourceJoinedSuccess', cb: (uid: number) => void): this;
+  on(evt: "videoSourceJoinedSuccess", cb: (uid: number) => void): this;
   /** Occurs when the token expires. */
-  on(evt: 'videoSourceRequestNewToken', cb: () => void): this;
+  on(evt: "videoSourceRequestNewToken", cb: () => void): this;
   /** Occurs when the user for sharing screen leaved the channel.
    * - uid: The User ID.
    */
-  on(evt: 'videoSourceLeaveChannel', cb: () => void): this;
+  on(evt: "videoSourceLeaveChannel", cb: () => void): this;
 
-  on(evt: 'videoSourceLocalAudioStats', cb: (stats: LocalAudioStats) => void): this;
+  on(
+    evt: "videoSourceLocalAudioStats",
+    cb: (stats: LocalAudioStats) => void
+  ): this;
 
-  on(evt: 'videoSourceLocalVideoStats', cb: (stats: LocalVideoStats) => void): this;
+  on(
+    evt: "videoSourceLocalVideoStats",
+    cb: (stats: LocalVideoStats) => void
+  ): this;
 
-  on(evt: 'videoSourceVideoSizeChanged', cb: (uid: number, width: number, height: number, rotation: number) => void): this;
+  on(
+    evt: "videoSourceVideoSizeChanged",
+    cb: (uid: number, width: number, height: number, rotation: number) => void
+  ): this;
   /** Occurs when the remote video state changes.
    *
    * @param cb.uid ID of the user whose video state changes.
@@ -6905,7 +7868,7 @@ declare interface AgoraRtcEngine {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'remoteVideoStateChanged',
+    evt: "remoteVideoStateChanged",
     cb: (
       uid: number,
       state: REMOTE_VIDEO_STATE,
@@ -6920,7 +7883,7 @@ declare interface AgoraRtcEngine {
    * - height: Height of the changed camera focus area.
    */
   on(
-    evt: 'cameraFocusAreaChanged',
+    evt: "cameraFocusAreaChanged",
     cb: (x: number, y: number, width: number, height: number) => void
   ): this;
   /** Occurs when the camera exposure area changes.
@@ -6930,7 +7893,7 @@ declare interface AgoraRtcEngine {
    * - height: Height of the changed camera exposure area.
    */
   on(
-    evt: 'cameraExposureAreaChanged',
+    evt: "cameraExposureAreaChanged",
     cb: (x: number, y: number, width: number, height: number) => void
   ): this;
   /** Occurs when the token expires in 30 seconds.
@@ -6944,7 +7907,7 @@ declare interface AgoraRtcEngine {
    *
    * @param cb.token The token that expires in 30 seconds.
    */
-  on(evt: 'tokenPrivilegeWillExpire', cb: (token: string) => void): this;
+  on(evt: "tokenPrivilegeWillExpire", cb: (token: string) => void): this;
   /** @deprecated This callback is deprecated. Please use
    * `rtmpStreamingStateChanged` instead.
    *
@@ -6961,7 +7924,7 @@ declare interface AgoraRtcEngine {
    *  - 19: The publishing timed out.
    *  - 130: You cannot publish an encrypted stream.
    */
-  on(evt: 'streamPublished', cb: (url: string, error: number) => void): this;
+  on(evt: "streamPublished", cb: (url: string, error: number) => void): this;
   /** @deprecated This callback is deprecated. Please use
    * `rtmpStreamingStateChanged` instead.
    *
@@ -6971,7 +7934,7 @@ declare interface AgoraRtcEngine {
    * Reports the result of calling the {@link removePublishStreamUrl} method.
    * - url: The RTMP URL address.
    */
-  on(evt: 'streamUnpublished', cb: (url: string) => void): this;
+  on(evt: "streamUnpublished", cb: (url: string) => void): this;
   /**
    * Occurs when the state of the RTMP streaming changes.
    *
@@ -7021,7 +7984,10 @@ declare interface AgoraRtcEngine {
    * - `10`: The format of the stream's URL address is not supported. Check
    * whether the URL format is correct.
    */
-  on(evt: 'rtmpStreamingStateChanged', cb: (url: string, state: number, code: number) => void): this;
+  on(
+    evt: "rtmpStreamingStateChanged",
+    cb: (url: string, state: number, code: number) => void
+  ): this;
   /** Occurs when the publisher's transcoding is updated.
    *
    * When the LiveTranscoding class in the setLiveTranscoding method updates,
@@ -7032,7 +7998,7 @@ declare interface AgoraRtcEngine {
    * LiveTranscoding class for the first time, the SDK does not trigger the
    * transcodingUpdated callback.
    */
-  on(evt: 'transcodingUpdated', cb: () => void): this;
+  on(evt: "transcodingUpdated", cb: () => void): this;
   /** Occurs when a voice or video stream URL address is added to a live
    * broadcast.
    * - url: Pointer to the URL address of the externally injected stream.
@@ -7052,7 +8018,7 @@ declare interface AgoraRtcEngine {
    *
    */
   on(
-    evt: 'streamInjectStatus',
+    evt: "streamInjectStatus",
     cb: (url: string, uid: number, status: number) => void
   ): this;
   /** Occurs when the locally published media stream falls back to an
@@ -7072,7 +8038,10 @@ declare interface AgoraRtcEngine {
    *  - false: The locally published stream switches back to the video after
    * the network conditions improve.
    */
-  on(evt: 'localPublishFallbackToAudioOnly', cb: (isFallbackOrRecover: boolean) => void): this;
+  on(
+    evt: "localPublishFallbackToAudioOnly",
+    cb: (isFallbackOrRecover: boolean) => void
+  ): this;
   /** Occurs when the remote media stream falls back to audio-only stream due
    * to poor network conditions or switches back to the video stream after the
    * network conditions improve.
@@ -7090,10 +8059,10 @@ declare interface AgoraRtcEngine {
    *  - `false`: The remote media stream switches back to the video stream
    * after the network conditions improved.
    */
-  on(evt: 'remoteSubscribeFallbackToAudioOnly', cb: (
-    uid: number,
-    isFallbackOrRecover: boolean
-  ) => void): this;
+  on(
+    evt: "remoteSubscribeFallbackToAudioOnly",
+    cb: (uid: number, isFallbackOrRecover: boolean) => void
+  ): this;
   /**
    * @deprecated This callback is deprecated. Use the localAudioStateChanged
    * callback instead.
@@ -7103,15 +8072,18 @@ declare interface AgoraRtcEngine {
    *  - true: Enabled.
    *  - false: Disabled.
    */
-  on(evt: 'microphoneEnabled', cb: (enabled: boolean) => void): this;
+  on(evt: "microphoneEnabled", cb: (enabled: boolean) => void): this;
   /** Occurs when the connection state between the SDK and the server changes.
    * @param cb.state The connection state, see {@link ConnectionState}.
    * @param cb.reason The connection reason, see {@link ConnectionState}.
    */
-  on(evt: 'connectionStateChanged', cb: (
-    state: CONNECTION_STATE_TYPE,
-    reason: CONNECTION_CHANGED_REASON_TYPE
-  ) => void): this;
+  on(
+    evt: "connectionStateChanged",
+    cb: (
+      state: CONNECTION_STATE_TYPE,
+      reason: CONNECTION_CHANGED_REASON_TYPE
+    ) => void
+  ): this;
   /** Occurs when the local user successfully registers a user account by
    * calling the {@link registerLocalUserAccount} method.
    * This callback reports the user ID and user account of the local user.
@@ -7119,7 +8091,7 @@ declare interface AgoraRtcEngine {
    * - userAccount: The user account of the local user.
    */
   on(
-    evt: 'localUserRegistered',
+    evt: "localUserRegistered",
     cb: (uid: number, userAccount: string) => void
   ): this;
   /** Occurs when the SDK gets the user ID and user account of the remote user.
@@ -7132,7 +8104,7 @@ declare interface AgoraRtcEngine {
    * account of the remote user.
    */
   on(
-    evt: 'userInfoUpdated',
+    evt: "userInfoUpdated",
     cb: (uid: number, userInfo: UserInfo) => void
   ): this;
   /**
@@ -7181,10 +8153,10 @@ declare interface AgoraRtcEngine {
    * the web video or document. After the user exits full-screen mode, the
    * SDK reports this error code.
    */
-  on(evt: 'localVideoStateChanged', cb: (
-    localVideoState: number,
-    error: number
-  ) => void): this;
+  on(
+    evt: "localVideoStateChanged",
+    cb: (localVideoState: number, error: number) => void
+  ): this;
   /**
    * Occurs when the local audio state changes.
    *
@@ -7210,10 +8182,10 @@ declare interface AgoraRtcEngine {
    * is working properly.
    *  - 5: The local audio encoding fails.
    */
-  on(evt: 'localAudioStateChanged', cb: (
-    state: number,
-    error: number
-  ) => void): this;
+  on(
+    evt: "localAudioStateChanged",
+    cb: (state: number, error: number) => void
+  ): this;
   /**
    * Occurs when the remote audio state changes.
    *
@@ -7230,12 +8202,15 @@ declare interface AgoraRtcEngine {
    * @param cb.elapsed Time elapsed (ms) from the local user calling the
    * {@link joinChannel} method until the SDK triggers this callback.
    */
-  on(evt: 'remoteAudioStateChanged', cb: (
-    uid: number,
-    state: REMOTE_AUDIO_STATE,
-    reason: REMOTE_AUDIO_STATE_REASON,
-    elapsed: number
-  ) => void): this;
+  on(
+    evt: "remoteAudioStateChanged",
+    cb: (
+      uid: number,
+      state: REMOTE_AUDIO_STATE,
+      reason: REMOTE_AUDIO_STATE_REASON,
+      elapsed: number
+    ) => void
+  ): this;
   /**
    * Occurs when the state of the media stream relay changes.
    *
@@ -7245,18 +8220,22 @@ declare interface AgoraRtcEngine {
    * @param cb.state The state code. See {@link ChannelMediaRelayState}.
    * @param cb.code The error code. See {@link ChannelMediaRelayError}.
    */
-  on(evt: 'channelMediaRelayState', cb: (
-    state: CHANNEL_MEDIA_RELAY_STATE,
-    code: CHANNEL_MEDIA_RELAY_ERROR
-  ) => void): this;
+  on(
+    evt: "channelMediaRelayState",
+    cb: (
+      state: CHANNEL_MEDIA_RELAY_STATE,
+      code: CHANNEL_MEDIA_RELAY_ERROR
+    ) => void
+  ): this;
   /**
    * Reports events during the media stream relay.
    *
    * @param cb.event The event code. See {@link ChannelMediaRelayEvent}.
    */
-  on(evt: 'channelMediaRelayEvent', cb: (
-    event: CHANNEL_MEDIA_RELAY_EVENT
-  ) => void): this;
+  on(
+    evt: "channelMediaRelayEvent",
+    cb: (event: CHANNEL_MEDIA_RELAY_EVENT) => void
+  ): this;
   /** Receives the media metadata.
    *
    * After the sender sends the media metadata by calling the
@@ -7265,9 +8244,7 @@ declare interface AgoraRtcEngine {
    *
    * @param cb.metadata The media metadata.
    */
-  on(evt: 'receiveMetadata', cb: (
-    metadata: Metadata
-  ) => void): this;
+  on(evt: "receiveMetadata", cb: (metadata: Metadata) => void): this;
   /** Sends the media metadata successfully.
    *
    * After the sender sends the media metadata successfully by calling the
@@ -7276,9 +8253,7 @@ declare interface AgoraRtcEngine {
    *
    * @param cb.metadata The media metadata.
    */
-  on(evt: 'sendMetadataSuccess', cb: (
-    metadata: Metadata
-  ) => void): this;
+  on(evt: "sendMetadataSuccess", cb: (metadata: Metadata) => void): this;
   /** Occurs when the first audio frame is published.
    *
    * @since v3.2.0
@@ -7295,9 +8270,7 @@ declare interface AgoraRtcEngine {
    * @param cb.elapsed The time elapsed (ms) from the local client calling
    * {@link joinChannel} until the SDK triggers this callback.
    */
-  on(evt: 'firstLocalAudioFramePublished', cb: (
-    elapsed: number
-  ) => void): this;
+  on(evt: "firstLocalAudioFramePublished", cb: (elapsed: number) => void): this;
   /** Occurs when the first video frame is published.
    *
    * @since v3.2.0
@@ -7314,9 +8287,7 @@ declare interface AgoraRtcEngine {
    * @param cb.elapsed The time elapsed (ms) from the local client calling
    * {@link joinChannel} until the SDK triggers this callback.
    */
-  on(evt: 'firstLocalVideoFramePublished', cb: (
-    elapsed: number
-  ) => void): this;
+  on(evt: "firstLocalVideoFramePublished", cb: (elapsed: number) => void): this;
   /** Reports events during the RTMP or RTMPS streaming.
    *
    * @since v3.2.0
@@ -7324,10 +8295,10 @@ declare interface AgoraRtcEngine {
    * @param cb.url The RTMP or RTMPS streaming URL.
    * @param cb.eventCode The event code.
    */
-  on(evt: 'rtmpStreamingEvent', cb: (
-    url: string,
-    eventCode: RTMP_STREAMING_EVENT
-  ) => void): this;
+  on(
+    evt: "rtmpStreamingEvent",
+    cb: (url: string, eventCode: RTMP_STREAMING_EVENT) => void
+  ): this;
   /** Occurs when the audio publishing state changes.
    *
    * @since v3.2.0
@@ -7341,12 +8312,15 @@ declare interface AgoraRtcEngine {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'audioPublishStateChanged', cb: (
-    channel: string,
-    oldState: STREAM_PUBLISH_STATE,
-    newState: STREAM_PUBLISH_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "audioPublishStateChanged",
+    cb: (
+      channel: string,
+      oldState: STREAM_PUBLISH_STATE,
+      newState: STREAM_PUBLISH_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
   /** Occurs when the video publishing state changes.
    *
    * @since v3.2.0
@@ -7360,12 +8334,15 @@ declare interface AgoraRtcEngine {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'videoPublishStateChanged', cb: (
-    channel: string,
-    oldState: STREAM_PUBLISH_STATE,
-    newState: STREAM_PUBLISH_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "videoPublishStateChanged",
+    cb: (
+      channel: string,
+      oldState: STREAM_PUBLISH_STATE,
+      newState: STREAM_PUBLISH_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
   /** Occurs when the audio subscribing state changes.
    *
    * @since v3.2.0
@@ -7380,13 +8357,16 @@ declare interface AgoraRtcEngine {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'audioSubscribeStateChanged', cb: (
-    channel: string,
-    uid: number,
-    oldState: STREAM_SUBSCRIBE_STATE,
-    newState: STREAM_SUBSCRIBE_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "audioSubscribeStateChanged",
+    cb: (
+      channel: string,
+      uid: number,
+      oldState: STREAM_SUBSCRIBE_STATE,
+      newState: STREAM_SUBSCRIBE_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
   /** Occurs when the video subscribing state changes.
    *
    * @since v3.2.0
@@ -7401,29 +8381,21 @@ declare interface AgoraRtcEngine {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'videoSubscribeStateChanged', cb: (
-    channel: string,
-    uid: number,
-    oldState: STREAM_SUBSCRIBE_STATE,
-    newState: STREAM_SUBSCRIBE_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "videoSubscribeStateChanged",
+    cb: (
+      channel: string,
+      uid: number,
+      oldState: STREAM_SUBSCRIBE_STATE,
+      newState: STREAM_SUBSCRIBE_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
 
-  on(evt: 'uploadLogResult', cb: (
-    requestId: string,
-    success: boolean,
-    reason: number
-  ) => void): this;
-
-  on(evt: 'certificateRequired', cb: () => void): this;
-
-  on(evt: 'licenseRequest', cb: () => void): this;
-
-  on(evt: 'licenseValidated', cb: () => void): this;
-
-  on(evt: 'licenseError', cb: (result: number) => void): this;
-
-  on(evt: 'metadataReceived', cb: (metadata: Metadata) => void): this;
+  on(
+    evt: "uploadLogResult",
+    cb: (requestId: string, success: boolean, reason: number) => void
+  ): this;
 
   on(evt: string, listener: Function): this;
 }
@@ -7453,268 +8425,526 @@ class AgoraRtcChannel extends EventEmitter {
       });
     };
 
-    this.rtcChannel.OnEvent('call_back', (_eventName: string, _eventData: string) => {
-      switch (_eventName) {
-        case 'onChannelWarning':
-          {
-            let data: {channelId: string, warn: number, msg: string} = JSON.parse(_eventData)
-            fire('channelWarning', data.channelId, data.warn, data.msg)
-          }
-          break
+    this.rtcChannel.OnEvent(
+      "call_back",
+      (_eventName: string, _eventData: string) => {
+        switch (_eventName) {
+          case "onChannelWarning":
+            {
+              let data: {
+                channelId: string;
+                warn: number;
+                msg: string;
+              } = JSON.parse(_eventData);
+              fire("channelWarning", data.channelId, data.warn, data.msg);
+            }
+            break;
 
-        case 'onChannelError':
-          {
-            let data: {channelId: string, err: number, msg: string} = JSON.parse(_eventData)
-            fire('channelError', data.channelId, data.err, data.msg)
-          }
-          break
+          case "onChannelError":
+            {
+              let data: {
+                channelId: string;
+                err: number;
+                msg: string;
+              } = JSON.parse(_eventData);
+              fire("channelError", data.channelId, data.err, data.msg);
+            }
+            break;
 
-        case 'onJoinChannelSuccess':
-          {
-            let data: {channelId: string, uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('joinChannelSuccess', data.channelId, data.uid, data.elapsed)
-          }
-          break
+          case "onJoinChannelSuccess":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "joinChannelSuccess",
+                data.channelId,
+                data.uid,
+                data.elapsed
+              );
+            }
+            break;
 
-        case 'onRejoinChannelSuccess':
-          {
-            let data: {channelId: string, uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('rejoinChannelSuccess', data.channelId, data.uid, data.elapsed)
-          }
-          break
+          case "onRejoinChannelSuccess":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "rejoinChannelSuccess",
+                data.channelId,
+                data.uid,
+                data.elapsed
+              );
+            }
+            break;
 
-        case 'onLeaveChannel':
-          {
-            let data: {channelId: string, stats: RtcStats} = JSON.parse(_eventData)
-            fire('leaveChannel', data.channelId, data.stats)
-          }
-          break
+          case "onLeaveChannel":
+            {
+              let data: { channelId: string; stats: RtcStats } = JSON.parse(
+                _eventData
+              );
+              fire("leaveChannel", data.channelId, data.stats);
+            }
+            break;
 
-        case 'onClientRoleChanged':
-          {
-            let data: {channelId: string, oldRole: CLIENT_ROLE_TYPE, newRole: CLIENT_ROLE_TYPE} = JSON.parse(_eventData)
-            fire('clientRoleChanged', data.channelId, data.oldRole, data.newRole)
-          }
-          break
+          case "onClientRoleChanged":
+            {
+              let data: {
+                channelId: string;
+                oldRole: CLIENT_ROLE_TYPE;
+                newRole: CLIENT_ROLE_TYPE;
+              } = JSON.parse(_eventData);
+              fire(
+                "clientRoleChanged",
+                data.channelId,
+                data.oldRole,
+                data.newRole
+              );
+            }
+            break;
 
-        case 'onUserJoined':
-          {
-            let data: {channelId: string, uid: number, elapsed: number} = JSON.parse(_eventData)
-            fire('userJoined', data.channelId, data.uid, data.elapsed)
-          }
-          break
+          case "onUserJoined":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire("userJoined", data.channelId, data.uid, data.elapsed);
+            }
+            break;
 
-        case 'onUserOffline':
-          {
-            let data: {channelId: string, uid: number, reason: USER_OFFLINE_REASON_TYPE} = JSON.parse(_eventData)
-            fire('userOffline', data.channelId, data.uid, data.reason)
-          }
-          break
-        
-        case 'onConnectionLost':
-          {
-            let data: {channelId: string} = JSON.parse(_eventData)
-            fire('connectionlost', data.channelId)
-          }
-          break
+          case "onUserOffline":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                reason: USER_OFFLINE_REASON_TYPE;
+              } = JSON.parse(_eventData);
+              fire("userOffline", data.channelId, data.uid, data.reason);
+            }
+            break;
 
-        case 'onRequestToken':
-          {
-            let data: {channelId: string} = JSON.parse(_eventData)
-            fire('requestToken', data.channelId)
-          }
-          break
+          case "onConnectionLost":
+            {
+              let data: { channelId: string } = JSON.parse(_eventData);
+              fire("connectionlost", data.channelId);
+            }
+            break;
 
-        case 'onTokenPrivilegeWillExpire':
-          {
-            let data: {channelId:string, token: string} = JSON.parse(_eventData)
-            fire('tokenPrivilegeWillExpire', data.channelId, data.token)
-          }
-          break
-        
-        case 'onRtcStats':
-          {
-            let data: {channelId: string, stats: RtcStats} = JSON.parse(_eventData)
-            fire('rtcstats', data.channelId, data.stats)
-          }
-          break
-        
-        case 'onNetworkQuality':
-          {
-            let data: {channelId: string, uid: number, txQuality: QUALITY_TYPE, rxQuality: QUALITY_TYPE} = JSON.parse(_eventData)
-            fire('networkquality', data.channelId, data.uid, data.txQuality, data.rxQuality)
-          }
-          break
-        
-        case 'onRemoteVideoStats':
-          {
-            let data: {channelId: string, stats: RemoteVideoStats} = JSON.parse(_eventData)
-            fire('remoteVideoStats', data.channelId, data.stats)
-          }
-          break
+          case "onRequestToken":
+            {
+              let data: { channelId: string } = JSON.parse(_eventData);
+              fire("requestToken", data.channelId);
+            }
+            break;
 
-        case 'onRemoteAudioStats':
-          {
-            let data: {channelId: string, stats: RemoteAudioStats} = JSON.parse(_eventData)
-            fire('remoteAudioStats', data.channelId, data.stats)
-          }
-          break
+          case "onTokenPrivilegeWillExpire":
+            {
+              let data: { channelId: string; token: string } = JSON.parse(
+                _eventData
+              );
+              fire("tokenPrivilegeWillExpire", data.channelId, data.token);
+            }
+            break;
 
-        case 'onRemoteAudioStateChanged':
-          {
-            let data: {channelId: string, uid: number, state: REMOTE_AUDIO_STATE, reason: REMOTE_AUDIO_STATE_REASON, elapsed: number} = JSON.parse(_eventData)
-            fire('remoteAudioStateChanged', data.channelId, data.uid, data.state, data.reason, data.elapsed)
-          }
-          break
+          case "onRtcStats":
+            {
+              let data: { channelId: string; stats: RtcStats } = JSON.parse(
+                _eventData
+              );
+              fire("rtcstats", data.channelId, data.stats);
+            }
+            break;
 
-        case 'onAudioPublishStateChanged':
-          {
-            let data: {channelId: string, oldState: STREAM_PUBLISH_STATE, newState: STREAM_PUBLISH_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('audioPublishStateChanged', data.channelId, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
+          case "onNetworkQuality":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                txQuality: QUALITY_TYPE;
+                rxQuality: QUALITY_TYPE;
+              } = JSON.parse(_eventData);
+              fire(
+                "networkquality",
+                data.channelId,
+                data.uid,
+                data.txQuality,
+                data.rxQuality
+              );
+            }
+            break;
 
-        case 'onVideoPublishStateChanged':
-          {
-            let data: {channelId: string, oldState: STREAM_PUBLISH_STATE, newState: STREAM_PUBLISH_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('videoPublishStateChanged', data.channelId, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
+          case "onRemoteVideoStats":
+            {
+              let data: {
+                channelId: string;
+                stats: RemoteVideoStats;
+              } = JSON.parse(_eventData);
+              fire("remoteVideoStats", data.channelId, data.stats);
+            }
+            break;
 
-        case 'onAudioSubscribeStateChanged':
-          {
-            let data: {channelId: string, uid: number, oldState: STREAM_SUBSCRIBE_STATE, newState: STREAM_SUBSCRIBE_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('audioSubscribeStateChanged', data.channelId, data.uid, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
+          case "onRemoteAudioStats":
+            {
+              let data: {
+                channelId: string;
+                stats: RemoteAudioStats;
+              } = JSON.parse(_eventData);
+              fire("remoteAudioStats", data.channelId, data.stats);
+            }
+            break;
 
-        case 'onVideoSubscribeStateChanged':
-          {
-            let data: {channelId: string, uid: number, oldState: STREAM_SUBSCRIBE_STATE, newState: STREAM_SUBSCRIBE_STATE, elapseSinceLastState: number} = JSON.parse(_eventData)
-            fire('videoSubscribeStateChanged', data.channelId, data.uid, data.oldState, data.newState, data.elapseSinceLastState)
-          }
-          break
+          case "onRemoteAudioStateChanged":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                state: REMOTE_AUDIO_STATE;
+                reason: REMOTE_AUDIO_STATE_REASON;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteAudioStateChanged",
+                data.channelId,
+                data.uid,
+                data.state,
+                data.reason,
+                data.elapsed
+              );
+            }
+            break;
 
-        case 'onActiveSpeaker':
-          {
-            let data: {channelId: string, uid: number} = JSON.parse(_eventData)
-            fire('activeSpeaker', data.channelId, data.uid)
-          }
-          break
+          case "onAudioPublishStateChanged":
+            {
+              let data: {
+                channelId: string;
+                oldState: STREAM_PUBLISH_STATE;
+                newState: STREAM_PUBLISH_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audioPublishStateChanged",
+                data.channelId,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
 
-        case 'onVideoSizeChanged':
-          {
-            let data: {channelId: string, uid: number, width: number, height: number, rotation: number} = JSON.parse(_eventData)
-            fire('videoSizeChanged', data.channelId, data.uid, data.width, data.height, data.rotation)
-          }
-          break
-        
-        case 'onRemoteVideoStateChanged':
-          {
-            let data: {channelId: string, uid: number, state: REMOTE_VIDEO_STATE, reason: REMOTE_VIDEO_STATE_REASON, elapsed: number} = JSON.parse(_eventData)
-            fire('remoteVideoStateChanged', data.channelId, data.uid, data.state, data.reason, data.elapsed)
-          }
-          break
-        
-        case 'onStreamMessageError':
-          {
-            let data: {channelId: string, uid: number, streamId: number, code: number, missed: number, cached: number} = JSON.parse(_eventData)
-            fire('streamMessageError', data.channelId, data.uid, data.streamId, data.code, data.missed, data.cached)
-          }
-          break
+          case "onVideoPublishStateChanged":
+            {
+              let data: {
+                channelId: string;
+                oldState: STREAM_PUBLISH_STATE;
+                newState: STREAM_PUBLISH_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videoPublishStateChanged",
+                data.channelId,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
 
-        case 'onUserSuperResolutionEnabled':
-          {
-            let data: {channelId: string, uid: number, enabled: boolean, reason: SUPER_RESOLUTION_STATE_REASON} = JSON.parse(_eventData)
-            fire('userSuperResolutionEnabled', data.channelId, data.uid, data.enabled, data.reason)
-          }
-          break
+          case "onAudioSubscribeStateChanged":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                oldState: STREAM_SUBSCRIBE_STATE;
+                newState: STREAM_SUBSCRIBE_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "audioSubscribeStateChanged",
+                data.channelId,
+                data.uid,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
 
-        case 'onChannelMediaRelayStateChanged':
-          {
-            let data: {channelId: string, state: CHANNEL_MEDIA_RELAY_STATE, code: CHANNEL_MEDIA_RELAY_ERROR} = JSON.parse(_eventData)
-            fire('channelMediaRelayStateChanged', data.channelId, data.state, data.code)
-          }
-          break
+          case "onVideoSubscribeStateChanged":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                oldState: STREAM_SUBSCRIBE_STATE;
+                newState: STREAM_SUBSCRIBE_STATE;
+                elapseSinceLastState: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videoSubscribeStateChanged",
+                data.channelId,
+                data.uid,
+                data.oldState,
+                data.newState,
+                data.elapseSinceLastState
+              );
+            }
+            break;
 
-        case 'onChannelMediaRelayEvent':
-          {
-            let data: {channelId: string, code: CHANNEL_MEDIA_RELAY_EVENT} = JSON.parse(_eventData)
-            fire('channelMediaRelayEvent', data.channelId, data.code)
-          }
-          break
+          case "onActiveSpeaker":
+            {
+              let data: { channelId: string; uid: number } = JSON.parse(
+                _eventData
+              );
+              fire("activeSpeaker", data.channelId, data.uid);
+            }
+            break;
 
-        case 'onRtmpStreamingStateChanged':
-          {
-            let data: {channelId: string, url: string, state: RTMP_STREAM_PUBLISH_STATE, errCode: RTMP_STREAM_PUBLISH_ERROR} = JSON.parse(_eventData)
-            fire('rtmpStreamingStateChanged', data.channelId, data.url, data.state, data.errCode)
-          }
-          break
+          case "onVideoSizeChanged":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                width: number;
+                height: number;
+                rotation: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videoSizeChanged",
+                data.channelId,
+                data.uid,
+                data.width,
+                data.height,
+                data.rotation
+              );
+            }
+            break;
 
-        case 'onRtmpStreamingEvent':
-          {
-            let data: {channelId: string, url: string, eventCode: RTMP_STREAMING_EVENT} = JSON.parse(_eventData)
-            fire('rtmpStreamingEvent', data.channelId, data.url, data.eventCode)
-          }
-          break
+          case "onRemoteVideoStateChanged":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                state: REMOTE_VIDEO_STATE;
+                reason: REMOTE_VIDEO_STATE_REASON;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteVideoStateChanged",
+                data.channelId,
+                data.uid,
+                data.state,
+                data.reason,
+                data.elapsed
+              );
+            }
+            break;
 
-        case 'onTranscodingUpdated':
-          {
-            let data: {channelId: string} = JSON.parse(_eventData)
-            fire('transcodingUpdated', data.channelId)
-          }
-          break
+          case "onStreamMessageError":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                streamId: number;
+                code: number;
+                missed: number;
+                cached: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "streamMessageError",
+                data.channelId,
+                data.uid,
+                data.streamId,
+                data.code,
+                data.missed,
+                data.cached
+              );
+            }
+            break;
 
-        case 'onStreamInjectedStatus':
-          {
-            let data: {channelId: string, url: string, uid: number, status: number} = JSON.parse(_eventData)
-            fire('streamInjectedStatus', data.channelId, data.url, data.uid, data.status)
-          }
-          break
-        
-        case 'onLocalPublishFallbackToAudioOnly':
-          {
-            let data: {channelId: string, isFallbackOrRecover: boolean} = JSON.parse(_eventData)
-            fire('localPublishFallbackToAudioOnly', data.channelId, data.isFallbackOrRecover)
-          }
-          break
+          case "onUserSuperResolutionEnabled":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                enabled: boolean;
+                reason: SUPER_RESOLUTION_STATE_REASON;
+              } = JSON.parse(_eventData);
+              fire(
+                "userSuperResolutionEnabled",
+                data.channelId,
+                data.uid,
+                data.enabled,
+                data.reason
+              );
+            }
+            break;
 
-        case 'onRemoteSubscribeFallbackToAudioOnly': 
-          {
-            let data: {channelId: string, uid: number, isFallbackOrRecover: boolean} = JSON.parse(_eventData)
-            fire('remoteSubscribeFallbackToAudioOnly', data.channelId, data.uid, data.isFallbackOrRecover)
-          }
-          break
+          case "onChannelMediaRelayStateChanged":
+            {
+              let data: {
+                channelId: string;
+                state: CHANNEL_MEDIA_RELAY_STATE;
+                code: CHANNEL_MEDIA_RELAY_ERROR;
+              } = JSON.parse(_eventData);
+              fire(
+                "channelMediaRelayStateChanged",
+                data.channelId,
+                data.state,
+                data.code
+              );
+            }
+            break;
 
-        case 'onConnectionStateChanged':
-          {
-            let data: {channelId: string, state: CONNECTION_STATE_TYPE, reason: CONNECTION_CHANGED_REASON_TYPE} = JSON.parse(_eventData)
-            fire('connectionStateChanged', data.channelId, data.state, data.reason)
-          }
-          break
-        
-        default:
-          break
-      }
-    })
+          case "onChannelMediaRelayEvent":
+            {
+              let data: {
+                channelId: string;
+                code: CHANNEL_MEDIA_RELAY_EVENT;
+              } = JSON.parse(_eventData);
+              fire("channelMediaRelayEvent", data.channelId, data.code);
+            }
+            break;
 
-    this.rtcChannel.OnEvent('call_back_with_buffer', (_eventName: string, _eventData: string, _eventBuffer: string) => {
-      switch (_eventName) {
-        case 'onStreamMessage': { 
-          let data: {uid: number, streamId: number} = JSON.parse(_eventData)
-          fire('streamMessage', data.uid, data.streamId, _eventBuffer)
+          case "onRtmpStreamingStateChanged":
+            {
+              let data: {
+                channelId: string;
+                url: string;
+                state: RTMP_STREAM_PUBLISH_STATE;
+                errCode: RTMP_STREAM_PUBLISH_ERROR;
+              } = JSON.parse(_eventData);
+              fire(
+                "rtmpStreamingStateChanged",
+                data.channelId,
+                data.url,
+                data.state,
+                data.errCode
+              );
+            }
+            break;
+
+          case "onRtmpStreamingEvent":
+            {
+              let data: {
+                channelId: string;
+                url: string;
+                eventCode: RTMP_STREAMING_EVENT;
+              } = JSON.parse(_eventData);
+              fire(
+                "rtmpStreamingEvent",
+                data.channelId,
+                data.url,
+                data.eventCode
+              );
+            }
+            break;
+
+          case "onTranscodingUpdated":
+            {
+              let data: { channelId: string } = JSON.parse(_eventData);
+              fire("transcodingUpdated", data.channelId);
+            }
+            break;
+
+          case "onStreamInjectedStatus":
+            {
+              let data: {
+                channelId: string;
+                url: string;
+                uid: number;
+                status: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "streamInjectedStatus",
+                data.channelId,
+                data.url,
+                data.uid,
+                data.status
+              );
+            }
+            break;
+
+          case "onLocalPublishFallbackToAudioOnly":
+            {
+              let data: {
+                channelId: string;
+                isFallbackOrRecover: boolean;
+              } = JSON.parse(_eventData);
+              fire(
+                "localPublishFallbackToAudioOnly",
+                data.channelId,
+                data.isFallbackOrRecover
+              );
+            }
+            break;
+
+          case "onRemoteSubscribeFallbackToAudioOnly":
+            {
+              let data: {
+                channelId: string;
+                uid: number;
+                isFallbackOrRecover: boolean;
+              } = JSON.parse(_eventData);
+              fire(
+                "remoteSubscribeFallbackToAudioOnly",
+                data.channelId,
+                data.uid,
+                data.isFallbackOrRecover
+              );
+            }
+            break;
+
+          case "onConnectionStateChanged":
+            {
+              let data: {
+                channelId: string;
+                state: CONNECTION_STATE_TYPE;
+                reason: CONNECTION_CHANGED_REASON_TYPE;
+              } = JSON.parse(_eventData);
+              fire(
+                "connectionStateChanged",
+                data.channelId,
+                data.state,
+                data.reason
+              );
+            }
+            break;
+
+          default:
+            break;
         }
-        break
-
-        case '': {
-
-        }
-        break
-
-        default:
-        break
       }
-    })
+    );
+
+    this.rtcChannel.OnEvent(
+      "call_back_with_buffer",
+      (_eventName: string, _eventData: string, _eventBuffer: string) => {
+        switch (_eventName) {
+          case "onStreamMessage":
+            {
+              let data: { uid: number; streamId: number } = JSON.parse(
+                _eventData
+              );
+              fire("streamMessage", data.uid, data.streamId, _eventBuffer);
+            }
+            break;
+
+          case "":
+            {
+            }
+            break;
+
+          default:
+            break;
+        }
+      }
+    );
   }
   /**
    * Joins the channel with a user ID.
@@ -7777,11 +9007,14 @@ class AgoraRtcChannel extends EventEmitter {
       token,
       info,
       uid,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelJoinChannel, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelJoinChannel,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Joins the channel with a user account.
@@ -7833,11 +9066,14 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       token,
       userAccount,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelJoinChannelWithUserAccount, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelJoinChannelWithUserAccount,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Gets the channel ID of the current `AgoraRtcChannel` object.
@@ -7848,8 +9084,8 @@ class AgoraRtcChannel extends EventEmitter {
    * - The empty string "", if the method call fails.
    */
   channelId(): string {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelChannelId, '')
-    return ret.result
+    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelChannelId, "");
+    return ret.result;
   }
   /**
    * Retrieves the current call ID.
@@ -7868,8 +9104,8 @@ class AgoraRtcChannel extends EventEmitter {
    * - The empty string "", if the method call fails.
    */
   getCallId(): string {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelGetCallId, '')
-    return ret.result
+    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelGetCallId, "");
+    return ret.result;
   }
   /**
    * Sets the role of the user.
@@ -7895,11 +9131,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setClientRole(role: CLIENT_ROLE_TYPE): number {
     let param = {
-      role
-    }
+      role,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetClientRole, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetClientRole,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 
   /** Sets the role of a user in interactive live streaming.
@@ -7933,14 +9172,20 @@ class AgoraRtcChannel extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setClientRoleWithOptions(role: CLIENT_ROLE_TYPE, options: ClientRoleOptions): number {
+  setClientRoleWithOptions(
+    role: CLIENT_ROLE_TYPE,
+    options: ClientRoleOptions
+  ): number {
     let param = {
       role,
-      options
-    }
+      options,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetClientRole, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetClientRole,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Prioritizes a remote user's stream.
@@ -7964,11 +9209,14 @@ class AgoraRtcChannel extends EventEmitter {
   setRemoteUserPriority(uid: number, userPriority: PRIORITY_TYPE): number {
     let param = {
       uid,
-      userPriority
-    }
+      userPriority,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetRemoteUserPriority, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetRemoteUserPriority,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Gets a new token when the current token expires after a period of time.
@@ -7989,11 +9237,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   renewToken(token: string): number {
     let param = {
-      token
-    }
+      token,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRenewToken, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelRenewToken,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * @deprecated This method is deprecated from v3.2.0. Use the
@@ -8021,11 +9272,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setEncryptionSecret(secret: string): number {
     let param = {
-      secret
-    }
+      secret,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetEncryptionSecret, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetEncryptionSecret,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the built-in encryption mode.
@@ -8059,11 +9313,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setEncryptionMode(encryptionMode: string): number {
     let param = {
-      encryptionMode
-    }
+      encryptionMode,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetEncryptionMode, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetEncryptionMode,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the sound position and gain of a remote user.
@@ -8098,11 +9355,14 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       uid,
       pan,
-      gain
-    }
+      gain,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetRemoteVoicePosition, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetRemoteVoicePosition,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets whether to receive all remote audio streams by default.
@@ -8130,11 +9390,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setDefaultMuteAllRemoteAudioStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetDefaultMuteAllRemoteAudioStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetDefaultMuteAllRemoteAudioStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets whether to receive all remote video streams by default.
@@ -8161,11 +9424,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setDefaultMuteAllRemoteVideoStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetDefaultMuteAllRemoteVideoStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetDefaultMuteAllRemoteVideoStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops/Resumes receiving all remote users' audio streams.
@@ -8181,11 +9447,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   muteAllRemoteAudioStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelMuteAllRemoteAudioStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelMuteAllRemoteAudioStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops/Resumes receiving a specified remote user's audio stream.
@@ -8211,11 +9480,14 @@ class AgoraRtcChannel extends EventEmitter {
   muteRemoteAudioStream(userId: number, mute: boolean): number {
     let param = {
       userId,
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelMuteRemoteAudioStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelMuteRemoteAudioStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops/Resumes receiving all video stream from a specified remote user.
@@ -8231,11 +9503,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   muteAllRemoteVideoStreams(mute: boolean): number {
     let param = {
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelMuteAllRemoteVideoStreams, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelMuteAllRemoteVideoStreams,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops/Resumes receiving the video stream from a specified remote user.
@@ -8257,11 +9532,14 @@ class AgoraRtcChannel extends EventEmitter {
   muteRemoteVideoStream(userId: number, mute: boolean): number {
     let param = {
       userId,
-      mute
-    }
+      mute,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelMuteRemoteVideoStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelMuteRemoteVideoStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the stream type of the remote video.
@@ -8291,14 +9569,20 @@ class AgoraRtcChannel extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  setRemoteVideoStreamType(userId: number, streamType: REMOTE_VIDEO_STREAM_TYPE): number {
+  setRemoteVideoStreamType(
+    userId: number,
+    streamType: REMOTE_VIDEO_STREAM_TYPE
+  ): number {
     let param = {
       userId,
-      streamType
-    }
+      streamType,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetRemoteVideoStreamType, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetRemoteVideoStreamType,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the default type of receiving video stream.
@@ -8325,13 +9609,18 @@ class AgoraRtcChannel extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  setRemoteDefaultVideoStreamType(streamType: REMOTE_VIDEO_STREAM_TYPE): number {
+  setRemoteDefaultVideoStreamType(
+    streamType: REMOTE_VIDEO_STREAM_TYPE
+  ): number {
     let param = {
-      streamType
-    }
+      streamType,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetRemoteDefaultVideoStreamType, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetRemoteDefaultVideoStreamType,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Creates a data stream.
@@ -8362,11 +9651,14 @@ class AgoraRtcChannel extends EventEmitter {
   createDataStream(reliable: boolean, ordered: boolean): number {
     let param = {
       reliable,
-      ordered
-    }
+      ordered,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelCreateDataStream, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelCreateDataStream,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sends data stream messages to all users in the channel.
@@ -8400,11 +9692,15 @@ class AgoraRtcChannel extends EventEmitter {
   sendStreamMessage(streamId: number, msg: string): number {
     let param = {
       streamId,
-      length: msg.length
-    }
+      length: msg.length,
+    };
 
-    let ret = this.rtcChannel.CallApiWithBuffer(ApiTypeChannel.kChannelSendStreamMessage, JSON.stringify(param), msg)
-    return ret.retCode
+    let ret = this.rtcChannel.CallApiWithBuffer(
+      ApiTypeChannel.kChannelSendStreamMessage,
+      JSON.stringify(param),
+      msg
+    );
+    return ret.retCode;
   }
   /**
    * Publishes the local stream to a specified CDN URL address.
@@ -8447,11 +9743,14 @@ class AgoraRtcChannel extends EventEmitter {
   addPublishStreamUrl(url: string, transcodingEnabled: boolean): number {
     let param = {
       url,
-      transcodingEnabled
-    }
+      transcodingEnabled,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelAddPublishStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelAddPublishStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Removes the RTMP stream from the CDN.
@@ -8479,11 +9778,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   removePublishStreamUrl(url: string): number {
     let param = {
-      url
-    }
+      url,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRemovePublishStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelRemovePublishStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Sets the video layout and audio settings for CDN live.
@@ -8509,11 +9811,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setLiveTranscoding(transcoding: LiveTranscoding): number {
     let param = {
-      transcoding
-    }
+      transcoding,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetLiveTranscoding, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetLiveTranscoding,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Injects the online media stream to a live streaming.
@@ -8560,11 +9865,14 @@ class AgoraRtcChannel extends EventEmitter {
   addInjectStreamUrl(url: string, config: InjectStreamConfig): number {
     let param = {
       url,
-      config
-    }
+      config,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelAddInjectStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelAddInjectStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Removes the injected the online media stream in a live streaming.
@@ -8583,11 +9891,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   removeInjectStreamUrl(url: string): number {
     let param = {
-      url
-    }
+      url,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRemoveInjectStreamUrl, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelRemoveInjectStreamUrl,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Starts to relay media streams across channels.
@@ -8619,13 +9930,18 @@ class AgoraRtcChannel extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  startChannelMediaRelay(configuration: ChannelMediaRelayConfiguration): number {
+  startChannelMediaRelay(
+    configuration: ChannelMediaRelayConfiguration
+  ): number {
     let param = {
-      configuration
-    }
+      configuration,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelStartChannelMediaRelay, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelStartChannelMediaRelay,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Updates the channels for media stream relay.
@@ -8646,13 +9962,18 @@ class AgoraRtcChannel extends EventEmitter {
    * - 0: Success
    * - < 0: Failure
    */
-  updateChannelMediaRelay(configuration: ChannelMediaRelayConfiguration): number {
+  updateChannelMediaRelay(
+    configuration: ChannelMediaRelayConfiguration
+  ): number {
     let param = {
-      configuration
-    }
+      configuration,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelUpdateChannelMediaRelay, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelUpdateChannelMediaRelay,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /**
    * Stops the media stream relay.
@@ -8674,16 +9995,22 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure
    */
   stopChannelMediaRelay(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelStopChannelMediaRelay, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelStopChannelMediaRelay,
+      ""
+    );
+    return ret.retCode;
   }
   /**
    * Gets the connection state of the SDK.
    * @return {ConnectionState} Connect states. See {@link ConnectionState}.
    */
   getConnectionState(): CONNECTION_STATE_TYPE {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelGetConnectionState, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelGetConnectionState,
+      ""
+    );
+    return ret.retCode;
   }
   /**
    * Publishes the local stream to the channel.
@@ -8704,8 +10031,8 @@ class AgoraRtcChannel extends EventEmitter {
    *  - ERR_REFUSED (5): The method call is refused.
    */
   publish(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelPublish, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelPublish, "");
+    return ret.retCode;
   }
   /**
    * Stops publishing a stream to the channel.
@@ -8719,8 +10046,8 @@ class AgoraRtcChannel extends EventEmitter {
    *  - ERR_REFUSED (5): The method call is refused.
    */
   unpublish(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelUnPublish, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelUnPublish, "");
+    return ret.retCode;
   }
   /**
    * Allows a user to leave a channel.
@@ -8746,8 +10073,8 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelLeaveChannel, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelLeaveChannel, "");
+    return ret.retCode;
   }
   /**
    * Releases all AgoraRtcChannel resource
@@ -8759,8 +10086,8 @@ class AgoraRtcChannel extends EventEmitter {
    * this method.
    */
   release(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRelease, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRelease, "");
+    return ret.retCode;
   }
 
   /**
@@ -8791,11 +10118,14 @@ class AgoraRtcChannel extends EventEmitter {
   adjustUserPlaybackSignalVolume(userId: number, volume: number): number {
     let param = {
       userId,
-      volume
-    }
+      volume,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelAdjustUserPlaybackSignalVolume, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelAdjustUserPlaybackSignalVolume,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Unregisters a media metadata observer.
    *
@@ -8804,8 +10134,11 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   unRegisterMediaMetadataObserver(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelUnRegisterMediaMetadataObserver, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelUnRegisterMediaMetadataObserver,
+      ""
+    );
+    return ret.retCode;
   }
   /** Registers a media metadata observer.
    *
@@ -8814,8 +10147,11 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   registerMediaMetadataObserver(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRegisterMediaMetadataObserver, '')
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelRegisterMediaMetadataObserver,
+      ""
+    );
+    return ret.retCode;
   }
   /** Sends the media metadata.
    *
@@ -8836,11 +10172,15 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       uid: metadata.uid,
       size: metadata.size,
-      timeStampMs: metadata.timeStampMs
-    }
+      timeStampMs: metadata.timeStampMs,
+    };
 
-    let ret = this.rtcChannel.CallApiWithBuffer(ApiTypeChannel.kChannelSendMetadata, JSON.stringify(param), metadata.buffer)
-    return ret.retCode
+    let ret = this.rtcChannel.CallApiWithBuffer(
+      ApiTypeChannel.kChannelSendMetadata,
+      JSON.stringify(param),
+      metadata.buffer
+    );
+    return ret.retCode;
   }
   /** Sets the maximum size of the media metadata.
    *
@@ -8855,11 +10195,14 @@ class AgoraRtcChannel extends EventEmitter {
    */
   setMaxMetadataSize(size: number): number {
     let param = {
-      size
-    }
+      size,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelSetMaxMetadataSize, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelSetMaxMetadataSize,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
   /** Enables/Disables the built-in encryption.
    *
@@ -8891,15 +10234,16 @@ class AgoraRtcChannel extends EventEmitter {
   enableEncryption(enabled: boolean, config: EncryptionConfig): number {
     let param = {
       enabled,
-      config
-    }
+      config,
+    };
 
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelEnableEncryption, JSON.stringify(param))
-    return ret.retCode
+    let ret = this.rtcChannel.CallApi(
+      ApiTypeChannel.kChannelEnableEncryption,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
   }
 }
-
-
 
 declare interface AgoraRtcChannel {
   /** Occurs when a user joins a specified channel.
@@ -8907,18 +10251,21 @@ declare interface AgoraRtcChannel {
    * @param cb.elapsed Time elapsed (ms) from the user calling the
    * {@link joinChannel} method until the SDK triggers this callback.
    */
-  on(evt: 'joinChannelSuccess', cb: (uid: number, elapsed: number) => void): this;
+  on(
+    evt: "joinChannelSuccess",
+    cb: (uid: number, elapsed: number) => void
+  ): this;
   /**
    * Reports a warning during SDK runtime.
    * @param cb.warn Warning code.
    * @param cb.msg The warning message.
    */
-  on(evt: 'channelWarning', cb: (warn: number, msg: string) => void): this;
+  on(evt: "channelWarning", cb: (warn: number, msg: string) => void): this;
   /** Reports an error during SDK runtime.
    * @param cb.err Error code.
    * @param cb.msg The error message.
    */
-  on(evt: 'channelError', cb: (err: number, msg: string) => void): this;
+  on(evt: "channelError", cb: (err: number, msg: string) => void): this;
   /** Occurs when a user rejoins the channel after disconnection due to network
    * problems.
    * When a user loses connection with the server because of network problems,
@@ -8930,7 +10277,7 @@ declare interface AgoraRtcChannel {
    * method until the SDK triggers this callback.
    */
   on(
-    evt: 'rejoinChannelSuccess',
+    evt: "rejoinChannelSuccess",
     cb: (uid: number, elapsed: number) => void
   ): this;
   /** Occurs when the user leaves the channel.
@@ -8941,7 +10288,7 @@ declare interface AgoraRtcChannel {
    *
    * @param cb.stats The call statistics, see {@link RtcStats}
    */
-  on(evt: 'leaveChannel', cb: (stats: RtcStats) => void): this;
+  on(evt: "leaveChannel", cb: (stats: RtcStats) => void): this;
   /** Occurs when the user role switches in a live streaming.
    *
    * For example,
@@ -8954,7 +10301,7 @@ declare interface AgoraRtcChannel {
    * @param cb.newRole The new role, see {@link ClientRoleType}
    */
   on(
-    evt: 'clientRoleChanged',
+    evt: "clientRoleChanged",
     cb: (oldRole: CLIENT_ROLE_TYPE, newRole: CLIENT_ROLE_TYPE) => void
   ): this;
   /** Occurs when a user or host joins the channel.
@@ -8979,31 +10326,31 @@ declare interface AgoraRtcChannel {
    * @param cb.elapsed Time delay (ms) from the local user calling the
    * {@link joinChannel} method until the SDK triggers this callback.
    */
-  on(evt: 'userJoined', cb: (uid: number, elapsed: number) => void): this;
+  on(evt: "userJoined", cb: (uid: number, elapsed: number) => void): this;
   /** Occurs when a remote user (Communication)/host (Live streaming) leaves
-  * the channel.
-  *
-  * There are two reasons for users to become offline:
-  * - Leave the channel: When the user/host leaves the channel, the user/host
-  * sends a goodbye message. When this message is received, the SDK determines
-  * that the user/host leaves the channel.
-  * - Drop offline: When no data packet of the user or host is received for a
-  * certain period of time, the SDK assumes that the user/host drops
-  * offline. A poor network connection may lead to false detections, so we
-  * recommend using the signaling system for reliable offline detection.
-  *
-  * @param cb.uid ID of the user or host who leaves the channel or goes
-  * offline.
-  * @param cb.reason Reason why the user goes offline:
-  *  - The user left the current channel.
-  *  - The SDK timed out and the user dropped offline because no data packet
-  * was received within a certain period of time. If a user quits the call
-  * and the message is not passed to the SDK (due to an unreliable channel),
-  * the SDK assumes the user dropped offline.
-  *  - (Live streaming only.) The client role switched from the host to the
-  * audience.
-  */
-  on(evt: 'userOffline', cb: (uid: number, reason: number) => void): this;
+   * the channel.
+   *
+   * There are two reasons for users to become offline:
+   * - Leave the channel: When the user/host leaves the channel, the user/host
+   * sends a goodbye message. When this message is received, the SDK determines
+   * that the user/host leaves the channel.
+   * - Drop offline: When no data packet of the user or host is received for a
+   * certain period of time, the SDK assumes that the user/host drops
+   * offline. A poor network connection may lead to false detections, so we
+   * recommend using the signaling system for reliable offline detection.
+   *
+   * @param cb.uid ID of the user or host who leaves the channel or goes
+   * offline.
+   * @param cb.reason Reason why the user goes offline:
+   *  - The user left the current channel.
+   *  - The SDK timed out and the user dropped offline because no data packet
+   * was received within a certain period of time. If a user quits the call
+   * and the message is not passed to the SDK (due to an unreliable channel),
+   * the SDK assumes the user dropped offline.
+   *  - (Live streaming only.) The client role switched from the host to the
+   * audience.
+   */
+  on(evt: "userOffline", cb: (uid: number, reason: number) => void): this;
   /** Occurs when the SDK cannot reconnect to Agora's edge server 10 seconds
    * after its connection to the server is interrupted.
    *
@@ -9011,7 +10358,7 @@ declare interface AgoraRtcChannel {
    * seconds after calling the {@link joinChannel} method, whether or not it
    * is in the channel.
    */
-  on(evt: 'connectionLost', cb: () => void): this;
+  on(evt: "connectionLost", cb: () => void): this;
   /** Occurs when the token expires.
    *
    * After a token(channel key) is specified by calling the {@link joinChannel}
@@ -9023,7 +10370,7 @@ declare interface AgoraRtcChannel {
    * This callback notifies the application to generate a new token and call
    * {@link joinChannel} to rejoin the channel with the new token.
    */
-  on(evt: 'requestToken', cb: () => void): this;
+  on(evt: "requestToken", cb: () => void): this;
   /** Occurs when the token expires in 30 seconds.
    *
    * The user becomes offline if the token used in the {@link joinChannel}
@@ -9035,51 +10382,47 @@ declare interface AgoraRtcChannel {
    *
    * @param cb.token The token that expires in 30 seconds.
    */
-  on(evt: 'tokenPrivilegeWillExpire', cb: (token: string) => void): this;
+  on(evt: "tokenPrivilegeWillExpire", cb: (token: string) => void): this;
   /** Reports the statistics of the AgoraRtcChannel once every two seconds.
-  *
-  * @param cb.stats AgoraRtcChannel's statistics, see {@link RtcStats}
-  */
-  on(evt: 'rtcStats', cb: (stats: RtcStats) => void): this;
+   *
+   * @param cb.stats AgoraRtcChannel's statistics, see {@link RtcStats}
+   */
+  on(evt: "rtcStats", cb: (stats: RtcStats) => void): this;
   /**
-  * Reports the last mile network quality of each user in the channel
-  * once every two seconds.
-  *
-  * Last mile refers to the connection between the local device and Agora's
-  * edge server.
-  *
-  * @param cb.uid User ID. The network quality of the user with this uid is
-  * reported.
-  * If uid is 0, the local network quality is reported.
-  * @param cb.txquality Uplink transmission quality rating of the user in
-  * terms of
-  * the transmission bitrate, packet loss rate, average RTT (Round-Trip Time),
-  * and jitter of the uplink network. See {@link AgoraNetworkQuality}.
-  * @param cb.rxquality Downlink network quality rating of the user in terms
-  * of the
-  * packet loss rate, average RTT, and jitter of the downlink network.
-  * See {@link AgoraNetworkQuality}.
-  */
+   * Reports the last mile network quality of each user in the channel
+   * once every two seconds.
+   *
+   * Last mile refers to the connection between the local device and Agora's
+   * edge server.
+   *
+   * @param cb.uid User ID. The network quality of the user with this uid is
+   * reported.
+   * If uid is 0, the local network quality is reported.
+   * @param cb.txquality Uplink transmission quality rating of the user in
+   * terms of
+   * the transmission bitrate, packet loss rate, average RTT (Round-Trip Time),
+   * and jitter of the uplink network. See {@link AgoraNetworkQuality}.
+   * @param cb.rxquality Downlink network quality rating of the user in terms
+   * of the
+   * packet loss rate, average RTT, and jitter of the downlink network.
+   * See {@link AgoraNetworkQuality}.
+   */
   on(
-    evt: 'networkQuality',
-    cb: (
-      uid: number,
-      txquality: QUALITY_TYPE,
-      rxquality: QUALITY_TYPE
-    ) => void
+    evt: "networkQuality",
+    cb: (uid: number, txquality: QUALITY_TYPE, rxquality: QUALITY_TYPE) => void
   ): this;
   /** Reports the statistics of the video stream from each remote user/host.
    *
    * @param cb.stats Statistics of the received remote video streams. See
    * {@link RemoteVideoState}.
    */
-  on(evt: 'remoteVideoStats', cb: (stats: RemoteVideoStats) => void): this;
+  on(evt: "remoteVideoStats", cb: (stats: RemoteVideoStats) => void): this;
   /** Reports the statistics of the audio stream from each remote user/host.
    *
    * @param cb.stats Statistics of the received remote audio streams. See
    * {@link RemoteAudioStats}.
    */
-  on(evt: 'remoteAudioStats', cb: (stats: RemoteAudioStats) => void): this;
+  on(evt: "remoteAudioStats", cb: (stats: RemoteAudioStats) => void): this;
   /**
    * Occurs when the remote audio state changes.
    *
@@ -9096,12 +10439,15 @@ declare interface AgoraRtcChannel {
    * @param cb.elapsed Time elapsed (ms) from the local user calling the
    * {@link joinChannel} method until the SDK triggers this callback.
    */
-  on(evt: 'remoteAudioStateChanged', cb: (
-    uid: number,
-    state: REMOTE_AUDIO_STATE,
-    reason: REMOTE_AUDIO_STATE_REASON,
-    elapsed: number
-  ) => void): this;
+  on(
+    evt: "remoteAudioStateChanged",
+    cb: (
+      uid: number,
+      state: REMOTE_AUDIO_STATE,
+      reason: REMOTE_AUDIO_STATE_REASON,
+      elapsed: number
+    ) => void
+  ): this;
   /**
    * Reports which user is the loudest speaker.
    *
@@ -9119,7 +10465,7 @@ declare interface AgoraRtcChannel {
    * active speaker detected by the audio volume detection module of the SDK.
    *
    */
-  on(evt: 'activeSpeaker', cb: (uid: number) => void): this;
+  on(evt: "activeSpeaker", cb: (uid: number) => void): this;
   /** @deprecated This callback is deprecated, please use
    * `remoteVideoStateChanged` instead.
    *
@@ -9135,7 +10481,7 @@ declare interface AgoraRtcChannel {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteVideoFrame',
+    evt: "firstRemoteVideoFrame",
     cb: (uid: number, width: number, height: number, elapsed: number) => void
   ): this;
   /** @deprecated This callback is deprecated, please use
@@ -9148,7 +10494,7 @@ declare interface AgoraRtcChannel {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteAudioDecoded',
+    evt: "firstRemoteAudioDecoded",
     cb: (uid: number, elapsed: number) => void
   ): this;
   /** Occurs when the video size or rotation of a specified user changes.
@@ -9160,7 +10506,7 @@ declare interface AgoraRtcChannel {
    * @param cb.roation New height (pixels) of the video.
    */
   on(
-    evt: 'videoSizeChanged',
+    evt: "videoSizeChanged",
     cb: (uid: number, width: number, height: number, rotation: number) => void
   ): this;
   /** Occurs when the remote video state changes.
@@ -9174,7 +10520,7 @@ declare interface AgoraRtcChannel {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    evt: 'remoteVideoStateChanged',
+    evt: "remoteVideoStateChanged",
     cb: (
       uid: number,
       state: REMOTE_VIDEO_STATE,
@@ -9193,7 +10539,7 @@ declare interface AgoraRtcChannel {
    * @param cb.data The data received bt the local user.
    */
   on(
-    evt: 'streamMessage',
+    evt: "streamMessage",
     cb: (uid: number, streamId: number, data: string) => void
   ): this;
   /** Occurs when the local user does not receive the data stream from the
@@ -9211,7 +10557,7 @@ declare interface AgoraRtcChannel {
    * is interrupted.
    */
   on(
-    evt: 'streamMessageError',
+    evt: "streamMessageError",
     cb: (
       uid: number,
       streamId: number,
@@ -9229,18 +10575,22 @@ declare interface AgoraRtcChannel {
    * @param cb.state The state code. See {@link ChannelMediaRelayState}.
    * @param cb.code The error code. See {@link ChannelMediaRelayError}.
    */
-  on(evt: 'channelMediaRelayState', cb: (
-    state: CHANNEL_MEDIA_RELAY_STATE,
-    code: CHANNEL_MEDIA_RELAY_ERROR
-  ) => void): this;
+  on(
+    evt: "channelMediaRelayState",
+    cb: (
+      state: CHANNEL_MEDIA_RELAY_STATE,
+      code: CHANNEL_MEDIA_RELAY_ERROR
+    ) => void
+  ): this;
   /**
    * Reports events during the media stream relay.
    *
    * @param cb.event The event code. See {@link ChannelMediaRelayEvent}.
    */
-  on(evt: 'channelMediaRelayEvent', cb: (
-    event: CHANNEL_MEDIA_RELAY_EVENT
-  ) => void): this;
+  on(
+    evt: "channelMediaRelayEvent",
+    cb: (event: CHANNEL_MEDIA_RELAY_EVENT) => void
+  ): this;
   /** @deprecated This callback is deprecated. Please use
    * `remoteAudioStateChanged` instead.
    *
@@ -9253,7 +10603,7 @@ declare interface AgoraRtcChannel {
    * SDK triggers this callback.
    */
   on(
-    evt: 'firstRemoteAudioFrame',
+    evt: "firstRemoteAudioFrame",
     cb: (uid: number, elapsed: number) => void
   ): this;
 
@@ -9307,9 +10657,12 @@ declare interface AgoraRtcChannel {
    * - `10`: The format of the stream's URL address is not supported. Check
    * whether the URL format is correct.
    */
-  on(evt: 'rtmpStreamingStateChanged', cb: (url: string, state: number, code: number) => void): this;
+  on(
+    evt: "rtmpStreamingStateChanged",
+    cb: (url: string, state: number, code: number) => void
+  ): this;
   /** Occurs when the publisher's transcoding is updated. */
-  on(evt: 'transcodingUpdated', cb: () => void): this;
+  on(evt: "transcodingUpdated", cb: () => void): this;
   /** Occurs when a voice or video stream URL address is added to a live
    * broadcast.
    *
@@ -9330,7 +10683,7 @@ declare interface AgoraRtcChannel {
    *
    */
   on(
-    evt: 'streamInjectedStatus',
+    evt: "streamInjectedStatus",
     cb: (url: string, uid: number, status: number) => void
   ): this;
   /** Occurs when the remote media stream falls back to audio-only stream due
@@ -9350,19 +10703,22 @@ declare interface AgoraRtcChannel {
    *  - `false`: The remote media stream switches back to the video stream
    * after the network conditions improved.
    */
-  on(evt: 'remoteSubscribeFallbackToAudioOnly', cb: (
-    uid: number,
-    isFallbackOrRecover: boolean
-  ) => void): this;
+  on(
+    evt: "remoteSubscribeFallbackToAudioOnly",
+    cb: (uid: number, isFallbackOrRecover: boolean) => void
+  ): this;
   // on(evt: 'refreshRecordingServiceStatus', cb: () => void): this;
   /** Occurs when the connection state between the SDK and the server changes.
    * @param cb.state The connection state, see {@link ConnectionState}.
    * @param cb.reason The connection reason, see {@link ConnectionState}.
    */
-  on(evt: 'connectionStateChanged', cb: (
-    state: CONNECTION_STATE_TYPE,
-    reason: CONNECTION_CHANGED_REASON_TYPE
-  ) => void): this;
+  on(
+    evt: "connectionStateChanged",
+    cb: (
+      state: CONNECTION_STATE_TYPE,
+      reason: CONNECTION_CHANGED_REASON_TYPE
+    ) => void
+  ): this;
   /** Occurs when the audio publishing state changes.
    *
    * @since v3.2.0
@@ -9376,11 +10732,14 @@ declare interface AgoraRtcChannel {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'audioPublishStateChanged', cb: (
-    oldState: STREAM_PUBLISH_STATE,
-    newState: STREAM_PUBLISH_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "audioPublishStateChanged",
+    cb: (
+      oldState: STREAM_PUBLISH_STATE,
+      newState: STREAM_PUBLISH_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
   /** Occurs when the video publishing state changes.
    *
    * @since v3.2.0
@@ -9394,11 +10753,14 @@ declare interface AgoraRtcChannel {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'videoPublishStateChanged', cb: (
-    oldState: STREAM_PUBLISH_STATE,
-    newState: STREAM_PUBLISH_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "videoPublishStateChanged",
+    cb: (
+      oldState: STREAM_PUBLISH_STATE,
+      newState: STREAM_PUBLISH_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
   /** Occurs when the audio subscribing state changes.
    *
    * @since v3.2.0
@@ -9413,12 +10775,15 @@ declare interface AgoraRtcChannel {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'audioSubscribeStateChanged', cb: (
-    uid: number,
-    oldState: STREAM_SUBSCRIBE_STATE,
-    newState: STREAM_SUBSCRIBE_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "audioSubscribeStateChanged",
+    cb: (
+      uid: number,
+      oldState: STREAM_SUBSCRIBE_STATE,
+      newState: STREAM_SUBSCRIBE_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
   /** Occurs when the video subscribing state changes.
    *
    * @since v3.2.0
@@ -9433,14 +10798,17 @@ declare interface AgoraRtcChannel {
    * @param cb.elapseSinceLastState The time elapsed (ms) from the previous state
    * to the current state.
    */
-  on(evt: 'videoSubscribeStateChanged', cb: (
-    uid: number,
-    oldState: STREAM_SUBSCRIBE_STATE,
-    newState: STREAM_SUBSCRIBE_STATE,
-    elapseSinceLastState: number
-  ) => void): this;
+  on(
+    evt: "videoSubscribeStateChanged",
+    cb: (
+      uid: number,
+      oldState: STREAM_SUBSCRIBE_STATE,
+      newState: STREAM_SUBSCRIBE_STATE,
+      elapseSinceLastState: number
+    ) => void
+  ): this;
 
-  on(evt: 'streamMessage', uid: number, streamId: number, buffer: string): void;
+  on(evt: "streamMessage", uid: number, streamId: number, buffer: string): void;
 }
 
 export default AgoraRtcEngine;

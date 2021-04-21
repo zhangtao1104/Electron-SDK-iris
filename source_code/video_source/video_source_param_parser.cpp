@@ -1,13 +1,3 @@
-/*
-* Copyright (c) 2018 Agora.io
-* All rights reserved.
-* Proprietry and Confidential -- Agora.io
-*/
-
-/*
-*  Created by Wang Yongli, 2018
-*/
-
 #include "video_source_param_parser.h"
 
 VideoSourceParamParser::VideoSourceParamParser()

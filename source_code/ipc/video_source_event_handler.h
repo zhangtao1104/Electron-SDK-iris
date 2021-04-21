@@ -5,7 +5,7 @@ namespace agora {
         namespace electron { 
             class IVideoSourceEventHandler {
                 public:
-                    virtual ~IVideoSourceEventHandler();
+                    virtual ~IVideoSourceEventHandler() = default;
 
                     virtual void OnVideoSourceEvent(const char* eventName, const char* eventData) = 0;
 
