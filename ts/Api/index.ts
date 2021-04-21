@@ -4007,6 +4007,82 @@ class AgoraRtcEngine extends EventEmitter {
     return realDevice;
   }
 
+  /**
+   * @since v3.0.0
+   *
+   * Starts an audio recording on the client.
+   *
+   * The SDK allows recording during a call. After successfully calling this
+   * method, you can record the audio of all the users in the channel and get
+   * an audio recording file.
+   * Supported formats of the recording file are as follows:
+   * - .wav: Large file size with high fidelity.
+   * - .aac: Small file size with low fidelity.
+   *
+   * @note
+   * - Ensure that the directory you use to save the recording file exists and
+   * is writable.
+   * - This method is usually called after {@link joinChannel}. The
+   * recording automatically stops when you call {@link leaveChannel}.
+   * - For better recording effects, set quality as MEDIUM or HIGH when
+   * `sampleRate` is 44.1 kHz or 48 kHz.
+   *
+   * @param filePath The absolute file path of the recording file. The string
+   * of the file name is in UTF-8, such as `c:/music/audio.aac` for Windows and
+   * `file:///Users/Agora/Music/audio.aac` for macOS.
+   * @param sampleRate Sample rate (Hz) of the recording file. Supported
+   * values are as follows:
+   * - 16000
+   * - (Default) 32000
+   * - 44100
+   * - 48000
+   * @param quality The audio recording quality:
+   * - `0`: Low quality. The sample rate is 32 kHz, and the file size is around
+   * 1.2 MB after 10 minutes of recording.
+   * - `1`: Medium quality. The sample rate is 32 kHz, and the file size is
+   * around 2 MB after 10 minutes of recording.
+   * - `2`: High quality. The sample rate is 32 kHz, and the file size is
+   * around 3.75 MB after 10 minutes of recording.
+   *
+   * @return
+   * - 0: Success
+   * - < 0: Failure
+   */
+   startAudioRecording(
+    filePath: string,
+    sampleRate: number,
+    quality: number
+  ): number {
+    let param = {
+      filePath,
+      sampleRate,
+      quality,
+    };
+
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStartAudioRecording,
+      JSON.stringify(param)
+    );
+    return ret.retCode;
+  }
+  /**
+   * Stops an audio recording on the client.
+   *
+   * You can call this method before calling the {@link leaveChannel} method
+   * else to stop the recording automatically.
+   *
+   * @return
+   * - 0: Success
+   * - < 0: Failure
+   */
+  stopAudioRecording(): number {
+    let ret = this.rtcEngine.CallApi(
+      ApiTypeEngine.kEngineStopAudioRecording,
+      ""
+    );
+    return ret.retCode;
+  }
+
   // ===========================================================================
   // DEVICE MANAGEMENT
   // ===========================================================================
@@ -4456,81 +4532,6 @@ class AgoraRtcEngine extends EventEmitter {
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableLoopBackRecording,
       JSON.stringify(param)
-    );
-    return ret.retCode;
-  }
-  /**
-   * @since v3.0.0
-   *
-   * Starts an audio recording on the client.
-   *
-   * The SDK allows recording during a call. After successfully calling this
-   * method, you can record the audio of all the users in the channel and get
-   * an audio recording file.
-   * Supported formats of the recording file are as follows:
-   * - .wav: Large file size with high fidelity.
-   * - .aac: Small file size with low fidelity.
-   *
-   * @note
-   * - Ensure that the directory you use to save the recording file exists and
-   * is writable.
-   * - This method is usually called after {@link joinChannel}. The
-   * recording automatically stops when you call {@link leaveChannel}.
-   * - For better recording effects, set quality as MEDIUM or HIGH when
-   * `sampleRate` is 44.1 kHz or 48 kHz.
-   *
-   * @param filePath The absolute file path of the recording file. The string
-   * of the file name is in UTF-8, such as `c:/music/audio.aac` for Windows and
-   * `file:///Users/Agora/Music/audio.aac` for macOS.
-   * @param sampleRate Sample rate (Hz) of the recording file. Supported
-   * values are as follows:
-   * - 16000
-   * - (Default) 32000
-   * - 44100
-   * - 48000
-   * @param quality The audio recording quality:
-   * - `0`: Low quality. The sample rate is 32 kHz, and the file size is around
-   * 1.2 MB after 10 minutes of recording.
-   * - `1`: Medium quality. The sample rate is 32 kHz, and the file size is
-   * around 2 MB after 10 minutes of recording.
-   * - `2`: High quality. The sample rate is 32 kHz, and the file size is
-   * around 3.75 MB after 10 minutes of recording.
-   *
-   * @return
-   * - 0: Success
-   * - < 0: Failure
-   */
-  startAudioRecording(
-    filePath: string,
-    sampleRate: number,
-    quality: number
-  ): number {
-    let param = {
-      filePath,
-      sampleRate,
-      quality,
-    };
-
-    let ret = this.rtcEngine.CallApi(
-      ApiTypeEngine.kEngineStartAudioRecording,
-      JSON.stringify(param)
-    );
-    return ret.retCode;
-  }
-  /**
-   * Stops an audio recording on the client.
-   *
-   * You can call this method before calling the {@link leaveChannel} method
-   * else to stop the recording automatically.
-   *
-   * @return
-   * - 0: Success
-   * - < 0: Failure
-   */
-  stopAudioRecording(): number {
-    let ret = this.rtcEngine.CallApi(
-      ApiTypeEngine.kEngineStopAudioRecording,
-      ""
     );
     return ret.retCode;
   }
