@@ -2483,10 +2483,6 @@ export enum LOG_LEVEL {
   LOG_LEVEL_FATAL = 0x0008,
 }
 
-export interface RtcContext {
-  logConfig: LogConfig;
-}
-
 export interface RtcEngineContext {
   appId: string;
   areaCode?: AREA_CODE;

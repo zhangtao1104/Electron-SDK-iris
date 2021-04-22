@@ -104,7 +104,7 @@ import { EventEmitter } from "events";
 import { deprecate } from "../Utils";
 import { PluginInfo, Plugin } from "./plugin";
 
-const agora = require("../../build/Debug/agora_node_ext");
+const agora = require("../../build/Release/agora_node_ext");
 
 /**
  * The AgoraRtcEngine class.
