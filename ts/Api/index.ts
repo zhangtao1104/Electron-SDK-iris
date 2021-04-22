@@ -7401,7 +7401,8 @@ declare interface AgoraRtcEngine {
     evt: "audioDeviceStateChanged",
     cb: (deviceId: string, deviceType: number, deviceState: number) => void
   ): this;
-  // on(evt: 'audioMixingFinished', cb: () => void): this;
+  
+  on(evt: 'audioMixingFinished', cb: () => void): this;
   /** Occurs when the state of the local user's audio mixing file changes.
    * - state: The state code.
    *  - 710: The audio mixing file is playing.
