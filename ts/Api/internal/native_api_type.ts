@@ -1,3 +1,10 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 11:36:26 
+ * @Last Modified by:   zhangtao@agora.io 
+ * @Last Modified time: 2021-04-22 11:36:26 
+ */
+
 export enum ApiTypeEngine {
     kEngineInitialize,
     kEngineRelease,
@@ -150,12 +157,10 @@ export enum ApiTypeEngine {
     kEngineEnableRemoteSuperResolution,
     kEngineRegisterMediaMetadataObserver,
     kEngineSetParameters,
-  
     kEngineUnRegisterMediaMetadataObserver,
     kEngineSetMaxMetadataSize,
     kEngineSendMetadata,
     kEngineSetAppType,
-  
     kMediaPushAudioFrame,
     kMediaPullAudioFrame,
     kMediaSetExternalVideoSource,
@@ -220,7 +225,6 @@ export enum ApiTypeEngine {
     kGetAudioPlaybackDeviceMute,
     kStartAudioPlaybackDeviceTest,
     kStopAudioPlaybackDeviceTest,
-  
     kGetAudioRecordingDeviceCount,
     kGetAudioRecordingDeviceInfoByIndex,
     kSetCurrentAudioRecordingDeviceId,
@@ -232,7 +236,6 @@ export enum ApiTypeEngine {
     kGetAudioRecordingDeviceMute,
     kStartAudioRecordingDeviceTest,
     kStopAudioRecordingDeviceTest,
-  
     kStartAudioDeviceLoopbackTest,
     kStopAudioDeviceLoopbackTest,
   }

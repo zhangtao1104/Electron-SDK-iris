@@ -1,10 +1,18 @@
+/*
+ * @Author: zhangtao@agora.io
+ * @Date: 2021-04-22 11:41:00
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-04-22 14:07:54
+ */
+
 import { type } from "os";
 import { PluginInfo, Plugin } from "./plugin";
-import { ApiTypeEngine, ApiTypeChannel, ApiTypeAudioDeviceManager, ApiTypeVideoDeviceManager } from './api_type';
-
-export interface RendererOptions {
-  append: boolean;
-}
+import {
+  ApiTypeEngine,
+  ApiTypeChannel,
+  ApiTypeAudioDeviceManager,
+  ApiTypeVideoDeviceManager,
+} from "./internal/native_api_type";
 
 /**
  * Network quality types:
@@ -445,7 +453,7 @@ export interface LiveTranscoding {
    *
    * **Note**: Agora adjusts all values over 30 to 30.
    */
-  videoFrameRate: number;
+  videoFramerate: number;
   /**
    * Latency mode.
    * - true: Low latency with unassured quality.
@@ -517,7 +525,7 @@ export interface LiveTranscoding {
    * Once a background image is added, the audience of the CDN live publishing
    * stream can see the background image.
    */
-  background: RtcImage;
+  backgroundImage: RtcImage;
 
   /** The TranscodingUsers Array. */
   transcodingUsers: Array<TranscodingUser>;
@@ -1288,10 +1296,7 @@ export type ScreenSymbol = number | Rectangle;
 
 /** The video source encoding parameters. */
 export interface ScreenCaptureParameters {
-  /** Width (pixels) of the video. */
-  width: number; // Width (pixels) of the video
-  /** Height (pixels) of the video. */
-  height: number; // Height (pixels) of the video
+  dimensions: VideoDimensions;
   /** The frame rate (fps) of the shared region.
    *
    * The default value is 5.
@@ -1361,43 +1366,6 @@ export enum VideoContentHint {
    * picture, PowerPoint slide, or text.
    */
   CONTENT_HINT_DETAILS = 2,
-}
-
-/**
- * @deprecated This callback is deprecated. Use the remoteVideoStats callback
- * instead.
- *
- * Reports the transport-layer statistics of each remote video stream.
- */
-export interface RemoteVideoTransportStats {
-  /** User ID of the remote user sending the video packet. */
-  uid: number;
-  /** Network time delay (ms) from the remote user sending the video packet to
-   * the local user.
-   */
-  delay: number;
-  /** Packet loss rate (%) of the video packet sent from the remote user. */
-  lost: number;
-  /** Received bitrate (Kbps) of the video packet sent from the remote user. */
-  rxKBitRate: number;
-}
-
-/**
- * @deprecated This callback is deprecated. Use the remoteAudioStats callback
- * instead.
- *
- * Reports the transport-layer statistics of each remote audio stream.
- */
-export interface RemoteAudioTransportStats {
-  /** User ID of the remote user sending the audio packet. */
-  uid: number;
-  /** Network time delay (ms) from the remote user sending the audio packet to
-   * the local user. */
-  delay: number;
-  /** Packet loss rate (%) of the audio packet sent from the remote user. */
-  lost: number;
-  /** Received bitrate (Kbps) of the audio packet sent from the remote user. */
-  rxKBitRate: number;
 }
 
 /**
@@ -2233,6 +2201,7 @@ export interface ChannelMediaRelayConfiguration {
    *
    */
   destInfos: [ChannelMediaInfo];
+  destCount: number;
 }
 
 /** The event code in CHANNEL_MEDIA_RELAY_EVENT. */
@@ -2777,62 +2746,28 @@ export enum NETWORK_TYPE {
   NETWORK_TYPE_MOBILE_4G = 5,
 }
 
-/**
- * interface for c++ addon (.node)
- * @ignore
- */
-export interface NodeIrisEngine {
-  CallApi(
-    apiType: ApiTypeEngine,
-    params: string
-  ): { retCode: number; result: string };
-  CallApiWithBuffer(
-    apiType: ApiTypeEngine,
-    params: string,
-    buffer: string
-  ): { retCode: number; result: string };
-  OnEvent(callbackName: string, callback: Function): void;
-  GetChannel(): NodeIrisChannel;
-  GetDeviceManager(): NodeIrisDeviceManager;
-  GetScreenDisplaysInfo(): Array<Object>;
-  GetScreenWindowsInfo(): Array<Object>;
-  VideoSourceInitialize(params: string): { retCode: number; result: string };
-  VideoSourceCallApi(
-    apiType: ApiTypeEngine,
-    params: string
-  ): { retCode: number; result: string };
-  VideoSourceCallApiWithBuffer(
-    apiType: ApiTypeEngine,
-    params: string
-  ): { retCode: number; result: string };
-  VideoSourceRelease(): { retCode: number; result: string };
-  SetAddonLogFile(filePath: string): { retCode: number; result: number };
+export enum RENDER_MODE {
+  WEBGL = 1,
+  SOFTWARE = 2,
+  CUSTOME = 3
 }
-/**
- * @ignore
- */
-export interface NodeIrisChannel {
-  CallApi(
-    apiType: ApiTypeChannel,
-    params: string
-  ): { retCode: number; result: string };
-  CallApiWithBuffer(
-    apiType: ApiTypeChannel,
-    params: string,
-    buffer: string
-  ): { retCode: number; result: string };
-  OnEvent(callbackName: string, callback: Function): void;
+
+export interface RendererOptions {
+  append: boolean
 }
-/**
- * @ignore
- */
-export interface NodeIrisDeviceManager {
-  CallApiAudioDevice(
-    apiType: ApiTypeAudioDeviceManager,
-    params: string
-  ): { retCode: number; result: string };
-  CallApiVideoDevice(
-    apiType: ApiTypeVideoDeviceManager,
-    params: string
-  ): { retCode: number; result: string };
+
+export interface Device {
+  deviceId: string
+  deviceName: string
+  deviceid: string
+  devicename: string
 }
+
+export enum METADATA_TYPE {
+  UNKNOWN_METADATA = -1,
+  /** 0: the metadata type is video.
+   */
+  VIDEO_METADATA = 0,
+}
+
+export type CONTENT_MODE = number | 'local' | 'videosource'

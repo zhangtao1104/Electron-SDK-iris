@@ -1,4 +1,11 @@
-﻿import {
+﻿/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 11:39:24 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-04-22 14:34:56
+ */
+
+import {
   SoftwareRenderer,
   GlRenderer,
   IRenderer,
@@ -10,18 +17,21 @@ import {
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager
-} from './api_type'
+} from './internal/native_api_type'
 
 import {
+  NodeIrisEngine,
   NodeIrisChannel,
+  NodeIrisDeviceManager
+} from './internal/native_interface'
+
+import {
   RtcStats,
   LocalVideoStats,
   LocalAudioStats,
   RemoteVideoStats,
   RemoteAudioStats,
   REMOTE_AUDIO_STATE_REASON,
-  RemoteVideoTransportStats,
-  RemoteAudioTransportStats,
   REMOTE_VIDEO_STATE,
   REMOTE_VIDEO_STATE_REASON,
   REMOTE_AUDIO_STATE,
@@ -60,14 +70,12 @@ import {
   CLOUD_PROXY_TYPE,
   LogConfig,
   RtcEngineContext,
-  NodeIrisEngine,
   BeautyOptions,
   AUDIO_PROFILE_TYPE,
   AUDIO_SCENARIO_TYPE,
   VIDEO_MIRROR_MODE_TYPE,
   STREAM_FALLBACK_OPTIONS,
   Rect,
-  NodeIrisDeviceManager,
   Rectangle,
   USER_OFFLINE_REASON_TYPE,
   LOCAL_AUDIO_STREAM_STATE,
@@ -87,7 +95,11 @@ import {
   CHANNEL_MEDIA_RELAY_STATE,
   CHANNEL_MEDIA_RELAY_ERROR,
   ChannelMediaRelayConfiguration,
-} from "./native_type";
+  RENDER_MODE,
+  CONTENT_MODE,
+  Device,
+  METADATA_TYPE
+} from "./types";
 import { EventEmitter } from "events";
 import { deprecate } from "../Utils";
 import { PluginInfo, Plugin } from "./plugin";
@@ -123,12 +135,12 @@ class AgoraRtcEngine extends EventEmitter {
 
   /**
    * Decide whether to use webgl/software/custom rendering.
-   * @param {1|2|3} mode:
+   * @param {RENDER_MODE} mode:
    * - 1 for old webgl rendering.
    * - 2 for software rendering.
    * - 3 for custom rendering.
    */
-  setRenderMode(mode: 1 | 2 | 3 = 1): void {
+  setRenderMode(mode: RENDER_MODE = RENDER_MODE.WEBGL): void {
     this.renderMode = mode;
   }
 
@@ -1154,10 +1166,10 @@ class AgoraRtcEngine extends EventEmitter {
         switch (_eventName) {
           case "onStreamMessage":
             {
-              let data: { uid: number; streamId: number } = JSON.parse(
+              let data: { uid: number; streamId: number; length: number } = JSON.parse(
                 _eventData
               );
-              fire("streamMessage", data.uid, data.streamId, _eventBuffer);
+              fire("streamMessage", data.uid, data.streamId, _eventBuffer, length);
             }
             break;
 
@@ -1502,10 +1514,10 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   initializeWithContext(context: RtcEngineContext): number {
-    let parameter = {
+    let param = {
       context
     }
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineInitialize, JSON.stringify(parameter))
+    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineInitialize, JSON.stringify(param))
     return ret.retCode
   }
 
@@ -1563,13 +1575,14 @@ class AgoraRtcEngine extends EventEmitter {
 
   /**
    * Retrieves the error description.
-   * @param {number} errorCode The error code.
+   * @param {number} code The error code.
    * @return The error description.
    */
-  getErrorDescription(errorCode: number): string {
+  getErrorDescription(code: number): string {
     let param = {
-      code: errorCode,
+      code
     };
+
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetErrorDescription,
       JSON.stringify(param)
@@ -1742,6 +1755,7 @@ class AgoraRtcEngine extends EventEmitter {
       stereo,
       fullBitrate,
     };
+    
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetHighQualityAudioParameters,
       JSON.stringify(param)
@@ -1884,7 +1898,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - -1: Failure.
    */
   setupViewContentMode(
-    uid: number | "local" | "videosource",
+    uid: CONTENT_MODE,
     mode: 0 | 1,
     channelId: string | undefined
   ): number {
@@ -1951,6 +1965,7 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       profile,
     };
+
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetChannelProfile,
       JSON.stringify(param)
@@ -2172,7 +2187,7 @@ class AgoraRtcEngine extends EventEmitter {
 
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineAddVideoWaterMark,
-      JSON.stringify(options)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -2279,9 +2294,13 @@ class AgoraRtcEngine extends EventEmitter {
    * network probe test. See {@link LastmileProbeConfig}.
    */
   startLastmileProbeTest(config: LastmileProbeConfig): number {
+    let param = {
+      config
+    }
+
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartLastMileProbeTest,
-      JSON.stringify(config)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -2462,9 +2481,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   setCameraCapturerConfiguration(config: CameraCapturerConfiguration): number {
+    let param = {
+      config
+    }
+
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetCameraCapturerConfiguration,
-      JSON.stringify(config)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -2501,9 +2524,13 @@ class AgoraRtcEngine extends EventEmitter {
       mirrorMode = 0,
     } = config;
 
+    let param = {
+      config
+    }
+
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVideoEncoderConfiguration,
-      JSON.stringify(config)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -3163,28 +3190,6 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   /**
-   * @deprecated This method is deprecated. Use {@link disableAudio} instead.
-   * Disables the audio function in the channel.
-   * @return
-   * - 0: Success.
-   * - < 0: Failure.
-   */
-  pauseAudio() {
-    deprecate("disableAudio");
-  }
-
-  /**
-   * @deprecated  This method is deprecated. Use {@link enableAudio} instead.
-   * Resumes the audio function in the channel.
-   * @return
-   * - 0: Success.
-   * - < 0: Failure.
-   */
-  resumeAudio() {
-    deprecate("enableAudio");
-  }
-
-  /**
    * Specifies an SDK output log file.
    *
    * The log file records all log data for the SDK’s operation. Ensure that
@@ -3510,7 +3515,7 @@ class AgoraRtcEngine extends EventEmitter {
 
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVoiceReverb,
-      JSON.stringify(value)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -3606,7 +3611,7 @@ class AgoraRtcEngine extends EventEmitter {
 
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalPublishFallbackOption,
-      JSON.stringify(option)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -3984,7 +3989,7 @@ class AgoraRtcEngine extends EventEmitter {
   adjustUserPlaybackSignalVolume(uid: number, volume: number): number {
     let param = {
       uid,
-      volume,
+      volume
     };
 
     let ret = this.rtcEngine.CallApi(
@@ -3994,15 +3999,20 @@ class AgoraRtcEngine extends EventEmitter {
     return ret.retCode;
   }
 
+  /**
+   * @ignore
+   */
   convertDeviceInfoToObject(
     deviceInfo: string
-  ): { deviceid: string; devicename: string } {
+  ): Device {
     let _device: { deviceName: string; deviceId: string } = JSON.parse(
       deviceInfo
     );
-    let realDevice = {
+    let realDevice: Device = {
       devicename: _device.deviceName,
       deviceid: _device.deviceId,
+      deviceName: _device.deviceName,
+      deviceId: _device.deviceId
     };
     return realDevice;
   }
@@ -4090,13 +4100,13 @@ class AgoraRtcEngine extends EventEmitter {
    * Gets the list of the video devices.
    * @return {Array} The array of the video devices.
    */
-  getVideoDevices(): Array<{ deviceid: string; devicename: string }> {
+  getVideoDevices(): Array<Device> {
     let ret = this.rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kGetVideoDeviceCount,
       ""
     );
 
-    let deviceList = new Array<{ deviceid: string; devicename: string }>(
+    let deviceList = new Array<Device>(
       ret.retCode
     );
     for (let i = 0; i < ret.retCode; i++) {
@@ -4137,16 +4147,19 @@ class AgoraRtcEngine extends EventEmitter {
    * Gets the current video device.
    * @return {Object} The video device.
    */
-  getCurrentVideoDevice(): Object {
+  getCurrentVideoDevice(): Device {
     let ret = this.rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kGetCurrentVideoDeviceId,
       ""
     );
 
-    let param = {
+    let device: Device = {
       deviceId: ret.result,
-    };
-    return param;
+      deviceid: ret.result,
+      deviceName: '',
+      devicename: ''
+    }
+    return device;
   }
 
   /**
@@ -4196,13 +4209,13 @@ class AgoraRtcEngine extends EventEmitter {
    * Retrieves the audio playback device associated with the device ID.
    * @return {Array} The array of the audio playback device.
    */
-  getAudioPlaybackDevices(): Array<{ deviceid: string; devicename: string }> {
+  getAudioPlaybackDevices(): Array<Device> {
     let ret = this.rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceCount,
       ""
     );
 
-    let deviceList = new Array<{ deviceid: string; devicename: string }>(
+    let deviceList = new Array<Device>(
       ret.retCode
     );
     for (let i = 0; i < ret.retCode; i++) {
@@ -4250,7 +4263,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
 
-  getPlaybackDeviceInfo(): Array<{ deviceid: string; devicename: string }> {
+  getPlaybackDeviceInfo(): Array<Device> {
     return this.getAudioPlaybackDevices();
   }
 
@@ -4258,14 +4271,17 @@ class AgoraRtcEngine extends EventEmitter {
    * Gets the current audio playback device.
    * @return {Object} The current audio playback device.
    */
-  getCurrentAudioPlaybackDevice(): { deviceId: String } {
+  getCurrentAudioPlaybackDevice(): Device {
     let ret = this.rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceId,
       ""
     );
 
-    let device = {
+    let device: Device = {
       deviceId: ret.result,
+      deviceid: ret.result,
+      devicename: '',
+      deviceName: ''
     };
     return device;
   }
@@ -4306,13 +4322,13 @@ class AgoraRtcEngine extends EventEmitter {
    * Retrieves the audio recording device associated with the device ID.
    * @return {Array} The array of the audio recording device.
    */
-  getAudioRecordingDevices(): Array<{ deviceid: string; devicename: string }> {
+  getAudioRecordingDevices(): Array<Device> {
     let ret = this.rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceCount,
       ""
     );
 
-    let deviceList = new Array<{ deviceid: string; devicename: string }>(
+    let deviceList = new Array<Device>(
       ret.retCode
     );
     for (let i = 0; i < ret.retCode; i++) {
@@ -4350,7 +4366,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   /**
-   * @deprecated
+   * @deprecated ({@link getAudioRecordingDevices instead})
    * Retrieves the audio recording device information associated with the
    * device ID and device name.
    * @param {string} deviceId The device ID of the recording audio device.
@@ -4359,7 +4375,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  getRecordingDeviceInfo(): Array<{ deviceid: string; devicename: string }> {
+  getRecordingDeviceInfo(): Array<Device> {
     return this.getAudioRecordingDevices();
   }
 
@@ -4367,7 +4383,7 @@ class AgoraRtcEngine extends EventEmitter {
    * Gets the current audio recording device.
    * @return {Object} The audio recording device.
    */
-  getCurrentAudioRecordingDevice(): { deviceid: string; devicename: string } {
+  getCurrentAudioRecordingDevice(): Device {
     let ret = this.rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceInfo,
       ""
@@ -5224,9 +5240,13 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   setLiveTranscoding(transcoding: LiveTranscoding): number {
+    let param = {
+      transcoding
+    }
+    
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLiveTranscoding,
-      JSON.stringify(transcoding)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -5434,10 +5454,14 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  startChannelMediaRelay(config: ChannelMediaRelayConfiguration): number {
+  startChannelMediaRelay(configuration: ChannelMediaRelayConfiguration): number {
+    let param = {
+      configuration
+    }
+    
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartChannelMediaRelay,
-      JSON.stringify(config)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -5464,10 +5488,14 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  updateChannelMediaRelay(config: ChannelMediaRelayConfiguration): number {
+  updateChannelMediaRelay(configuration: ChannelMediaRelayConfiguration): number {
+    let param = {
+      configuration
+    }
+    
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineUpdateChannelMediaRelay,
-      JSON.stringify(config)
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -5947,12 +5975,16 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  unregisterMediaMetadataObserver(): number {
-    let param = this.rtcEngine.CallApi(
+  unregisterMediaMetadataObserver(type: METADATA_TYPE = 0): number {
+    let param = {
+      type
+    }
+
+    let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineUnRegisterMediaMetadataObserver,
-      ""
-    );
-    return param.retCode;
+      JSON.stringify(param)
+    )
+    return ret.retCode;
   }
   /** Registers a media metadata observer.
    *
@@ -5960,12 +5992,16 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  registerMediaMetadataObserver(): number {
+  registerMediaMetadataObserver(type: METADATA_TYPE = 0): number {
+    let param = {
+      type
+    }
+
     let ret = this.rtcEngine.CallApi(
       ApiTypeEngine.kEngineRegisterMediaMetadataObserver,
-      ""
-    );
-    return ret.retCode;
+      JSON.stringify(param)
+    )
+    return ret.retCode
   }
   /** Sends the media metadata.
    *
@@ -5984,10 +6020,8 @@ class AgoraRtcEngine extends EventEmitter {
    */
   sendMetadata(metadata: Metadata): number {
     let param = {
-      uid: metadata.uid,
-      size: metadata.size,
-      timeStampMs: metadata.timeStampMs,
-    };
+      metadata
+    }
 
     let ret = this.rtcEngine.CallApiWithBuffer(
       ApiTypeEngine.kEngineSendMetadata,
@@ -6382,11 +6416,11 @@ class AgoraRtcEngine extends EventEmitter {
       logConfig,
     };
 
-    let parameter = {
+    let param = {
       context,
     };
 
-    let ret = this.rtcEngine.VideoSourceInitialize(JSON.stringify(parameter));
+    let ret = this.rtcEngine.VideoSourceInitialize(JSON.stringify(param));
     return ret.retCode;
   }
 
@@ -6648,9 +6682,9 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  videoSourceUpdateScreenCaptureRegion(rect: Rectangle) {
+  videoSourceUpdateScreenCaptureRegion(regionRect: Rectangle) {
     let param = {
-      rect,
+      regionRect,
     };
 
     let ret = this.rtcEngine.VideoSourceCallApi(
@@ -7167,6 +7201,8 @@ declare interface AgoraRtcEngine {
    * `err`: Error code that the SDK returns when the method call fails.
    */
   on(evt: "apiCallExecuted", cb: (api: string, err: number) => void): this;
+
+  on(evt: 'apiError', cb: (msg: string)=> void): this;
   /**
    * Reports a warning during SDK runtime.
    * @param cb.warn Warning code.
@@ -7214,15 +7250,15 @@ declare interface AgoraRtcEngine {
   on(
     evt: "audioVolumeIndication",
     cb: (
-      uid: number,
-      volume: number,
+      speakers: AudioVolumeInfo[],
       speakerNumber: number,
       totalVolume: number
     ) => void
   ): this;
+
   /** Reports which users are speaking, the speakers' volume and whether the
    * local user is speaking.
-   *
+   * @deprecated (user {@link audioVolumeIndication instead})
    * This callback reports the IDs and volumes of the loudest speakers
    * (at most 3 users) at the moment in the channel, and whether the local user
    * is speaking.
@@ -7272,11 +7308,7 @@ declare interface AgoraRtcEngine {
   on(
     evt: "groupAudioVolumeIndication",
     cb: (
-      speakers: {
-        uid: number;
-        volume: number;
-        vad: number;
-      }[],
+      speakers: AudioVolumeInfo [],
       speakerNumber: number,
       totalVolume: number
     ) => void
@@ -7338,8 +7370,9 @@ declare interface AgoraRtcEngine {
    */
   on(
     evt: "remoteVideoTransportStats",
-    cb: (stats: RemoteVideoTransportStats) => void
+    cb: (uid: number, delay: number, lost: number, rxKBitRate: number) => void
   ): this;
+  
   /**
    * @deprecated This callback is deprecated. Use remoteAudioStats instead.
    *
@@ -7350,8 +7383,9 @@ declare interface AgoraRtcEngine {
    */
   on(
     evt: "remoteAudioTransportStats",
-    cb: (stats: RemoteAudioTransportStats) => void
+    cb: (uid: number, delay: number, lost: number, rxKBitRate: number) => void
   ): this;
+
   /**
    * Occurs when the audio device state changes.
    * - deviceId: Pointer to the device ID.
@@ -7445,7 +7479,7 @@ declare interface AgoraRtcEngine {
    * mile network conditions of the local user before the user joins the
    * channel.
    */
-  on(evt: "lastMileQuality", cb: (quality: QUALITY_TYPE) => void): this;
+  on(evt: "lastmileQuality", cb: (quality: QUALITY_TYPE) => void): this;
   /** Reports the last-mile network probe result.
    * - result: The uplink and downlink last-mile network probe test result.
    * See {@link LastmileProbeResult}.
@@ -7689,7 +7723,8 @@ declare interface AgoraRtcEngine {
    * channel.
    */
   on(evt: "connectionLost", cb: () => void): this;
-  // on(evt: 'connectionInterrupted', cb: () => void): this;
+ 
+  on(evt: 'connectionInterrupted', cb: () => void): this;
   /**
    * @deprecated Replaced by the connectionStateChanged callback.
    * Occurs when your connection is banned by the Agora Server.
@@ -7748,7 +7783,7 @@ declare interface AgoraRtcEngine {
    * This callback notifies the application to generate a new token. Call
    * the {@link renewToken} method to renew the token
    */
-  on(evt: "requestChannelKey", cb: () => void): this;
+  on(evt: "requestToken", cb: () => void): this;
   /** Occurs when the engine sends the first local audio frame.
    *
    * @deprecated This callback is deprecated from v3.2.0. Use
@@ -10371,7 +10406,7 @@ declare interface AgoraRtcChannel {
    * This callback notifies the application to generate a new token and call
    * {@link joinChannel} to rejoin the channel with the new token.
    */
-  on(evt: "requestToken", cb: () => void): this;
+  on(evt: "requestToken", cb: (channelId: string) => void): this;
   /** Occurs when the token expires in 30 seconds.
    *
    * The user becomes offline if the token used in the {@link joinChannel}
@@ -10467,37 +10502,6 @@ declare interface AgoraRtcChannel {
    *
    */
   on(evt: "activeSpeaker", cb: (uid: number) => void): this;
-  /** @deprecated This callback is deprecated, please use
-   * `remoteVideoStateChanged` instead.
-   *
-   * Occurs when the first remote video frame is rendered.
-   *
-   * The SDK triggers this callback when the first frame of the remote video
-   * is displayed in the user's video window.
-   *
-   * @param cb.uid User ID of the remote user sending the video stream.
-   * @param cb.width Width (pixels) of the video frame.
-   * @param cb.height Height (pixels) of the video stream.
-   * @param cb.elapsed Time elapsed (ms) from the local user calling the
-   * {@link joinChannel} method until the SDK triggers this callback.
-   */
-  on(
-    evt: "firstRemoteVideoFrame",
-    cb: (uid: number, width: number, height: number, elapsed: number) => void
-  ): this;
-  /** @deprecated This callback is deprecated, please use
-   * `remoteAudioStateChanged` instead.
-   *
-   * Occurs when the engine receives the first audio frame from a specified
-   * remote user.
-   * @param cb.uid User ID of the remote user sending the audio stream.
-   * @param cb.elapsed The time elapsed (ms) from the local user calling the
-   * {@link joinChannel} method until the SDK triggers this callback.
-   */
-  on(
-    evt: "firstRemoteAudioDecoded",
-    cb: (uid: number, elapsed: number) => void
-  ): this;
   /** Occurs when the video size or rotation of a specified user changes.
    * @param cb.uid User ID of the remote user or local user (0) whose video
    * size or
