@@ -14,6 +14,7 @@ const getArgvFromPkgJson = () => {
     lib_sdk_win,
     lib_sdk_mac,
     no_symbol = true,
+    runtime = 'electron',
   } = agora_electron
 
   return {
@@ -29,6 +30,7 @@ const getArgvFromPkgJson = () => {
     lib_sdk_mac,
     downloadKey: agora_electron['JFrog-Art-Api'],
     no_symbol,
+    runtime,
   }
 }
 

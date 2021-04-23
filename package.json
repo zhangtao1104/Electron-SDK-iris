@@ -7,7 +7,11 @@
   "author": "agora.io",
   "gypfile": true,
   "scripts": {
-    "install": "gulp NPM_Install"
+    "install": "gulp NPM_Install",
+    "build":"gulp build",
+    "clean":"gulp clean",
+    "syncLib":"gulp syncLib",
+    "buildJS":"gulp buildJS"
   },
   "dependencies": {
     "vue-cli": "^2.9.6",
@@ -15,8 +19,8 @@
     "yuv-canvas": "1.2.6"
   },
   "agora_electron": {
-    "lib_sdk_win": "https://download.agora.io/sdk/release/Agora_Native_SDK_for_Windows_v3_4_0_FULL.zip",
-    "lib_sdk_mac": "https://download.agora.io/sdk/release/Agora_Native_SDK_for_Mac_v3_4_0_FULL.zip",
+    "lib_sdk_win": "https://download.agora.io/sdk/release/Agora_Native_SDK_for_Windows_v3_3_1_FULL.zip",
+    "lib_sdk_mac": "https://download.agora.io/sdk/release/Agora_Native_SDK_for_Mac_v3_3_1_FULL.zip",
     "JFrog-Art-Api": "AKCp8ihpZLUuQbsvo5N1zrfobsXr79qjQc3UNasrLTnRr5k7oGoRpnaphKLbzWKMDrEPgphqS",
     "prebuilt": false,
     "no_symbol": true

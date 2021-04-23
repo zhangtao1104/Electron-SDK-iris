@@ -8,7 +8,7 @@ import {voiceChangerList, voiceReverbPreset, videoProfileList, audioProfileList,
 import {readImage} from '../utils/base64'
 import WindowPicker from './components/WindowPicker/index.js'
 import DisplayPicker from './components/DisplayPicker/index.js'
-import { VoiceChangerPreset } from '../../../js/Api/native_type';
+import { VoiceChangerPreset } from '../../../js/Api/types';
 
 const isMac = process.platform === 'darwin'
 
