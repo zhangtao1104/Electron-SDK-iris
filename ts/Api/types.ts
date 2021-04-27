@@ -2,9 +2,8 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:41:00
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-24 13:25:11
+ * @Last Modified time: 2021-04-27 21:44:33
  */
-
 
 /**
  * Network quality types:
@@ -2737,18 +2736,18 @@ export enum NETWORK_TYPE {
 export enum RENDER_MODE {
   WEBGL = 1,
   SOFTWARE = 2,
-  CUSTOME = 3
+  CUSTOME = 3,
 }
 
 export interface RendererOptions {
-  append: boolean
+  append: boolean;
 }
 
 export interface Device {
-  deviceId: string
-  deviceName: string
-  deviceid: string
-  devicename: string
+  deviceId: string;
+  deviceName: string;
+  deviceid: string;
+  devicename: string;
 }
 
 export enum METADATA_TYPE {
@@ -2758,37 +2757,40 @@ export enum METADATA_TYPE {
   VIDEO_METADATA = 0,
 }
 
-export enum CHANNEL_PROFILE_TYPE
-{
+export enum CHANNEL_PROFILE_TYPE {
   /** (Default) Communication. This profile applies to scenarios such as an audio call or video call,
    * where all users can publish and subscribe to streams.
    */
-   CHANNEL_PROFILE_COMMUNICATION = 0,
+  CHANNEL_PROFILE_COMMUNICATION = 0,
   /** Live streaming. In this profile, uses have roles, namely, host and audience (default).
    * A host both publishes and subscribes to streams, while an audience subscribes to streams only.
    * This profile applies to scenarios such as a chat room or interactive video streaming.
    */
-   CHANNEL_PROFILE_LIVE_BROADCASTING = 1,
+  CHANNEL_PROFILE_LIVE_BROADCASTING = 1,
   /** 2: Gaming. This profile uses a codec with a lower bitrate and consumes less power. Applies to the gaming scenario, where all game players can talk freely.
    *
    * @note Agora does not recommend using this setting.
    */
-   CHANNEL_PROFILE_GAME = 2,
+  CHANNEL_PROFILE_GAME = 2,
 }
 
 export enum CONTENT_MODE {
   CROPPED = 0,
-  FIT = 1
+  FIT = 1,
 }
 
 export interface WindowInfo {
-  windowId: number,
-  name: string,
-  ownerName: string,
-  isOnScreen: boolean,
-  width: number,
-  height: number,
-  originWidth: number,
-  originHeight: number
-  image: Uint8Array
+  windowId: number;
+  name: string;
+  ownerName: string;
+  isOnScreen: boolean;
+  width: number;
+  height: number;
+  originWidth: number;
+  originHeight: number;
+  image: Uint8Array;
 }
+
+export type USER = 'local' | 'videoSource' | number | string
+
+export type Channel =  "" | string
