@@ -9,3 +9,6 @@ export const cleanBuildDir = async () =>
 
 export const cleanJSDir = async () =>
   await fs.remove(`${path.resolve(__dirname, '../js')}`)
+
+export const cleanTypesDir = async ()=>
+  await fs.remove(`${path.resolve(__dirname, '../types')}`)

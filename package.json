@@ -8,10 +8,10 @@
   "gypfile": true,
   "scripts": {
     "install": "gulp NPM_Install",
-    "build":"gulp build",
-    "clean":"gulp clean",
-    "syncLib":"gulp syncLib",
-    "buildJS":"gulp buildJS"
+    "build": "gulp build",
+    "clean": "gulp clean",
+    "syncLib": "gulp syncLib",
+    "buildJS": "gulp buildJS"
   },
   "dependencies": {
     "vue-cli": "^2.9.6",
