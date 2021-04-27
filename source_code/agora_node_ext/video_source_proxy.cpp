@@ -3,6 +3,7 @@
 #include <iosfwd>
 #include <sstream>
 #include <fstream>
+#include "loguru.hpp"
 
 
 namespace agora {
@@ -20,7 +21,6 @@ namespace agora {
                 if (_initialized) {
                     return true;
                 }
-
                 _videoSourceEventHandlerPtr.reset(videoSourceEventHandler);
 
     #ifdef _WIN32
@@ -47,7 +47,6 @@ namespace agora {
                 _iAgoraIpc->listen();
 
                 _messageThread = std::thread(&VideoSourceProxy::LoopMessage, this);
-
                 std::string targetPath;
                 if (!INodeProcess::getCurrentModuleFileName(targetPath)) {
                     return false;
@@ -75,11 +74,10 @@ namespace agora {
                 if (result != NodeEvent::WAIT_RESULT_SET) {
                     return false;
                 }
-
                 _iNodeProcess->Monitor([videoSourceEventHandler](INodeProcess* pProcess) {
                     videoSourceEventHandler->OnVideoSourceExit();
                 });
-
+        
                 _initialized = true;
                 return true;
             }
@@ -91,8 +89,10 @@ namespace agora {
 
             void VideoSourceProxy::OnMessage(unsigned int msg, char* payload, unsigned int len)
             {
-                if (msg == AGORA_IPC_CONNECT)
+                if (msg == AGORA_IPC_SOURCE_READY)
+                {
                     _statusEvent.notifyAll();
+                }
 
                 if (!_initialized)
                     return;
@@ -102,8 +102,10 @@ namespace agora {
                     case AGORA_IPC_ON_EVENT:
                         {
                             auto _parameter = reinterpret_cast<CallbackParameter*>(payload);
+                            // LOG_F(INFO, "VideoSourceProxy::OnMessage eventName");
+                            // LOG_F(INFO, "VideoSourceProxy::OnMessage eventName: %s, eventData: %s", _parameter->_eventName.c_str(), _parameter->_eventName.c_str());
                             if (_videoSourceEventHandlerPtr.get())
-                                _videoSourceEventHandlerPtr.get()->OnVideoSourceEvent(_parameter->_eventName.c_str(), _parameter->_eventData.c_str());
+                                _videoSourceEventHandlerPtr.get()->OnVideoSourceEvent(_parameter->_eventName.c_str(), _parameter->_eventName.c_str());
                         }
                         break;
 

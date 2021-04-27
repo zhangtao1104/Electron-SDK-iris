@@ -1,12 +1,9 @@
 /*
-* Copyright (c) 2017 Agora.io
-* All rights reserved.
-* Proprietry and Confidential -- Agora.io
-*/
-
-/*
-*  Created by Wang Yongli, 2017
-*/
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 20:53:10 
+ * @Last Modified by:   zhangtao@agora.io 
+ * @Last Modified time: 2021-04-22 20:53:10 
+ */
 
 #include "node_async_queue.h"
 #include <uv.h>

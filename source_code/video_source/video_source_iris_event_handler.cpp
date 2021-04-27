@@ -15,6 +15,10 @@ namespace agora {
 
             void VideoSourceIrisEventhandler::OnEvent(const char *event, const char *data)
             {
+                if (!data) {
+                    data = "";
+                }
+
                 CallbackParameter _parameter;
                 _parameter._eventName = event;
                 _parameter._eventData = data;
@@ -22,7 +26,15 @@ namespace agora {
             }
 
             void VideoSourceIrisEventhandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned int length)
-            {
+            {   
+                if (!data) {
+                    data = "";
+                }
+
+                if (!buffer) {
+                    buffer = "";
+                }
+                
                 CallbackParameter _parameter;
                 _parameter._eventName = event;
                 _parameter._eventData = data;

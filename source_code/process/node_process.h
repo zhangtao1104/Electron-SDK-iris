@@ -13,6 +13,7 @@
 
 #include <functional>
 #include <string>
+#include "loguru.hpp"
 
 class INodeProcess
 {

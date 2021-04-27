@@ -2,21 +2,23 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:39:24 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-22 14:34:56
+ * @Last Modified time: 2021-04-27 11:36:50
  */
 
 import {
-  SoftwareRenderer,
-  GlRenderer,
-  IRenderer,
-  CustomRenderer,
+  Renderer
 } from "../Renderer";
+
+import {
+  IRenderer
+} from "../Renderer/IRender"
 
 import {
   ApiTypeEngine,
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
-  ApiTypeVideoDeviceManager
+  ApiTypeVideoDeviceManager,
+  ApiTypeRawDataPlugin
 } from './internal/native_api_type'
 
 import {
@@ -98,7 +100,9 @@ import {
   RENDER_MODE,
   CONTENT_MODE,
   Device,
-  METADATA_TYPE
+  METADATA_TYPE,
+  CHANNEL_PROFILE_TYPE,
+  WindowInfo
 } from "./types";
 import { EventEmitter } from "events";
 import { deprecate } from "../Utils";
@@ -114,8 +118,7 @@ class AgoraRtcEngine extends EventEmitter {
   rtcChannel: NodeIrisChannel;
   rtcDeviceManager: NodeIrisDeviceManager;
   streams: Map<string, Map<string, IRenderer[]>>;
-  renderMode: 1 | 2 | 3;
-  customRenderer: any;
+  renderMode: RENDER_MODE;
   constructor() {
     super();
     console.log("new AgoraRtcEngine");
@@ -124,8 +127,7 @@ class AgoraRtcEngine extends EventEmitter {
     this.rtcChannel = this.rtcEngine.GetChannel();
     this.rtcDeviceManager = this.rtcEngine.GetDeviceManager();
     this.streams = new Map();
-    this.renderMode = this._checkWebGL() ? 1 : 2;
-    this.customRenderer = CustomRenderer;
+    this.renderMode = this._checkWebGL() ? RENDER_MODE.WEBGL : RENDER_MODE.SOFTWARE;
   }
 
   setAddonLogFile(filePath: string): number {
@@ -142,16 +144,6 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setRenderMode(mode: RENDER_MODE = RENDER_MODE.WEBGL): void {
     this.renderMode = mode;
-  }
-
-  /**
-   * Use this method to set custom Renderer when set renderMode in the
-   * {@link setRenderMode} method to 3.
-   * CustomRender should be a class.
-   * @param {IRenderer} customRenderer Customizes the video renderer.
-   */
-  setCustomRenderer(customRenderer: IRenderer) {
-    this.customRenderer = customRenderer;
   }
 
   /**
@@ -212,8 +204,9 @@ class AgoraRtcEngine extends EventEmitter {
       "call_back",
       (_eventName: string, _eventData: string) => {
         switch (_eventName) {
-          case "fireApiError":
+          case "apiError":
             {
+              console.error(`call apiError msg: ${_eventData}`)
               fire("apiError", _eventData);
             }
             break;
@@ -222,6 +215,7 @@ class AgoraRtcEngine extends EventEmitter {
             {
               let data: { warn: number; msg: string } = JSON.parse(_eventData);
               fire("warning", data.warn, data.msg);
+              console.warn(`Agora SDK Warning  code: ${data.warn}, msg: ${data.msg}`)
             }
             break;
 
@@ -229,6 +223,7 @@ class AgoraRtcEngine extends EventEmitter {
             {
               let data: { err: number; msg: string } = JSON.parse(_eventData);
               fire("error", data.err, data.msg);
+              console.error(`Agora SDK Error code: ${data.err}, msg: ${data.msg}`)
             }
             break;
 
@@ -1203,7 +1198,8 @@ class AgoraRtcEngine extends EventEmitter {
    * @ignore
    * @param {number} type 0-local 1-remote 2-device_test 3-video_source
    * @param {number} uid uid get from native engine, differ from electron engine's uid
-   */ _getRenderers(
+   */ 
+  _getRenderers(
     type: number,
     uid: number,
     channelId: string | undefined
@@ -1252,7 +1248,7 @@ class AgoraRtcEngine extends EventEmitter {
     udata: ArrayBuffer,
     vdata: ArrayBuffer
   ) {
-    if (header.byteLength != 20) {
+    if (header.byteLength !== 20) {
       console.error("invalid image header " + header.byteLength);
       return false;
     }
@@ -1265,8 +1261,8 @@ class AgoraRtcEngine extends EventEmitter {
       return false;
     }
     if (
-      ydata.byteLength != udata.byteLength * 4 ||
-      udata.byteLength != vdata.byteLength
+      ydata.byteLength !== udata.byteLength * 4 ||
+      udata.byteLength !== vdata.byteLength
     ) {
       console.error(
         "invalid image header " +
@@ -1289,40 +1285,40 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} infos
    */
   onRegisterDeliverFrame(infos: any) {
-    const len = infos.length;
-    for (let i = 0; i < len; i++) {
-      const info = infos[i];
-      const { type, uid, channelId, header, ydata, udata, vdata } = info;
-      if (!header || !ydata || !udata || !vdata) {
-        console.log(
-          "Invalid data param ： " +
-            header +
-            " " +
-            ydata +
-            " " +
-            udata +
-            " " +
-            vdata
-        );
-        continue;
-      }
-      const renderers = this._getRenderers(type, uid, channelId);
-      if (!renderers || renderers.length === 0) {
-        console.warn(`Can't find renderer for uid : ${uid} ${channelId}`);
-        continue;
-      }
+    // const len = infos.length;
+    // for (let i = 0; i < len; i++) {
+    //   const info = infos[i];
+    //   const { type, uid, channelId, header, ydata, udata, vdata } = info;
+    //   if (!header || !ydata || !udata || !vdata) {
+    //     console.log(
+    //       "Invalid data param ： " +
+    //         header +
+    //         " " +
+    //         ydata +
+    //         " " +
+    //         udata +
+    //         " " +
+    //         vdata
+    //     );
+    //     continue;
+    //   }
+    //   const renderers = this._getRenderers(type, uid, channelId);
+    //   if (!renderers || renderers.length === 0) {
+    //     console.warn(`Can't find renderer for uid : ${uid} ${channelId}`);
+    //     continue;
+    //   }
 
-      if (this._checkData(header, ydata, udata, vdata)) {
-        renderers.forEach((renderer) => {
-          renderer.drawFrame({
-            header,
-            yUint8Array: ydata,
-            uUint8Array: udata,
-            vUint8Array: vdata,
-          });
-        });
-      }
-    }
+    //   if (this._checkData(header, ydata, udata, vdata)) {
+    //     renderers.forEach((renderer) => {
+    //       renderer.drawFrame({
+    //         header,
+    //         yUint8Array: ydata,
+    //         uUint8Array: udata,
+    //         vUint8Array: vdata,
+    //       });
+    //     });
+    //   }
+    // }
   }
 
   /**
@@ -1380,14 +1376,12 @@ class AgoraRtcEngine extends EventEmitter {
     channelStreams = this._getChannelRenderers(channelId || "");
     let renderer: IRenderer;
     if (this.renderMode === 1) {
-      renderer = new GlRenderer();
+      renderer = new Renderer(true);
     } else if (this.renderMode === 2) {
-      renderer = new SoftwareRenderer();
-    } else if (this.renderMode === 3) {
-      renderer = new this.customRenderer();
+      renderer = new Renderer(false)
     } else {
       console.warn("Unknown render mode, fallback to 1");
-      renderer = new GlRenderer();
+      renderer = new Renderer(true);
     }
     renderer.bind(view);
 
@@ -1503,7 +1497,7 @@ class AgoraRtcEngine extends EventEmitter {
     areaCode?: AREA_CODE,
     logConfig?: LogConfig
   ): number {
-    deprecate("initializeWithContext")
+    deprecate("initialize", "initializeWithContext")
     let context: RtcEngineContext = {
       appId: appId,
       areaCode: areaCode,
@@ -1898,8 +1892,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - -1: Failure.
    */
   setupViewContentMode(
-    uid: CONTENT_MODE,
-    mode: 0 | 1,
+    uid: number | 'local' | 'videosource',
+    mode: CONTENT_MODE,
     channelId: string | undefined
   ): number {
     let channelStreams = this._getChannelRenderers(channelId || "");
@@ -1953,7 +1947,7 @@ class AgoraRtcEngine extends EventEmitter {
    * **Note**:
    * -  Call this method before the {@link joinChannel} method.
    * - Users in the same channel must use the same channel profile.
-   * @param {number} profile The channel profile:
+   * @param {CHANNEL_PROFILE_TYPE} profile The channel profile:
    * - 0: for communication
    * - 1: for live streaming
    * - 2: for in-game
@@ -1961,7 +1955,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setChannelProfile(profile: number): number {
+  setChannelProfile(profile: CHANNEL_PROFILE_TYPE): number {
     let param = {
       profile,
     };
@@ -4601,7 +4595,7 @@ class AgoraRtcEngine extends EventEmitter {
       ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceMute,
       ""
     );
-    return ret.retCode != 0;
+    return ret.retCode !== 0;
   }
 
   /**
@@ -4637,7 +4631,7 @@ class AgoraRtcEngine extends EventEmitter {
       ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceMute,
       ""
     );
-    return ret.retCode != 0;
+    return ret.retCode !== 0;
   }
 
   /**
@@ -4669,7 +4663,7 @@ class AgoraRtcEngine extends EventEmitter {
    * You can share the whole or part of a window by specifying the window ID.
    * @return {Array} The array list of the window ID and relevant information.
    */
-  getScreenWindowsInfo(): Array<Object> {
+  getScreenWindowsInfo(): Array<WindowInfo> {
     return this.rtcEngine.GetScreenWindowsInfo();
   }
 
@@ -4739,7 +4733,7 @@ class AgoraRtcEngine extends EventEmitter {
     regionRect: Rectangle,
     captureParams: ScreenCaptureParameters
   ): number {
-    if (process.platform == "win32") {
+    if (process.platform === "win32") {
       let param = {
         displayId: screenSymbol,
         regionRect,
@@ -4751,7 +4745,7 @@ class AgoraRtcEngine extends EventEmitter {
         JSON.stringify(param)
       );
       return ret.retCode;
-    } else process.platform == "darwin";
+    } else process.platform === "darwin";
     {
       let param = {
         screenRect: screenSymbol,
@@ -6884,7 +6878,7 @@ class AgoraRtcEngine extends EventEmitter {
     regionRect: Rectangle,
     captureParams: ScreenCaptureParameters
   ): number {
-    if (process.platform == "win32") {
+    if (process.platform === "win32") {
       let param = {
         displayId: screenSymbol,
         regionRect,
@@ -6896,7 +6890,7 @@ class AgoraRtcEngine extends EventEmitter {
         JSON.stringify(param)
       );
       return ret.retCode;
-    } else process.platform == "darwin";
+    } else process.platform === "darwin";
     {
       let param = {
         screenRect: screenSymbol,
@@ -7004,7 +6998,7 @@ class AgoraRtcEngine extends EventEmitter {
     rect: Rect,
     bitrate: number
   ): number {
-    deprecate(
+    deprecate("startScreenCapture2",
       '"videoSourceStartScreenCaptureByScreen" or "videoSourceStartScreenCaptureByWindow"'
     );
     return this.videoSourceStartScreenCapture(
@@ -7042,7 +7036,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopScreenCapture2(): number {
-    deprecate("videoSourceStopScreenCapture");
+    deprecate("stopScreenCapture2", "videoSourceStopScreenCapture");
     return this.videoSourceStopScreenCapture();
   }
 
@@ -7061,7 +7055,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   startScreenCapturePreview(): number {
-    deprecate("videoSourceStartPreview");
+    deprecate("startScreenCapturePreview", "videoSourceStartPreview");
     return this.videoSourceStartPreview();
   }
 
@@ -7080,7 +7074,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopScreenCapturePreview(): number {
-    deprecate("videoSourceStopPreview");
+    deprecate("stopScreenCapturePreview", "videoSourceStopPreview");
     return this.videoSourceStopPreview();
   }
 
@@ -7092,104 +7086,85 @@ class AgoraRtcEngine extends EventEmitter {
     return ret.retCode;
   }
 
-  // /**
-  //  * Private Interfaces.
-  //  * @ignore
-  //  */
-  // convertPath(path: string): string {
-  //   return this.rtcEngine.convertPath(path);
-  // }
-  // /**
-  //  * Private Interfaces.
-  //  * @ignore
-  //  */
-  // setProfile(profile: string, merge: boolean): number {
-  //   return this.rtcEngine.setProfile(profile, merge);
-  // }
+  // ===========================================================================
+  // plugin apis
+  // ===========================================================================
 
-  // // ===========================================================================
-  // // plugin apis
-  // // ===========================================================================
-  // /**
-  //  * @ignore
-  //  */
-  // initializePluginManager(): number {
-  //   return this.rtcEngine.initializePluginManager();
-  // }
-  // /**
-  //  * @ignore
-  //  */
-  // releasePluginManager(): number {
-  //   return this.rtcEngine.releasePluginManager();
-  // }
-  // /**
-  //  * @ignore
-  //  */
-  // registerPlugin(info: PluginInfo): number {
-  //   return this.rtcEngine.registerPlugin(info);
-  // }
-  // /**
-  //  * @ignore
-  //  */
-  // unregisterPlugin(pluginId: string): number {
-  //   return this.rtcEngine.unregisterPlugin(pluginId);
-  // }
-  // /**
-  //  * @ignore
-  //  */
-  // getPlugins() {
-  //   return this.rtcEngine.getPlugins().map(item => {
-  //     return this.createPlugin(item.id)
-  //   })
-  // }
-  // /**
-  //  * @ignore
-  //  * @param pluginId
-  //  */
-  // createPlugin(pluginId: string): Plugin {
-  //   return {
-  //     id: pluginId,
-  //     enable: () => {
-  //       return this.enablePlugin(pluginId, true)
-  //     },
-  //     disable: () => {
-  //       return this.enablePlugin(pluginId, false)
-  //     },
-  //     setParameter: (param: string) => {
-  //       return this.setPluginParameter(pluginId, param)
-  //     },
-  //     getParameter: (paramKey: string) => {
-  //       return this.getPluginParameter(pluginId, paramKey)
-  //     }
-  //   }
-  // }
+  registerPlugin(pluginInfo: PluginInfo): number {
+    let param = {
+      pluginId: pluginInfo.pluginId,
+      pluginPath: pluginInfo.pluginPath
+    }
 
-  // /**
-  //  * @ignore
-  //  * @param pluginId
-  //  * @param enabled
-  //  */
-  // enablePlugin(pluginId: string, enabled: boolean): number {
-  //   return this.rtcEngine.enablePlugin(pluginId, enabled);
-  // }
+    let ret = this.rtcEngine.PluginCallApi(ApiTypeRawDataPlugin.kRegisterPlugin, JSON.stringify(param))
+    return ret.retCode
+  }
 
-  // /**
-  //  * @ignore
-  //  * @param pluginId
-  //  * @param param
-  //  */
-  // setPluginParameter(pluginId: string, param: string): number {
-  //   return this.rtcEngine.setPluginParameter(pluginId, param);
-  // }
+  unregisterPlugin(pluginId: string): number {
+    let param = {
+      pluginId
+    }
 
-  // /**
-  //  * @ignore
-  //  * @param pluginId
-  //  * @param paramKey
-  //  */
-  // getPluginParameter(pluginId: string, paramKey: string): string {
-  //   return this.rtcEngine.getPluginParameter(pluginId, paramKey);
-  // }
+    let ret = this.rtcEngine.PluginCallApi(ApiTypeRawDataPlugin.kUnregisterPlugin, JSON.stringify(param))
+    return ret.retCode
+  }
+
+  getPlugins(): Plugin[] {
+    let ret = this.rtcEngine.PluginCallApi(ApiTypeRawDataPlugin.kGetPlugins, '')
+    let pluginIdArray: string[] = JSON.parse(ret.result)
+
+    return pluginIdArray.map(item => {
+      return this.createPlugin(item)
+    })
+  }
+
+  createPlugin(pluginId: string): Plugin {
+    return {
+      id: pluginId,
+      enable: () => {
+        return this.enablePlugin(pluginId, true)
+      },
+      disable: () => {
+        return this.enablePlugin(pluginId, false)
+      },
+      setParameter: (param: string) => {
+        return this.setPluginParameter(pluginId, param)
+      },
+      getParameter: (paramKey: string) => {
+        return this.getPluginParameter(pluginId, paramKey)
+      }
+    }
+  }
+
+  enablePlugin(pluginId: string, enabled: boolean): number {
+    let param = {
+      pluginId,
+      enabled
+    }
+
+    let ret = this.rtcEngine.PluginCallApi(ApiTypeRawDataPlugin.kEnablePlugin, JSON.stringify(param))
+    return ret.retCode
+  }
+
+  setPluginParameter(pluginId: string, parameter: string): number {
+    let param = {
+      pluginId,
+      parameter
+    }
+
+    let ret = this.rtcEngine.PluginCallApi(ApiTypeRawDataPlugin.kSetPluginParameter, JSON.stringify(param))
+    return ret.retCode
+  }
+
+  getPluginParameter(pluginId: string, key: string): string {
+    let param = {
+      pluginId,
+      key
+    }
+
+    let ret = this.rtcEngine.PluginCallApi(ApiTypeRawDataPlugin.kGetPluginParameter, JSON.stringify(param))
+    return ret.result
+  }
 }
 /** The AgoraRtcEngine interface. */
 declare interface AgoraRtcEngine {
@@ -7202,7 +7177,7 @@ declare interface AgoraRtcEngine {
    */
   on(evt: "apiCallExecuted", cb: (api: string, err: number) => void): this;
 
-  on(evt: 'apiError', cb: (msg: string)=> void): this;
+  on(evt: 'apiError', cb: (apiType: ApiTypeEngine, msg: string)=> void): this;
   /**
    * Reports a warning during SDK runtime.
    * @param cb.warn Warning code.

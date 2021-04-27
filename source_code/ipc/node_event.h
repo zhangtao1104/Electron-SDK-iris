@@ -14,6 +14,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include "loguru.hpp"
 namespace agora {
     namespace rtc {
 class NodeEvent
@@ -21,8 +22,8 @@ class NodeEvent
 public:
     enum WaitResult
     {
-        WAIT_RESULT_SET,
-        WAIT_RESULT_TIMEOUT
+        WAIT_RESULT_SET = 0,
+        WAIT_RESULT_TIMEOUT = 1
     };
     NodeEvent(bool initialStatus);
     ~NodeEvent();

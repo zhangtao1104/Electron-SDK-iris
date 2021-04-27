@@ -1,3 +1,3 @@
-export const deprecate = (replaceApi?: string) => {
-  console.warn('This method will be deprecated soon. ', replaceApi ? `Please use ${replaceApi} instead` : '');
+export const deprecate = (originApi?: string, replaceApi?: string) => {
+  console.warn(`This method ${originApi} will be deprecated soon. `, replaceApi ? `Please use ${replaceApi} instead` : '');
 };

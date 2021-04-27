@@ -1,5 +1,6 @@
 #include "video_source.h"
 #include "iris_base.h"
+#include "loguru.hpp"
 
 
 
@@ -11,6 +12,7 @@ int main(int argc, char *argv[])
         _parameter.append(argv[i]);
         _parameter.append(" ");
     }
+    LOG_F(INFO, "VideoSource::main");
     auto _videoSource = new agora::rtc::electron::VideoSource();
     _videoSource->initialize(_parameter);
     _videoSource->run();
@@ -47,13 +49,17 @@ namespace agora
                 auto _apiParameter = _parameterParser->getParameter("apiParameter");
                 auto _peerId = _parameterParser->getParameter("id");
 
+                LOG_F(INFO, "initialize createAgoraIpc");
+                _ipcController.reset(createAgoraIpc(this));
                 if (!_ipcController->initialize(_peerId))
                 {
+                    LOG_F(INFO, "initialize createAgoraIpc _ipcController fail");
                     return false;
                 }
 
                 if (!_ipcController->connect())
                 {
+                    LOG_F(INFO, "initialize createAgoraIpc connect fail");
                     return false;
                 }
 
@@ -64,8 +70,10 @@ namespace agora
                 auto ret = _irisEngine->CallApi(ApiTypeEngine::kEngineInitialize, _apiParameter.c_str(), result);
                 if (ret != 0)
                 {
+                    LOG_F(INFO, "initialize _irisEngine initialize fail");
                     return false;
                 }
+                LOG_F(INFO, "initialize ipc sendMessage");
                 _ipcController->sendMessage(AGORA_IPC_SOURCE_READY, nullptr, 0);
                 return true;
             }
@@ -79,7 +87,10 @@ namespace agora
 #endif
                 _process.reset(INodeProcess::OpenNodeProcess(std::atoi(idstr.c_str())));
 
-                    if (!_process.get()) return;
+                if (!_process.get()) {
+                    LOG_F(INFO, "VideoSource process open fail");
+                    return;
+                }
 
                 _process->Monitor([this](INodeProcess *) {
                     this->exit(false);

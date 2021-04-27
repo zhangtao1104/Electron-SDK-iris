@@ -1,4 +1,11 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 20:53:49 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-04-26 17:08:55
+ */
 #include "node_iris_event_handler.h"
+#include "loguru.hpp"
 
 namespace agora
 {
@@ -16,6 +23,7 @@ namespace agora
                 std::string _eventName(event);
                 std::string _eventData(data);
                 node_async_call::async_call([this, _eventName, _eventData] {
+                    LOG_F(INFO, "OnEvent  event: %s", _eventName.c_str());
                     auto it = _callbacks.find("call_back");
                     if (it != _callbacks.end())
                     {
@@ -35,6 +43,7 @@ namespace agora
 
             void NodeIrisEventHandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned length)
             {
+                LOG_F(INFO, "NodeIrisEventHandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned length) , %s", event);
                 std::string _eventName(event);
                 std::string _eventData(data);
                 char stringData[length + 1];
@@ -62,9 +71,19 @@ namespace agora
 
             void NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)
             {
+                LOG_F(INFO, "NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)");
+                
+                if (!eventName || !eventData) {
+                    return;
+                }
+                
                 std::string _eventName(eventName);
                 std::string _eventData(eventData);
+                LOG_F(INFO, "111NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)");
+              
                 node_async_call::async_call([this, _eventName, _eventData] {
+                    LOG_F(INFO, "22NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)");
+              
                     auto it = _callbacks.find("video_source_call_back");
                     if (it != _callbacks.end())
                     {
@@ -78,12 +97,18 @@ namespace agora
                         EventCallback &cb = *it->second;
                         auto _result = cb.callback.Get(_isolate)->Call(context, cb.js_this.Get(_isolate), 2, argv);
                         v8_MAYBE_LOCAL_CHECK_RESULT(_result);
+                        LOG_F(INFO, "33NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)");
+              
                     }
+                    LOG_F(INFO, "44NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData)");
+              
                 });
             }
 
             void NodeIrisEventHandler::OnVideoSourceEvent(const char* eventName, const char* eventData, const char* buffer, int length)
-            {
+            {   
+                return;
+
                 std::string _eventName(eventName);
                 std::string _eventData(eventData);
                 char stringData[length + 1];
@@ -111,7 +136,7 @@ namespace agora
 
             void NodeIrisEventHandler::OnVideoSourceExit()
             {
-                
+                LOG_F(INFO, "OnVideoSourceExit");
             }
 
             void NodeIrisEventHandler::addEvent(const std::string &eventName, Nan_Persistent<v8_Object> &obj, Nan_Persistent<v8_Function> &callback)

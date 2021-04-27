@@ -1,8 +1,8 @@
 /*
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:36:26 
- * @Last Modified by:   zhangtao@agora.io 
- * @Last Modified time: 2021-04-22 11:36:26 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-04-24 13:17:24
  */
 
 export enum ApiTypeEngine {
@@ -247,4 +247,20 @@ export enum ApiTypeEngine {
     kGetCurrentVideoDeviceId,
     kStartVideoDeviceTest,
     kStopVideoDeviceTest,
+  }
+
+  export enum ApiTypeRawDataPlugin {
+    kRegisterPlugin,
+    kUnregisterPlugin,
+    kHasPlugin,
+    kEnablePlugin,
+    kGetPlugins,
+    kSetPluginParameter,
+    kGetPluginParameter,
+    kRelease
+  }
+
+  export interface Result {
+    retCode: number; 
+    result: string;
   }

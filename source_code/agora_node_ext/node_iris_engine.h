@@ -1,6 +1,12 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 20:53:44 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-04-26 22:02:06
+ */
 #pragma once
 #include "iris_engine.h"
-#include "iris_raw_data.h"
+#include "iris_raw_data_plugin.h"
 #include "nan_api.h"
 #include "node_iris_event_handler.h"
 #include "node_iris_channel.h"
@@ -41,26 +47,18 @@ namespace agora
                 static void VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
                 static void SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                void OnApiError(const char *errorMessage);
-
-                static void InitializePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void ReleasePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void RegisterPlugin(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void UnregisterPlugin(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void EnablePlugin(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void GetPlugins(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void SetPluginParameter(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void GetPluginParameter(const Nan_FunctionCallbackInfo<v8_Value> &args);
-
+                void OnApiError(int apiType, const char *errorMessage);
                 
+                static void PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
             private:
                 v8_Isolate *_isolate;
                 static Nan_Persistent<v8_Function> _constructor;
                 std::unique_ptr<iris::IrisEngine> _iris_engine;
-                std::unique_ptr<iris::IrisRawData> _iris_raw_data;
+                std::shared_ptr<iris::IrisRawData> _iris_raw_data;
                 std::shared_ptr<NodeIrisEventHandler> _iris_event_handler;
                 std::unique_ptr<VideoSourceProxy> _video_source_proxy;
+                std::shared_ptr<iris::IrisRawDataPluginManager> _iris_raw_data_plugin_manager;
             };
         }
     }

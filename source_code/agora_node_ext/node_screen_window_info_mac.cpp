@@ -1,3 +1,9 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 20:53:57 
+ * @Last Modified by:   zhangtao@agora.io 
+ * @Last Modified time: 2021-04-22 20:53:57 
+ */
 #include "node_screen_window_info.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CoreGraphics.h>

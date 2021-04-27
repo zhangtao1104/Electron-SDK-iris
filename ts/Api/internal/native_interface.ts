@@ -2,16 +2,19 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:38:45 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-22 11:39:16
+ * @Last Modified time: 2021-04-24 13:27:47
  */
 
-
 import {
+  Result,
   ApiTypeEngine,
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
+  ApiTypeRawDataPlugin,
 } from "./native_api_type";
+
+import {WindowInfo} from "../types";
 
 /**
  * interface for c++ addon (.node)
@@ -21,28 +24,29 @@ export interface NodeIrisEngine {
   CallApi(
     apiType: ApiTypeEngine,
     params: string
-  ): { retCode: number; result: string };
+  ): Result;
   CallApiWithBuffer(
     apiType: ApiTypeEngine,
     params: string,
     buffer: string
-  ): { retCode: number; result: string };
+  ): Result;
   OnEvent(callbackName: string, callback: Function): void;
   GetChannel(): NodeIrisChannel;
   GetDeviceManager(): NodeIrisDeviceManager;
   GetScreenDisplaysInfo(): Array<Object>;
-  GetScreenWindowsInfo(): Array<Object>;
-  VideoSourceInitialize(params: string): { retCode: number; result: string };
+  GetScreenWindowsInfo(): Array<WindowInfo>;
+  VideoSourceInitialize(params: string): Result;
   VideoSourceCallApi(
     apiType: ApiTypeEngine,
     params: string
-  ): { retCode: number; result: string };
+  ): Result;
   VideoSourceCallApiWithBuffer(
     apiType: ApiTypeEngine,
     params: string
-  ): { retCode: number; result: string };
-  VideoSourceRelease(): { retCode: number; result: string };
-  SetAddonLogFile(filePath: string): { retCode: number; result: number };
+  ): Result;
+  VideoSourceRelease(): Result;
+  SetAddonLogFile(filePath: string): Result;
+  PluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
 }
 
 /**
@@ -52,12 +56,12 @@ export interface NodeIrisChannel {
   CallApi(
     apiType: ApiTypeChannel,
     params: string
-  ): { retCode: number; result: string };
+  ): Result;
   CallApiWithBuffer(
     apiType: ApiTypeChannel,
     params: string,
     buffer: string
-  ): { retCode: number; result: string };
+  ): Result;
   OnEvent(callbackName: string, callback: Function): void;
 }
 
@@ -68,9 +72,9 @@ export interface NodeIrisDeviceManager {
   CallApiAudioDevice(
     apiType: ApiTypeAudioDeviceManager,
     params: string
-  ): { retCode: number; result: string };
+  ): Result;
   CallApiVideoDevice(
     apiType: ApiTypeVideoDeviceManager,
     params: string
-  ): { retCode: number; result: string };
+  ): Result;
 }

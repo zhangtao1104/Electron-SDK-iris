@@ -1,4 +1,11 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-22 20:53:37 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-04-26 22:00:25
+ */
 #include "node_iris_engine.h"
+#include <exception>
 
 namespace agora
 {
@@ -15,6 +22,7 @@ namespace agora
                 _iris_event_handler.reset(new NodeIrisEventHandler());
                 _iris_engine.reset(new IrisEngine());
                 _iris_raw_data.reset(_iris_engine->iris_raw_data());
+                _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->iris_raw_data_plugin_manager());
                 _video_source_proxy.reset(new VideoSourceProxy());
                 _iris_engine->SetEventHandler(_iris_event_handler.get());
             }
@@ -22,6 +30,7 @@ namespace agora
             NodeIrisEngine::~NodeIrisEngine()
             {
                 _iris_event_handler.reset();
+                _iris_raw_data_plugin_manager.reset();
                 _iris_raw_data.reset();
                 _iris_engine.reset();
                 _video_source_proxy.reset();
@@ -51,6 +60,8 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "VideoSourceRelease", VideoSourceRelease);
 
                 Nan::SetPrototypeMethod(_template, "SetAddonLogFile", SetAddonLogFile);
+
+                Nan::SetPrototypeMethod(_template, "PluginCallApi", PluginCallApi);
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
                 _module->Set(_context, Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
 
@@ -85,8 +96,12 @@ namespace agora
                 char _result[512];
                 memset(_result, '\0', 512);
                 LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
-                auto _ret = _engine->_iris_engine.get()->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
-
+                int _ret = ERROR_PARAMETER_1;
+                try {
+                    _ret = _engine->_iris_engine.get()->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
+                } catch(std::exception& e) {
+                    _engine->OnApiError(_apiType, e.what());
+                }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
                 v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
@@ -260,6 +275,9 @@ namespace agora
                 auto _isolate = args.GetIsolate();
                 auto _parameter = nan_api_get_value_utf8string_(args[0]);
                 auto _result = -1;
+                LOG_F(INFO, "VideoSourceInitialize parameter: %s", _parameter.c_str());
+                
+            
                 if (_engine->_video_source_proxy->Initialize(_engine->_iris_event_handler.get(), _parameter))
                     _result = 0;
 
@@ -288,7 +306,12 @@ namespace agora
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
                 char _result[512];
                 memset(_result, '\0', 512);
-                auto _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
+                int _ret = ERROR_PARAMETER_1;
+                try {
+                    _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
+                 } catch (std::exception& e) {
+                    _engine->OnApiError(_apiType, e.what());
+                }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
                 v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
@@ -305,7 +328,13 @@ namespace agora
                 auto _buffer = nan_api_get_value_utf8string_(args[3]);
                 char _result[512];
                 memset(_result, '\0', 512);
-                auto _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _buffer.c_str(), _length, _result);
+                int _ret = ERROR_PARAMETER_1;
+                try {
+                    _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _buffer.c_str(), _length, _result);
+                } catch (std::exception& e) {
+                    LOG_F(INFO, "VideoSourceCallApiWithBuffer catch exception: %s", e.what());
+                    _engine->OnApiError(_apiType, e.what());
+                }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
                 v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
@@ -324,49 +353,31 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::OnApiError(const char *errorMessage)
+            void NodeIrisEngine::OnApiError(int apiType, const char *errorMessage)
             {
                 _iris_event_handler->OnEvent("apiError", errorMessage);
             }
 
-            void NodeIrisEngine::InitializePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisEngine::PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                
-            }
-
-            void NodeIrisEngine::ReleasePluginManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
-            }
-
-            void NodeIrisEngine::RegisterPlugin(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
-            }
-
-            void NodeIrisEngine::UnregisterPlugin(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
-            }
-
-            void NodeIrisEngine::EnablePlugin(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
-            }
-
-            void NodeIrisEngine::GetPlugins(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
-            }
-
-            void NodeIrisEngine::SetPluginParameter(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
-            }
-
-            void NodeIrisEngine::GetPluginParameter(const Nan_FunctionCallbackInfo<v8_Value> &args)
-            {
-
+                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _isolate = args.GetIsolate();
+                auto _apiType = nan_api_get_value_int32_(args[0]);
+                auto _parameter = nan_api_get_value_utf8string_(args[1]);
+                char _result[512];
+                memset(_result, '\0', 512);
+                LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
+                int _ret = ERROR_PARAMETER_1;
+                try {
+                    _ret = _engine->_iris_raw_data_plugin_manager.get()->CallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
+                } catch(std::exception& e) {
+                    LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
+                    _engine->OnApiError(_apiType, e.what());
+                }
+                auto _retObj = v8_Object::New(_isolate);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
+                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                args.GetReturnValue().Set(_retObj);
             }
         }
     }
