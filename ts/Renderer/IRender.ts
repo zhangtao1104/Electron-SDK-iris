@@ -1,3 +1,9 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-28 13:34:44 
+ * @Last Modified by:   zhangtao@agora.io 
+ * @Last Modified time: 2021-04-28 13:34:44 
+ */
 import { EventEmitter } from 'events';
 import { VideoFrame } from './type';
 

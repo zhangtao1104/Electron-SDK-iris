@@ -99,11 +99,11 @@ import {
   METADATA_TYPE,
   CHANNEL_PROFILE_TYPE,
   WindowInfo,
-  USER,
+  User,
   Channel,
 } from "./types";
 import { EventEmitter } from "events";
-import { deprecate } from "../Utils";
+import { deprecate, logWarn, logInfo, logError } from "../Utils";
 import { PluginInfo, Plugin } from "./plugin";
 
 const agora = require("../../build/Release/agora_node_ext");
@@ -112,7 +112,6 @@ const agora = require("../../build/Release/agora_node_ext");
  * The AgoraRtcEngine class.
  */
 class AgoraRtcEngine extends EventEmitter {
-  tag: string;
   rtcEngine: NodeIrisEngine;
   rtcChannel: NodeIrisChannel;
   rtcDeviceManager: NodeIrisDeviceManager;
@@ -120,7 +119,7 @@ class AgoraRtcEngine extends EventEmitter {
   renderMode: RENDER_MODE;
   constructor() {
     super();
-    console.log("new AgoraRtcEngine");
+    logInfo('AgoraRtcEngine constructor()')
     this.rtcEngine = new agora.NodeIrisEngine();
     this.rtcChannel = this.rtcEngine.GetChannel();
     this.rtcDeviceManager = this.rtcEngine.GetDeviceManager();
@@ -129,7 +128,6 @@ class AgoraRtcEngine extends EventEmitter {
       ? RENDER_MODE.WEBGL
       : RENDER_MODE.SOFTWARE;
     this.streams = new Map();
-    this.tag = "[Agora]: ";
   }
 
   setAddonLogFile(filePath: string): number {
@@ -203,7 +201,8 @@ class AgoraRtcEngine extends EventEmitter {
           case "apiError":
             {
               fire("apiError", _eventData);
-              console.log(`${self.tag}call api Error ${_eventData}`);
+              logError(`call api Error ${_eventData}`)
+
             }
             break;
 
@@ -211,9 +210,7 @@ class AgoraRtcEngine extends EventEmitter {
             {
               let data: { warn: number; msg: string } = JSON.parse(_eventData);
               fire("warning", data.warn, data.msg);
-              console.warn(
-                `${self.tag}Warning code: ${data.warn}, msg: ${data.msg}`
-              );
+              logWarn(`Warning code: ${data.warn}, msg: ${data.msg}`)
             }
             break;
 
@@ -221,9 +218,7 @@ class AgoraRtcEngine extends EventEmitter {
             {
               let data: { err: number; msg: string } = JSON.parse(_eventData);
               fire("error", data.err, data.msg);
-              console.error(
-                `${self.tag}Error code: ${data.err}, msg: ${data.msg}`
-              );
+              logError(`Error code: ${data.err}, msg: ${data.msg}`)
             }
             break;
 
@@ -1221,22 +1216,22 @@ class AgoraRtcEngine extends EventEmitter {
     vdata: ArrayBuffer
   ) {
     if (header.byteLength !== 20) {
-      console.error("invalid image header " + header.byteLength);
+      logError("invalid image header " + header.byteLength);
       return false;
     }
     if (ydata.byteLength === 20) {
-      console.error("invalid image yplane " + ydata.byteLength);
+      logError("invalid image yplane " + ydata.byteLength);
       return false;
     }
     if (udata.byteLength === 20) {
-      console.error("invalid image uplanedata " + udata.byteLength);
+      logError("invalid image uplanedata " + udata.byteLength);
       return false;
     }
     if (
       ydata.byteLength !== udata.byteLength * 4 ||
       udata.byteLength !== vdata.byteLength
     ) {
-      console.error(
+      logError(
         "invalid image header " +
           ydata.byteLength +
           " " +
@@ -1293,7 +1288,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   setView(
-    user: USER,
+    user: User,
     view: Element,
     channelId?: Channel,
     renderOptions?: RendererOptions
@@ -1317,7 +1312,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param key Key for the map that store the renderers,
    * e.g, `uid` or `videosource` or `local`.
    */
-  resizeRender(user: USER, channelId: Channel) {
+  resizeRender(user: User, channelId: Channel) {
     // let channelStreams = this._getChannelRenderers(channelId || "");
     // if (channelStreams.has(String(key))) {
     //   const renderers = channelStreams.get(String(key)) || [];
@@ -1330,7 +1325,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @ignore
    */
   setRender(
-    user: USER,
+    user: User,
     view: Element,
     channelId: Channel = "",
     options: RendererOptions = { append: false }
@@ -1363,7 +1358,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @private
    * @ignore
    */
-  addRender(user: USER, view: Element, channelId: Channel): void {
+  addRender(user: User, view: Element, channelId: Channel): void {
     let streamMap = this.streams.get(channelId);
 
     if (!streamMap) {
@@ -1383,7 +1378,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @private
    * @ignore
    */
-  getRender(user: USER, channelId: Channel = ""): IRenderer[] | undefined {
+  getRender(user: User, channelId: Channel = ""): IRenderer[] | undefined {
     return this.streams.get(channelId)?.get(String(user));
   }
 
@@ -1391,7 +1386,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @private
    * @ignore
    */
-  removeRender(user: USER, channelId: Channel): void {
+  removeRender(user: User, channelId: Channel): void {
     this.streams
       .get(channelId)
       ?.get(String(user))
@@ -1426,7 +1421,7 @@ class AgoraRtcEngine extends EventEmitter {
    * method.
    */
   destroyRender(
-    user: USER,
+    user: User,
     channelId?: Channel,
     onFailure?: (err: Error) => void
   ) {
@@ -1867,7 +1862,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - -1: Failure.
    */
   setupViewContentMode(
-    user: USER,
+    user: User,
     mode: CONTENT_MODE,
     channelId: Channel
   ): number {

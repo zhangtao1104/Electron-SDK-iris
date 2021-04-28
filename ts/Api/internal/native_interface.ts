@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:38:45 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-24 13:27:47
+ * @Last Modified time: 2021-04-28 13:37:33
  */
 
 import {
@@ -18,6 +18,7 @@ import {WindowInfo} from "../types";
 
 /**
  * interface for c++ addon (.node)
+ * @private
  * @ignore
  */
 export interface NodeIrisEngine {
@@ -50,6 +51,7 @@ export interface NodeIrisEngine {
 }
 
 /**
+ * @private
  * @ignore
  */
 export interface NodeIrisChannel {

@@ -1,3 +1,10 @@
+/*
+ * @Author: zhangtao@agora.io 
+ * @Date: 2021-04-28 13:34:48 
+ * @Last Modified by:   zhangtao@agora.io 
+ * @Last Modified time: 2021-04-28 13:34:48 
+ */
+
 const YUVBuffer = require('yuv-buffer');
 const YUVCanvas = require('yuv-canvas')
 const isEqual = require("lodash.isequal");
