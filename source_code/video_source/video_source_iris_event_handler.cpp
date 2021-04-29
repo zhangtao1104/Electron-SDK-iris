@@ -1,4 +1,5 @@
 #include "video_source_iris_event_handler.h"
+#include "loguru.hpp"
 
 namespace agora {
     namespace rtc {
@@ -15,34 +16,18 @@ namespace agora {
 
             void VideoSourceIrisEventhandler::OnEvent(const char *event, const char *data)
             {
-                if (!data) {
-                    data = "";
-                }
-
                 CallbackParameter _parameter;
-                _parameter._eventName = event;
-                _parameter._eventData = data;
+                strncpy(_parameter._eventName, event, MAX_CHAR_LENGTH);
+                strncpy(_parameter._eventData, data, MAX_CHAR_LENGTH);
                 _ipcController->sendMessage(AGORA_IPC_ON_EVENT, (char *)&_parameter, sizeof(_parameter));
             }
 
             void VideoSourceIrisEventhandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned int length)
             {   
-                if (!data) {
-                    data = "";
-                }
-
-                if (!buffer) {
-                    buffer = "";
-                }
-                
                 CallbackParameter _parameter;
-                _parameter._eventName = event;
-                _parameter._eventData = data;
-
-                char _buffer[1024];
-                memset(_buffer, '\0', 1024);
-                memcpy(_buffer, buffer, length);
-                _parameter._buffer = std::string(_buffer);
+                strncpy(_parameter._eventName, event, MAX_CHAR_LENGTH);
+                strncpy(_parameter._eventData, data, MAX_CHAR_LENGTH);
+                strncpy(_parameter._buffer, (const char *)buffer, MAX_CHAR_LENGTH);
                 _parameter._length = length;
                 _ipcController->sendMessage(AGORA_IPC_ON_EVENT_WITH_BUFFER, (char *)&_parameter, sizeof(_parameter));
             }

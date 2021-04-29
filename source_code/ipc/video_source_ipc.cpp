@@ -11,6 +11,7 @@
 #include "video_source_ipc.h"
 #include "ipc_shm.h"
 #include "node_log.h"
+#include "loguru.hpp"
 
 #define VIDEO_SOURCE_BLOCK_NUM 10
 #define VIDEO_SOURCE_BLOCK_SIZE 1536
@@ -128,6 +129,7 @@ void AgoraVideoSourceIpcImpl::run()
         int ret = m_ipc.read(fd, readBuf, VIDEO_SOURCE_BLOCK_SIZE);
         if (ret < 0)
             break;
+
         if (m_listener) {
             header = (VideoSourceIpcMsgHeader *)readBuf;
             m_listener->OnMessage(header->msg, readBuf + sizeof(VideoSourceIpcMsgHeader), header->len);
@@ -148,9 +150,9 @@ bool AgoraVideoSourceIpcImpl::sendMessage( AgoraIpcMsg msg, char* payload, unsig
     return true;
 }
 
-IAgoraIpc* createAgoraIpc(AgoraIpcListener *listner)
+IAgoraIpc* createAgoraIpc(AgoraIpcListener *listener)
 {
-    return new AgoraVideoSourceIpcImpl(listner);
+    return new AgoraVideoSourceIpcImpl(listener);
 }
 
 /*****************************************************************

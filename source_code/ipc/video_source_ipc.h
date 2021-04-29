@@ -21,6 +21,10 @@
 #include <thread>
 #include <memory>
 #include "iris_engine.h"
+#include "loguru.hpp"
+
+
+#define DATA_IPC_NAME "avsipc"
 
 /**
  * AgoraIpcMsg define the message type transferred between node ADDON and vidoe source process
@@ -38,7 +42,8 @@ enum AgoraIpcMsg
     AGORA_IPC_CALL_API,
     AGORA_IPC_CALL_API_WITH_BUFFER,
     AGORA_IPC_ON_EVENT,
-    AGORA_IPC_ON_EVENT_WITH_BUFFER
+    AGORA_IPC_ON_EVENT_WITH_BUFFER,
+    AGORA_IPC_PLUGIN_CALL_API,
 };
 
 /**
@@ -64,18 +69,19 @@ enum AgoraIpcMsg
 // };
 
 #define MAX_WINDOW_ID_COUNT 128
+#define MAX_CHAR_LENGTH 1024
 
 struct ApiParameter {
-    ApiTypeEngine _apiType;
-    std::string _parameters;
-    std::string _buffer;
+    int _apiType;
+    char _parameters[MAX_CHAR_LENGTH];
+    char _buffer[MAX_CHAR_LENGTH];
     int length;
 };
 
 struct CallbackParameter {
-    std::string _eventName;
-    std::string _eventData;
-    std::string _buffer;
+    char _eventName[MAX_CHAR_LENGTH];
+    char _eventData[MAX_CHAR_LENGTH];
+    char _buffer[MAX_CHAR_LENGTH];
     int _length;
 };
 
@@ -89,10 +95,9 @@ struct CallbackParameter {
 class AgoraIpcListener
 {
 public:
-    virtual ~AgoraIpcListener(){}
     virtual void OnMessage(unsigned int msg, char* payload, unsigned int len)
     {
-
+        LOG_F(INFO, "AgoraIpcListener  OnMessage msg = %d", msg);
     }
 };
 

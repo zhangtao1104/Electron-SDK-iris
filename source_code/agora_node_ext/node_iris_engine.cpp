@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:37 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-26 22:00:25
+ * @Last Modified time: 2021-04-30 00:32:30
  */
 #include "node_iris_engine.h"
 #include <exception>
@@ -60,8 +60,8 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "VideoSourceRelease", VideoSourceRelease);
 
                 Nan::SetPrototypeMethod(_template, "SetAddonLogFile", SetAddonLogFile);
-
                 Nan::SetPrototypeMethod(_template, "PluginCallApi", PluginCallApi);
+                Nan::SetPrototypeMethod(_template, "VideoSourcePluginCallApi", VideoSourcePluginCallApi);
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
                 _module->Set(_context, Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
 
@@ -372,6 +372,26 @@ namespace agora
                     _ret = _engine->_iris_raw_data_plugin_manager.get()->CallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
                 } catch(std::exception& e) {
                     LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
+                    _engine->OnApiError(_apiType, e.what());
+                }
+                auto _retObj = v8_Object::New(_isolate);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
+                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                args.GetReturnValue().Set(_retObj);
+            }
+
+            void NodeIrisEngine::VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _isolate = args.GetIsolate();
+                auto _apiType = nan_api_get_value_int32_(args[0]);
+                auto _parameter = nan_api_get_value_utf8string_(args[1]);
+                char _result[512];
+                memset(_result, '\0', 512);
+                int _ret = ERROR_PARAMETER_1;
+                try {
+                    _ret = _engine->_video_source_proxy->PluginCallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
+                } catch (std::exception& e) {
                     _engine->OnApiError(_apiType, e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);

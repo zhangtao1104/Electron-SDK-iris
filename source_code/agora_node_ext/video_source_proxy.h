@@ -39,8 +39,10 @@ namespace agora {
                 void LoopMessage();
                 int CallApi(ApiTypeEngine apiType, const char* parameter, char* result);
                 int CallApi(ApiTypeEngine apiType, const char* parameter, const char* buffer, int length, char* result);
+                int PluginCallApi(ApiTypeRawDataPlugin apiType, const char* parameter, char* result);
                 int Release();
                 void Clear();
+                void OnApiError(const char* event, const char* data);
             };
         }
     }

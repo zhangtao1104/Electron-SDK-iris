@@ -6,6 +6,7 @@
 #include "video_source_iris_event_handler.h"
 #include "video_source_param_parser.h"
 #include "node_process.h"
+#include "iris_raw_data_plugin.h"
 
 
 
@@ -17,19 +18,22 @@ namespace agora {
                     VideoSource();
                     ~VideoSource();
 
-                    virtual void OnMessage(unsigned int msg, char* payload, unsigned int len);
+                    virtual void OnMessage(unsigned int msg, char* payload, unsigned int len) override;
 
-                    bool initialize(std::string& parameter);
-                    void run();
-                    void release();
-                    void exit(bool flag);
+                    bool Initialize(std::string& parameter);
+                    void Run();
+                    void Release();
+                    void Exit(bool flag);
+                    void OnApiError(const char* event, const char* data);
 
                 private:
-                    std::unique_ptr<VideoSourceIrisEventhandler> _irisEventHandler;
-                    std::shared_ptr<IAgoraIpc> _ipcController;
-                    std::unique_ptr<AgoraIpcDataSender> _ipcSender;
-                    std::unique_ptr<iris::IrisEngine> _irisEngine;
-                    std::unique_ptr<VideoSourceParamParser> _parameterParser;
+                    std::unique_ptr<VideoSourceIrisEventhandler> _iris_event_handler;
+                    std::unique_ptr<IAgoraIpc> _ipc_controller;
+                    std::unique_ptr<AgoraIpcDataSender> _ipc_sender;
+                    std::unique_ptr<iris::IrisEngine> _iris_engine;
+                    std::shared_ptr<iris::IrisRawData> _iris_raw_data;
+                    std::shared_ptr<iris::IrisRawDataPluginManager> _iris_raw_data_plugin_manager;
+                    std::unique_ptr<VideoSourceParamParser> _parameter_parser;
                     std::unique_ptr<INodeProcess> _process;
                     std::atomic_bool _initialize {false};
             };  

@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:38:45 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-28 13:37:33
+ * @Last Modified time: 2021-04-29 14:20:07
  */
 
 import {
@@ -31,6 +31,8 @@ export interface NodeIrisEngine {
     params: string,
     buffer: string
   ): Result;
+  SetAddonLogFile(filePath: string): Result;
+  PluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
   OnEvent(callbackName: string, callback: Function): void;
   GetChannel(): NodeIrisChannel;
   GetDeviceManager(): NodeIrisDeviceManager;
@@ -46,8 +48,7 @@ export interface NodeIrisEngine {
     params: string
   ): Result;
   VideoSourceRelease(): Result;
-  SetAddonLogFile(filePath: string): Result;
-  PluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
+  VideoSourcePluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
 }
 
 /**

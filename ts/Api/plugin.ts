@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:52:07 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-24 13:33:10
+ * @Last Modified time: 2021-04-29 15:28:16
  */
 
 /** 
@@ -11,6 +11,7 @@
 export interface PluginInfo {
   pluginId: string;
   pluginPath: string;
+  order: number;
 }
 
 /** 

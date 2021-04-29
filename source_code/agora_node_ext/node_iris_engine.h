@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:44 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-26 22:02:06
+ * @Last Modified time: 2021-04-29 14:09:31
  */
 #pragma once
 #include "iris_engine.h"
@@ -40,16 +40,17 @@ namespace agora
                 static void GetDeviceManager(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void GetScreenWindowsInfo(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void GetScreenDisplaysInfo(const Nan_FunctionCallbackInfo<v8_Value> &args);
+                static void PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
                 static void VideoSourceInitialize(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void VideoSourceCallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args);
+                static void VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
                 static void SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 void OnApiError(int apiType, const char *errorMessage);
                 
-                static void PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
             private:
                 v8_Isolate *_isolate;

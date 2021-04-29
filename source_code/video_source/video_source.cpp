@@ -14,9 +14,9 @@ int main(int argc, char *argv[])
     }
     LOG_F(INFO, "VideoSource::main");
     auto _videoSource = new agora::rtc::electron::VideoSource();
-    _videoSource->initialize(_parameter);
-    _videoSource->run();
-    _videoSource->release();
+    _videoSource->Initialize(_parameter);
+    _videoSource->Run();
+    _videoSource->Release();
     return 0;
 }
 
@@ -34,56 +34,68 @@ namespace agora
 
             VideoSource::~VideoSource()
             {
-                _irisEngine.reset();
-                _irisEventHandler.reset();
-                _ipcController.reset();
-                _ipcSender.reset();
-                _parameterParser.reset();
+                _iris_engine.reset();
+                _iris_event_handler.reset();
+                _ipc_controller.reset();
+                _ipc_sender.reset();
+                _parameter_parser.reset();
             }
 
-            bool VideoSource::initialize(std::string &parameter)
+            bool VideoSource::Initialize(std::string &parameter)
             {
-                _parameterParser.reset(new VideoSourceParamParser());
-                _parameterParser->initialize(parameter);
+                _parameter_parser.reset(new VideoSourceParamParser());
+                _parameter_parser->initialize(parameter);
 
-                auto _apiParameter = _parameterParser->getParameter("apiParameter");
-                auto _peerId = _parameterParser->getParameter("id");
+                auto _apiParameter = _parameter_parser->getParameter("apiParameter");
+                auto _peerId = _parameter_parser->getParameter("id");
 
-                LOG_F(INFO, "initialize createAgoraIpc");
-                _ipcController.reset(createAgoraIpc(this));
-                if (!_ipcController->initialize(_peerId))
+                LOG_F(INFO, "VideoSource::Initialize");
+
+                LOG_F(INFO, "initialize createAgoraIpc peerId: %s", _peerId.c_str());
+                _ipc_controller.reset(createAgoraIpc(this));
+                if (!_ipc_controller->initialize(_peerId))
                 {
-                    LOG_F(INFO, "initialize createAgoraIpc _ipcController fail");
+                    LOG_F(INFO, "initialize createAgoraIpc _ipc_controller fail");
                     return false;
                 }
 
-                if (!_ipcController->connect())
+                if (!_ipc_controller->connect())
                 {
                     LOG_F(INFO, "initialize createAgoraIpc connect fail");
                     return false;
                 }
 
-                _irisEngine.reset(new IrisEngine());
-                _irisEventHandler.reset(new VideoSourceIrisEventhandler(_ipcController.get()));
-                _irisEngine->SetEventHandler(_irisEventHandler.get());
+                _iris_engine.reset(new IrisEngine());
+                _iris_raw_data.reset(_iris_engine->iris_raw_data());
+                _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->iris_raw_data_plugin_manager());
+                _iris_event_handler.reset(new VideoSourceIrisEventhandler(_ipc_controller.get()));
+                _iris_engine->SetEventHandler(_iris_event_handler.get());
                 char result[512];
-                auto ret = _irisEngine->CallApi(ApiTypeEngine::kEngineInitialize, _apiParameter.c_str(), result);
+                auto ret = _iris_engine->CallApi(ApiTypeEngine::kEngineInitialize, _apiParameter.c_str(), result);
                 if (ret != 0)
                 {
-                    LOG_F(INFO, "initialize _irisEngine initialize fail");
+                    LOG_F(INFO, "initialize _iris_engine initialize fail");
                     return false;
                 }
+
+                _ipc_sender.reset(new AgoraIpcDataSender());
+                if (!_ipc_sender->initialize(_peerId + DATA_IPC_NAME)) {
+                    return false;
+                }
+
                 LOG_F(INFO, "initialize ipc sendMessage");
-                _ipcController->sendMessage(AGORA_IPC_SOURCE_READY, nullptr, 0);
+                _ipc_controller->sendMessage(AGORA_IPC_SOURCE_READY, nullptr, 0);
+                _initialize = true;
                 return true;
             }
 
-            void VideoSource::run()
+            void VideoSource::Run()
             {
+                LOG_F(INFO, "VideoSource::Run11()");
 #ifdef _WIN32
-                std::string idstr = _parameterParser->getParameter("pid");
+                std::string idstr = _parameter_parser->getParameter("pid");
 #else
-                std::string idstr = _parameterParser->getParameter("fd");
+                std::string idstr = _parameter_parser->getParameter("fd");
 #endif
                 _process.reset(INodeProcess::OpenNodeProcess(std::atoi(idstr.c_str())));
 
@@ -91,21 +103,22 @@ namespace agora
                     LOG_F(INFO, "VideoSource process open fail");
                     return;
                 }
-
+                LOG_F(INFO, "VideoSource::Run22()");
                 _process->Monitor([this](INodeProcess *) {
-                    this->exit(false);
+                    this->Exit(false);
                 });
 
-                _ipcController->run();
+                _ipc_controller->run();
             }
 
-            void VideoSource::release()
+            void VideoSource::Release()
             {
                 delete this;
             }
 
             void VideoSource::OnMessage(unsigned int msg, char *payload, unsigned int len)
             {
+                LOG_F(INFO, "VideoSource::OnMessage  msg: %d", msg);
                 if (!_initialize)
                     return;
 
@@ -113,9 +126,19 @@ namespace agora
                 {
                     case AGORA_IPC_CALL_API:
                     {
+                        LOG_F(INFO, "VideoSource::OnMessage  111 ");
+                        LOG_F(INFO, "VideoSource::OnMessage  111  %p", payload);
                         ApiParameter *parameter = (ApiParameter *)payload;
+                        LOG_F(INFO, "VideoSource::OnMessage  23232323 ");
                         char result[512];
-                        _irisEngine->CallApi(parameter->_apiType, parameter->_parameters.c_str(), result);
+                        try {
+                            LOG_F(INFO, "VideoSource::OnMessage  2222 ");
+                            _iris_engine->CallApi(ApiTypeEngine(parameter->_apiType), parameter->_parameters, result);
+                            LOG_F(INFO, "VideoSource::OnMessage  333 ");
+                        } catch (std::exception& e) {
+                            LOG_F(INFO, "VideoSourcePluginCallApi catch exception: %s", e.what());
+                            this->OnApiError("videoSourceApiError", e.what());
+                        }
                     }
                     break;
 
@@ -123,24 +146,56 @@ namespace agora
                     {
                         ApiParameter *parameter = (ApiParameter *)payload;
                         char result[512];
-                        _irisEngine->CallApi(parameter->_apiType, parameter->_parameters.c_str(), const_cast<char *>(parameter->_buffer.c_str()), result);
+                        try {
+                            _iris_engine->CallApi(ApiTypeEngine(parameter->_apiType), parameter->_parameters, const_cast<char *>(parameter->_buffer), result);
+                        } catch (std::exception& e) {
+                            LOG_F(INFO, "VideoSourcePluginCallApi catch exception: %s", e.what());
+                            this->OnApiError("videoSourceApiError", e.what());
+                        }
+                    }
+                    break;
+
+                    case AGORA_IPC_PLUGIN_CALL_API:
+                    {   
+                        LOG_F(INFO, "VideoSourcePluginCallApi xxxx");
+                        if (!payload) {
+                            LOG_F(INFO, "VideoSourcePluginCallApi 32323");
+                        }
+
+                        ApiParameter *parameter = (ApiParameter *)payload;
+                        LOG_F(INFO, "VideoSourcePluginCallApi type: %d, msg: %s", parameter->_apiType, parameter->_parameters);
+                        char result[512];
+                        try {
+                            LOG_F(INFO, "VideoSourcePluginCallApi 1111");
+                            _iris_raw_data_plugin_manager->CallApi(ApiTypeRawDataPlugin(parameter->_apiType), parameter->_parameters, result);
+                            LOG_F(INFO, "VideoSourcePluginCallApi 2222");
+                        } catch (std::exception& e) {
+                            LOG_F(INFO, "VideoSourcePluginCallApi catch exception: %s", e.what());
+                            this->OnApiError("videoSourceApiError", e.what());
+                        }
                     }
                     break;
 
                     case AGORA_IPC_DISCONNECT:
                     {
-                        this->exit(false);
+                        this->Exit(false);
                     }
+                    break;
 
                     default:
                         break;
                 }
             }
 
-            void VideoSource::exit(bool flag)
+            void VideoSource::Exit(bool flag)
             {
-                _ipcSender->Disconnect();
-                _ipcController->disconnect();
+                _ipc_sender->Disconnect();
+                _ipc_controller->disconnect();
+            }
+
+            void VideoSource::OnApiError(const char* event, const char* data)
+            {
+                _iris_event_handler->OnEvent(event, data);
             }
         }
     }
