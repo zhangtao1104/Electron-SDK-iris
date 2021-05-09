@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:38:45 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-07 17:48:20
+ * @Last Modified time: 2021-05-09 20:17:15
  */
 
 import {
@@ -11,11 +11,12 @@ import {
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
-  ApiTypeRawDataPlugin,
-  VideoFrameCacheConfig,
+  ApiTypeRawDataPlugin
 } from "./native_api_type";
 
 import {WindowInfo, VideoFrame} from "../types";
+
+import { VideoFrameCacheConfig } from '../../renderer/type'
 
 /**
  * interface for c++ addon (.node)

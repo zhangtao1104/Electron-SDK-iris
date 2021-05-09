@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:41:00
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-07 17:48:11
+ * @Last Modified time: 2021-05-09 20:13:35
  */
 
 /**
@@ -2733,18 +2733,6 @@ export enum NETWORK_TYPE {
   NETWORK_TYPE_MOBILE_4G = 5,
 }
 
-export enum RENDER_MODE {
-  WEBGL = 1,
-  SOFTWARE = 2,
-  CUSTOME = 3,
-}
-
-export interface RendererOptions {
-  append: boolean;
-  contentMode: CONTENT_MODE;
-  mirror: boolean;
-}
-
 export interface Device {
   deviceId: string;
   deviceName: string;
@@ -2774,11 +2762,6 @@ export enum CHANNEL_PROFILE_TYPE {
    * @note Agora does not recommend using this setting.
    */
   CHANNEL_PROFILE_GAME = 2,
-}
-
-export enum CONTENT_MODE {
-  CROPPED = 0,
-  FIT = 1,
 }
 
 export interface WindowInfo {

@@ -2,18 +2,14 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 20:06:56
+ * @Last Modified time: 2021-05-09 20:57:57
  */
-
-import { YUVCanvasRenderer } from "../Renderer/YUVCanvasRenderer";
-import { IRenderer } from "../Renderer/IRender";
 import {
   ApiTypeEngine,
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
-  ApiTypeRawDataPlugin,
-  VideoFrameCacheConfig,
+  ApiTypeRawDataPlugin
 } from "./internal/native_api_type";
 import {
   NodeIrisRtcEngine,
@@ -52,7 +48,6 @@ import {
   VideoContentHint,
   VideoEncoderConfiguration,
   UserInfo,
-  RendererOptions,
   Metadata,
   RTMP_STREAMING_EVENT,
   AREA_CODE,
@@ -90,8 +85,6 @@ import {
   CHANNEL_MEDIA_RELAY_STATE,
   CHANNEL_MEDIA_RELAY_ERROR,
   ChannelMediaRelayConfiguration,
-  RENDER_MODE,
-  CONTENT_MODE,
   Device,
   METADATA_TYPE,
   CHANNEL_PROFILE_TYPE,
@@ -103,6 +96,8 @@ import {
 import { EventEmitter } from "events";
 import { deprecate, logWarn, logInfo, logError } from "../Utils";
 import { PluginInfo, Plugin } from "./plugin";
+import { RendererManager } from "../Renderer/RendererManager";
+import {RENDER_MODE, RendererOptions, CONTENT_MODE, VideoFrameCacheConfig} from '../Renderer/type'
 
 const agora = require("../../build/Release/agora_node_ext");
 
@@ -113,14 +108,8 @@ class AgoraRtcEngine extends EventEmitter {
   _rtcEngine: NodeIrisRtcEngine;
   _rtcChannel: NodeIrisRtcChannel;
   _rtcDeviceManager: NodeIrisRtcDeviceManager;
-
-  _config: {
-    videoFps: number;
-    videoFrameUpdateInterval?: NodeJS.Timeout;
-    renderers: Map<
-      string,
-      Map<string, { cachedVideoFrame?: VideoFrame; render?: IRenderer[] }>>;
-    renderMode: RENDER_MODE;
+  _rendererManager?: RendererManager;
+  _info: {
     currentChannel?: string;
   };
 
@@ -131,11 +120,10 @@ class AgoraRtcEngine extends EventEmitter {
     this._rtcChannel = this._rtcEngine.GetChannel();
     this._rtcDeviceManager = this._rtcEngine.GetDeviceManager();
     this.initEventHandler();
-    this._config = {
-      videoFps: 10,
-      renderers: new Map(),
-      renderMode: this._checkWebGL() ? RENDER_MODE.WEBGL : RENDER_MODE.SOFTWARE,
-    };
+    this._rendererManager = new RendererManager(this._rtcEngine)
+    this._info = {
+      currentChannel: ""
+    }
   }
 
   setAddonLogFile(filePath: string): number {
@@ -151,7 +139,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - 3 for custom rendering.
    */
   setRenderMode(mode: RENDER_MODE): void {
-    this._config.renderMode = mode;
+    this._rendererManager?.setRenderMode(mode)
   }
 
   /**
@@ -255,7 +243,7 @@ class AgoraRtcEngine extends EventEmitter {
                 uid: number;
                 elapsed: number;
               } = JSON.parse(_eventData);
-              self._config.currentChannel = data.channel;
+              self._info.currentChannel = data.channel
               fire("joinedChannel", data.channel, data.uid, data.elapsed);
               fire("joinedchannel", data.channel, data.uid, data.elapsed);
             }
@@ -278,7 +266,7 @@ class AgoraRtcEngine extends EventEmitter {
               let data: { stats: RtcStats } = JSON.parse(_eventData);
               fire("leaveChannel", data.stats);
               fire("leavechannel", data.stats);
-              self._config.currentChannel = undefined;
+              self._info.currentChannel = undefined;
             }
             break;
 
@@ -311,8 +299,8 @@ class AgoraRtcEngine extends EventEmitter {
               } = JSON.parse(_eventData);
               fire("userOffline", data.uid, data.reason);
 
-              if (!self._config.currentChannel) return;
-              self.removeRender(String(data.uid), self._config.currentChannel);
+              if (!self._info.currentChannel) return;
+              self._rendererManager?.removeRenderer(String(data.uid), self._info.currentChannel);
               fire("removeStream", data.uid, data.reason);
             }
             break;
@@ -612,7 +600,7 @@ class AgoraRtcEngine extends EventEmitter {
                 data.width,
                 data.height
               );
-              this.addVideoFrameCacheToMap("local", "", videoFrameItem);
+              this._rendererManager?.addVideoFrameCacheToMap("local", "", videoFrameItem);
             }
             break;
 
@@ -643,7 +631,7 @@ class AgoraRtcEngine extends EventEmitter {
                 data.width,
                 data.height
               );
-              this.addVideoFrameCacheToMap(
+              this._rendererManager?.addVideoFrameCacheToMap(
                 data.uid,
                 data.channelId,
                 videoFrameItem
@@ -1336,7 +1324,7 @@ class AgoraRtcEngine extends EventEmitter {
                 reason: USER_OFFLINE_REASON_TYPE;
               } = JSON.parse(_eventData);
               fire("videoSourceUserOffline", data.uid, data.reason);
-              self.removeRender(String(data.uid), "");
+              self._rendererManager?.removeRenderer(String(data.uid), "");
             }
             break;
 
@@ -2171,11 +2159,26 @@ class AgoraRtcEngine extends EventEmitter {
     }
   ): void {
     if (view) {
-      this.setRender(user, view, channelId, renderOptions);
+      this._rendererManager?.setRenderer(user, view, channelId, renderOptions);
     } else {
       logWarn("Note: setView view is null!");
-      this.removeRender(user, channelId);
+      this._rendererManager?.removeRenderer(user, channelId);
     }
+  }
+
+  /**
+   * Destroys the renderer.
+   * @param key Key for the map that store the renderers,
+   * e.g, `uid` or `videosource` or `local`.
+   * @param onFailure The error callback for the {@link destroyRenderer}
+   * method.
+   */
+   destroyRenderer(
+    user: User,
+    channelId?: Channel,
+    onFailure?: (err: Error) => void
+  ) {
+    this._rendererManager?.removeRenderer(user, channelId ? channelId : "");
   }
 
   /**
@@ -2195,114 +2198,6 @@ class AgoraRtcEngine extends EventEmitter {
     //   const renderers = channelStreams.get(String(key)) || [];
     //   renderers.forEach((renderer) => renderer.refreshCanvas());
     // }
-  }
-
-  /**
-   * @private
-   * @ignore
-   */
-  setRender(
-    user: User,
-    view: Element,
-    channelId: Channel = "",
-    options: RendererOptions = {
-      append: false,
-      contentMode: CONTENT_MODE.FIT,
-      mirror: false,
-    }
-  ): void {
-    let _renders = this.getRender(user, channelId);
-    if (_renders) {
-      options.append
-        ? _renders.forEach((item) => {
-            if (item.equalsElement(view)) {
-              console.warn("setVideoView: this view exists in list, ignore");
-              return;
-            }
-          })
-        : this.removeRender(user, channelId);
-    }
-
-    this.enableVideoFrameCache(user, channelId, 0, 0);
-    this.addRender(user, view, channelId);
-    this.setupViewContentMode(
-      user,
-      channelId,
-      options.contentMode,
-      options.mirror
-    );
-  }
-
-  /**
-   * @private
-   * @ignore
-   */
-  createRender(): IRenderer {
-    return new YUVCanvasRenderer(this._config.renderMode === RENDER_MODE.WEBGL);
-  }
-
-  /**
-   * @private
-   * @ignore
-   */
-  addRender(user: User, view: Element, channelId: Channel): void {
-    let rendererMap = this.ensureRendererMap(user, channelId)
-    if (!rendererMap?.get(String(user))) {
-      rendererMap?.set(String(user), { render: [] });
-    }
-
-    let renderer = this.createRender();
-    renderer.bind(view);
-    rendererMap?.get(String(user))?.render?.push(renderer);
-  }
-
-  /**
-   * @private
-   * @ignore
-   */
-  getRender(user: User, channelId: Channel = ""): IRenderer[] | undefined {
-    return this._config.renderers.get(channelId)?.get(String(user))?.render;
-  }
-
-  removeRender(user: User, channelId: Channel = ""): void {
-    this.disableVideoFrameCache(user, channelId, 0, 0);
-    this.removeVideoFrameCacheFromMap(user, channelId);
-    this._config.renderers
-      .get(channelId)
-      ?.get(String(user))
-      ?.render?.forEach((renderItem) => {
-        renderItem.unbind();
-      });
-
-    this._config.renderers.get(channelId)?.delete(String(user));
-  }
-
-  removeAllRender(): void {
-    this._config.renderers.forEach((renderMap, key) => {
-      renderMap.forEach((renderObject, key) => {
-        renderObject.render?.forEach((renderItem) => {
-          renderItem.unbind();
-        });
-        renderMap.delete(key);
-      });
-      this._config.renderers.delete(key);
-    });
-  }
-
-  /**
-   * Destroys the renderer.
-   * @param key Key for the map that store the renderers,
-   * e.g, `uid` or `videosource` or `local`.
-   * @param onFailure The error callback for the {@link destroyRenderer}
-   * method.
-   */
-  destroyRender(
-    user: User,
-    channelId?: Channel,
-    onFailure?: (err: Error) => void
-  ) {
-    deprecate("destroyRender", "removeRender");
-    this.removeRender(user, channelId ? channelId : "");
   }
 
   // ===========================================================================
@@ -2353,7 +2248,7 @@ class AgoraRtcEngine extends EventEmitter {
       JSON.stringify(param)
     );
 
-    this.startInterval();
+    this._rendererManager?.startRenderer()
     return ret.retCode;
   }
 
@@ -2542,88 +2437,6 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   /**
-   * @private
-   * @ignore
-   */
-  startInterval(): void {
-    this._config.videoFrameUpdateInterval = setInterval(() => {
-      this._config.renderers.forEach((rendererCache, channelId) => {
-        rendererCache.forEach((rendererItem, user) => {
-          let cachedVideoFrame = rendererItem.cachedVideoFrame;
-          if (!cachedVideoFrame)
-          {
-            logWarn(`Channel: ${channelId} User: ${user} have no cachedVideoFrame`)
-            return;
-          }
-
-          let retObj = this._rtcEngine.GetVideoStreamData(cachedVideoFrame);
-
-          if (!retObj.ret) {
-            logWarn(`Channel: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} have no stream`);
-            return;
-          }
-
-          if (cachedVideoFrame.uid != null) {
-
-            let user = this.uidToUser(cachedVideoFrame.uid);
-            let render = this.getRender(user, cachedVideoFrame.channelId);
-            let videoFrame: VideoFrame = {
-              left: retObj.left,
-              right: retObj.right,
-              top: retObj.top,
-              bottom: retObj.bottom,
-              width: retObj.width,
-              height: retObj.height,
-              yBuffer: cachedVideoFrame.yBuffer as Buffer,
-              uBuffer: cachedVideoFrame.uBuffer as Buffer,
-              vBuffer: cachedVideoFrame.vBuffer as Buffer,
-              mirror: false,
-              rotation: retObj.rotation,
-            };
-
-            if (render) {
-              render.forEach((renderItem) => {
-                renderItem.drawFrame(videoFrame);
-              });
-            } else {
-              logWarn(
-                `Channel: ${channelId} User: ${user} have no renderer`
-              );
-            }
-          }
-        });
-      });
-    }, 1000 / this._config.videoFps);
-  }
-
-  /**
-   * @private
-   * @ignore
-   */
-  stopInterval(): void {
-    this._config.videoFrameUpdateInterval
-      ? clearInterval(this._config.videoFrameUpdateInterval)
-      : logWarn("video stream interval is not start!");
-
-    this._config.videoFrameUpdateInterval = undefined;
-  }
-
-  /**
-   * @private
-   * @ignore
-   */
-  restartInterval(): void {
-    let self = this;
-    this._config.videoFrameUpdateInterval
-      ? () => {
-          self.stopInterval();
-          self.startInterval();
-          logInfo(`setFps ${this._config.videoFps} restartInterval`);
-        }
-      : logInfo(`setFps ${this._config.videoFps}`);
-  }
-
-  /**
    * Releases the AgoraRtcEngine instance.
    *
    * Once the App calls this method to release the created AgoraRtcEngine
@@ -2638,7 +2451,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   release(): number {
-    this.stopInterval();
+
+    this._rendererManager = undefined;
     let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
     return ret.retCode;
   }
@@ -2713,7 +2527,7 @@ class AgoraRtcEngine extends EventEmitter {
       return 0;
     } else {
       //unbind
-      this.removeRender(uid, channel ? channel : "");
+      this._rendererManager?.removeRenderer(uid, channel ? channel : "");
       return 0;
     }
   } //TODO(input)
@@ -2751,9 +2565,9 @@ class AgoraRtcEngine extends EventEmitter {
     height: number,
     channelId: string = ""
   ) {
-    this.stopInterval();
-    this.enableVideoFrameCache(user, channelId, width, height);
-    this.startInterval();
+    this._rendererManager?.stopRenderer();
+    this._rendererManager?.enableVideoFrameCache(user, channelId, width, height);
+    this._rendererManager?.startRenderer();
   }
 
   /**
@@ -2767,110 +2581,10 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} fps The renderer frame rate (fps).
    */
   setVideoRenderFPS(fps: number) {
-    this._config.videoFps = fps;
-    this.restartInterval();
-  }
-
-  userToUid(user: User): number {
-    let uid;
-    if (user === "local") {
-      uid = 0;
-    } else if (user === "videoSource") {
-      uid = 0;
-    } else {
-      uid = user as number;
+    if (this._rendererManager) {
+      this._rendererManager._config.videoFps = fps;
+      this._rendererManager.restartRenderer();
     }
-
-    return uid;
-  }
-
-  uidToUser(uid: number): User {
-    let user: User;
-    if (uid === 0) {
-      user = "local";
-    } else {
-      user = String(uid);
-    }
-    /**
-     * @todo
-     */
-    return user;
-  }
-
-  enableVideoFrameCache(
-    user: User,
-    channelId: string,
-    width: number,
-    height: number
-  ): number {
-    let uid = this.userToUid(user);
-    let config: VideoFrameCacheConfig = {
-      uid,
-      channelId,
-      width,
-      height,
-    };
-
-    logInfo(`enableVideoFrameCache ${JSON.stringify(config)}`);
-    return this._rtcEngine.EnableVideoFrameCache(config);
-  }
-
-  disableVideoFrameCache(
-    user: User,
-    channelId: string,
-    width: number,
-    height: number
-  ): number {
-    let uid = this.userToUid(user);
-    let config: VideoFrameCacheConfig = {
-      uid,
-      channelId,
-      width,
-      height,
-    };
-
-    logInfo(`disableVideoFrameCache ${JSON.stringify(config)}`);
-    return this._rtcEngine.DisableVideoFrameCache(config);
-  }
-
-  ensureRendererMap(
-    user: User,
-    channelId: string
-  ):
-    | Map<string, { cachedVideoFrame?: VideoFrame; render?: IRenderer[] }>
-    | undefined {
-    let rendererMap = this._config.renderers.get(channelId);
-    if (!rendererMap) {
-      logWarn(`ensureRendererMap for ${channelId}  ${user}`);
-      this._config.renderers.set(channelId, new Map());
-    }
-    rendererMap = this._config.renderers.get(channelId);
-    return rendererMap;
-  }
-
-  addVideoFrameCacheToMap(
-    user: User,
-    channelId: string,
-    videoFrame: VideoFrame
-  ): void {
-    let rendererMap = this.ensureRendererMap(user, channelId);
-    rendererMap
-      ? Object.assign(rendererMap.get(String(user)), {
-          cachedVideoFrame: videoFrame,
-        })
-      : logWarn(
-          `addVideoFrameCacheToMap rendererMap ${channelId}  ${user} is null`
-        );
-  }
-
-  removeVideoFrameCacheFromMap(user: User, channelId: string): void {
-    let rendererMap = this._config.renderers.get(channelId);
-    let rendererItem = rendererMap?.get(String(user));
-    rendererItem
-      ? Object.assign(rendererItem, { cachedVideoFrame: undefined })
-      : logWarn(
-          `removeVideoFrameCacheFromMap rendererItem ${channelId}  ${user} is null`
-        );
   }
 
   /**
@@ -2933,7 +2647,7 @@ class AgoraRtcEngine extends EventEmitter {
     mode: CONTENT_MODE = CONTENT_MODE.FIT,
     mirror: boolean = false
   ): number {
-    let renderList = this.getRender(user, channelId);
+    let renderList = this._rendererManager?.getRenderer(user, channelId);
     renderList
       ? renderList.forEach((renderItem) =>
           renderItem.setContentMode(mode, mirror)
@@ -12025,7 +11739,7 @@ class AgoraRtcChannel extends EventEmitter {
                 width: 0,
                 height: 0,
               };
-              this.removeRender(data.uid);
+              this.destroyRenderer(data.uid);
             }
             break;
 
@@ -12472,8 +12186,8 @@ class AgoraRtcChannel extends EventEmitter {
     this._rtcEngine.setView(user, view, this.channelId(), renderOptions);
   }
 
-  removeRender(user: User): void {
-    this._rtcEngine.removeRender(user, this.channelId());
+  destroyRenderer(user: User): void {
+    this._rtcEngine.destroyRenderer(user, this.channelId());
   }
 
   /**

@@ -1,8 +1,8 @@
 /*
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:52:54 
- * @Last Modified by:   zhangtao@agora.io 
- * @Last Modified time: 2021-04-22 20:52:54 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-05-09 21:21:17
  */
 #include "nan_api.h"
 
@@ -23,7 +23,7 @@ namespace agora
                 return Nan::To<v8_Int32>(value).ToLocalChecked()->Value();
             }
 
-            int nan_api_get_value_uint32_(const v8_Local<v8_Value> &value)
+            unsigned int nan_api_get_value_uint32_(const v8_Local<v8_Value> &value)
             {
                 return Nan::To<v8_Uint32>(value).ToLocalChecked()->Value();
             }

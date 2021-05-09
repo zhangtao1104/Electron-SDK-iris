@@ -2,15 +2,15 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:48
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 18:46:55
+ * @Last Modified time: 2021-05-09 20:49:16
  */
 
 const YUVBuffer = require("yuv-buffer");
 const YUVCanvas = require("yuv-canvas");
 const isEqual = require("lodash.isequal");
 
-import { CONTENT_MODE, VideoFrame } from "../Api/types";
-import {CanvasOptions } from "./type";
+import { VideoFrame } from "../Api/types";
+import {CanvasOptions, CONTENT_MODE } from "./type";
 import { IRenderer } from "./IRender";
 import { logWarn } from "../Utils";
 

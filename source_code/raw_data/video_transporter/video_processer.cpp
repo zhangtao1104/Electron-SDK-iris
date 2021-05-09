@@ -1,4 +1,5 @@
 #include "video_processer.h"
+#include "loguru.hpp"
 
 namespace agora
 {
@@ -25,6 +26,7 @@ namespace agora
             void VideoProcesser::EnableVideoFrameCache(const IrisRtcRendererCacheConfig &cache_config,
                                     unsigned int uid, const char *channel_id)
             {
+                LOG_F(INFO, "EnableVideoFrameCache uid: %u", uid);
                 _iris_rtc_renderer->EnableVideoFrameCache(cache_config, uid, channel_id);
             }
 
