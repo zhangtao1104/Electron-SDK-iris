@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:41:00
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 20:13:35
+ * @Last Modified time: 2021-05-09 21:27:51
  */
 
 /**
@@ -2776,9 +2776,9 @@ export interface WindowInfo {
   image: Uint8Array;
 }
 
-export type User = 'local' | 'videoSource' | number | string
+export type User = "local" | "videoSource" | number | string;
 
-export type Channel =  "" | string
+export type Channel = "" | string;
 
 export interface VideoFrame {
   width: number;
@@ -2789,7 +2789,7 @@ export interface VideoFrame {
   mirror?: boolean;
   rotation?: number;
   left?: number;
-  right?: number
+  right?: number;
   top?: number;
   bottom?: number;
   uid?: number;

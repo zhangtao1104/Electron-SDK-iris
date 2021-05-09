@@ -1,8 +1,8 @@
 /*
- * @Author: zhangtao@agora.io 
- * @Date: 2021-04-22 11:38:45 
+ * @Author: zhangtao@agora.io
+ * @Date: 2021-04-22 11:38:45
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 20:17:15
+ * @Last Modified time: 2021-05-09 21:27:22
  */
 
 import {
@@ -11,12 +11,12 @@ import {
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
-  ApiTypeRawDataPlugin
+  ApiTypeRawDataPlugin,
 } from "./native_api_type";
 
-import {WindowInfo, VideoFrame} from "../types";
+import { WindowInfo, VideoFrame } from "../types";
 
-import { VideoFrameCacheConfig } from '../../renderer/type'
+import { VideoFrameCacheConfig } from "../../renderer/type";
 
 /**
  * interface for c++ addon (.node)
@@ -24,10 +24,7 @@ import { VideoFrameCacheConfig } from '../../renderer/type'
  * @ignore
  */
 export interface NodeIrisRtcEngine {
-  CallApi(
-    apiType: ApiTypeEngine,
-    params: string
-  ): Result;
+  CallApi(apiType: ApiTypeEngine, params: string): Result;
   CallApiWithBuffer(
     apiType: ApiTypeEngine,
     params: string,
@@ -41,29 +38,28 @@ export interface NodeIrisRtcEngine {
   GetScreenDisplaysInfo(): Array<Object>;
   GetScreenWindowsInfo(): Array<WindowInfo>;
   VideoSourceInitialize(params: string): Result;
-  VideoSourceCallApi(
-    apiType: ApiTypeEngine,
-    params: string
-  ): Result;
-  VideoSourceCallApiWithBuffer(
-    apiType: ApiTypeEngine,
-    params: string
-  ): Result;
+  VideoSourceCallApi(apiType: ApiTypeEngine, params: string): Result;
+  VideoSourceCallApiWithBuffer(apiType: ApiTypeEngine, params: string): Result;
   VideoSourceRelease(): Result;
-  VideoSourcePluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
+  VideoSourcePluginCallApi(
+    apiType: ApiTypeRawDataPlugin,
+    params: string
+  ): Result;
   EnableVideoFrameCache(config: VideoFrameCacheConfig): number;
   DisableVideoFrameCache(config: VideoFrameCacheConfig): number;
-  GetVideoStreamData(streamInfo: VideoFrame): {
-    ret: boolean,
-    isNewFrame: boolean,
-    width: number,
-    height: number,
-    left: number,
-    right: number,
-    top: number,
-    bottom: number,
-    rotation: number,
-    timestamp: number
+  GetVideoStreamData(
+    streamInfo: VideoFrame
+  ): {
+    ret: boolean;
+    isNewFrame: boolean;
+    width: number;
+    height: number;
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    rotation: number;
+    timestamp: number;
   };
 }
 
@@ -72,10 +68,7 @@ export interface NodeIrisRtcEngine {
  * @ignore
  */
 export interface NodeIrisRtcChannel {
-  CallApi(
-    apiType: ApiTypeChannel,
-    params: string
-  ): Result;
+  CallApi(apiType: ApiTypeChannel, params: string): Result;
   CallApiWithBuffer(
     apiType: ApiTypeChannel,
     params: string,

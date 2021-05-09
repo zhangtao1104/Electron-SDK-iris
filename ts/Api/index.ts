@@ -2,14 +2,14 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 20:57:57
+ * @Last Modified time: 2021-05-09 21:27:31
  */
 import {
   ApiTypeEngine,
   ApiTypeChannel,
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
-  ApiTypeRawDataPlugin
+  ApiTypeRawDataPlugin,
 } from "./internal/native_api_type";
 import {
   NodeIrisRtcEngine,
@@ -97,7 +97,12 @@ import { EventEmitter } from "events";
 import { deprecate, logWarn, logInfo, logError } from "../Utils";
 import { PluginInfo, Plugin } from "./plugin";
 import { RendererManager } from "../Renderer/RendererManager";
-import {RENDER_MODE, RendererOptions, CONTENT_MODE, VideoFrameCacheConfig} from '../Renderer/type'
+import {
+  RENDER_MODE,
+  RendererOptions,
+  CONTENT_MODE,
+  VideoFrameCacheConfig,
+} from "../Renderer/type";
 
 const agora = require("../../build/Release/agora_node_ext");
 
@@ -120,10 +125,10 @@ class AgoraRtcEngine extends EventEmitter {
     this._rtcChannel = this._rtcEngine.GetChannel();
     this._rtcDeviceManager = this._rtcEngine.GetDeviceManager();
     this.initEventHandler();
-    this._rendererManager = new RendererManager(this._rtcEngine)
+    this._rendererManager = new RendererManager(this._rtcEngine);
     this._info = {
-      currentChannel: ""
-    }
+      currentChannel: "",
+    };
   }
 
   setAddonLogFile(filePath: string): number {
@@ -139,7 +144,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - 3 for custom rendering.
    */
   setRenderMode(mode: RENDER_MODE): void {
-    this._rendererManager?.setRenderMode(mode)
+    this._rendererManager?.setRenderMode(mode);
   }
 
   /**
@@ -243,7 +248,7 @@ class AgoraRtcEngine extends EventEmitter {
                 uid: number;
                 elapsed: number;
               } = JSON.parse(_eventData);
-              self._info.currentChannel = data.channel
+              self._info.currentChannel = data.channel;
               fire("joinedChannel", data.channel, data.uid, data.elapsed);
               fire("joinedchannel", data.channel, data.uid, data.elapsed);
             }
@@ -300,7 +305,10 @@ class AgoraRtcEngine extends EventEmitter {
               fire("userOffline", data.uid, data.reason);
 
               if (!self._info.currentChannel) return;
-              self._rendererManager?.removeRenderer(String(data.uid), self._info.currentChannel);
+              self._rendererManager?.removeRenderer(
+                String(data.uid),
+                self._info.currentChannel
+              );
               fire("removeStream", data.uid, data.reason);
             }
             break;
@@ -600,7 +608,11 @@ class AgoraRtcEngine extends EventEmitter {
                 data.width,
                 data.height
               );
-              this._rendererManager?.addVideoFrameCacheToMap("local", "", videoFrameItem);
+              this._rendererManager?.addVideoFrameCacheToMap(
+                "local",
+                "",
+                videoFrameItem
+              );
             }
             break;
 
@@ -2173,7 +2185,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param onFailure The error callback for the {@link destroyRenderer}
    * method.
    */
-   destroyRenderer(
+  destroyRenderer(
     user: User,
     channelId?: Channel,
     onFailure?: (err: Error) => void
@@ -2248,7 +2260,7 @@ class AgoraRtcEngine extends EventEmitter {
       JSON.stringify(param)
     );
 
-    this._rendererManager?.startRenderer()
+    this._rendererManager?.startRenderer();
     return ret.retCode;
   }
 
@@ -2451,7 +2463,6 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   release(): number {
-
     this._rendererManager = undefined;
     let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
     return ret.retCode;
@@ -2566,7 +2577,12 @@ class AgoraRtcEngine extends EventEmitter {
     channelId: string = ""
   ) {
     this._rendererManager?.stopRenderer();
-    this._rendererManager?.enableVideoFrameCache(user, channelId, width, height);
+    this._rendererManager?.enableVideoFrameCache(
+      user,
+      channelId,
+      width,
+      height
+    );
     this._rendererManager?.startRenderer();
   }
 
@@ -14081,6 +14097,3 @@ declare interface AgoraRtcChannel {
 }
 
 export default AgoraRtcEngine;
-
-
-

@@ -1,11 +1,11 @@
 /*
- * @Author: zhangtao@agora.io 
- * @Date: 2021-04-22 20:52:07 
+ * @Author: zhangtao@agora.io
+ * @Date: 2021-04-22 20:52:07
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-29 15:28:16
+ * @Last Modified time: 2021-05-09 21:27:42
  */
 
-/** 
+/**
  * @ignore
  */
 export interface PluginInfo {
@@ -14,7 +14,7 @@ export interface PluginInfo {
   order: number;
 }
 
-/** 
+/**
  * @ignore
  */
 export interface Plugin {

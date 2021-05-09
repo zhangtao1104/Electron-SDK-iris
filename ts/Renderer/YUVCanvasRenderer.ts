@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:48
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 20:49:16
+ * @Last Modified time: 2021-05-09 21:28:20
  */
 
 const YUVBuffer = require("yuv-buffer");
@@ -10,7 +10,7 @@ const YUVCanvas = require("yuv-canvas");
 const isEqual = require("lodash.isequal");
 
 import { VideoFrame } from "../Api/types";
-import {CanvasOptions, CONTENT_MODE } from "./type";
+import { CanvasOptions, CONTENT_MODE } from "./type";
 import { IRenderer } from "./IRender";
 import { logWarn } from "../Utils";
 
@@ -66,10 +66,8 @@ export class YUVCanvasRenderer implements IRenderer {
   }
 
   unbind() {
-    this._canvas &&
-    this._container?.removeChild(this._canvas);
-    this._container &&
-    this._customeElement?.removeChild(this._container);
+    this._canvas && this._container?.removeChild(this._canvas);
+    this._container && this._customeElement?.removeChild(this._container);
     this._isWebGL && this._yuvCanvasSink?.loseContext();
     this._yuvCanvasSink = undefined;
     this._canvas && (this._canvas = undefined);

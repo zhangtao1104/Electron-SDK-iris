@@ -1,7 +1,7 @@
 import { VideoFrame, User, Channel } from "../Api/types";
 import { IRenderer } from "./IRender";
 import { YUVCanvasRenderer } from "./YUVCanvasRenderer";
-import { NodeIrisRtcEngine } from '../Api/internal/native_interface'
+import { NodeIrisRtcEngine } from "../Api/internal/native_interface";
 import {
   RendererOptions,
   RENDER_MODE,
@@ -16,11 +16,11 @@ class RendererManager {
     videoFrameUpdateInterval?: NodeJS.Timeout;
     renderers: Map<
       string,
-      Map<string, { render?: IRenderer[], cachedVideoFrame?: VideoFrame }>
+      Map<string, { render?: IRenderer[]; cachedVideoFrame?: VideoFrame }>
     >;
     renderMode: RENDER_MODE;
   };
-  _rtcEngine: NodeIrisRtcEngine
+  _rtcEngine: NodeIrisRtcEngine;
 
   constructor(rtcEngine: NodeIrisRtcEngine) {
     this._config = {
@@ -28,7 +28,7 @@ class RendererManager {
       renderers: new Map(),
       renderMode: this._checkWebGL() ? RENDER_MODE.WEBGL : RENDER_MODE.SOFTWARE,
     };
-    this._rtcEngine = rtcEngine
+    this._rtcEngine = rtcEngine;
   }
 
   /**
@@ -68,7 +68,7 @@ class RendererManager {
   }
 
   setRenderMode(mode: RENDER_MODE) {
-    this._config.renderMode = mode
+    this._config.renderMode = mode;
   }
 
   resizeBuffer(
@@ -180,7 +180,7 @@ class RendererManager {
       });
       this._config.renderers.delete(channelId);
     });
-    this._config.renderers.clear()
+    this._config.renderers.clear();
   }
 
   /**
