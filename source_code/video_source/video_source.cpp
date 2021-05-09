@@ -1,7 +1,4 @@
 #include "video_source.h"
-#include "iris_base.h"
-#include "loguru.hpp"
-
 
 
 int main(int argc, char *argv[])
@@ -26,7 +23,7 @@ namespace agora
     {
         namespace electron
         {
-            using namespace iris;
+            using namespace iris::rtc;
 
             VideoSource::VideoSource()
             {
@@ -65,9 +62,9 @@ namespace agora
                     return false;
                 }
 
-                _iris_engine.reset(new IrisEngine());
-                _iris_raw_data.reset(_iris_engine->iris_raw_data());
-                _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->iris_raw_data_plugin_manager());
+                _iris_engine.reset(new IrisRtcEngine());
+                _iris_raw_data.reset(_iris_engine->raw_data());
+                _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->plugin_manager());
                 _iris_event_handler.reset(new VideoSourceIrisEventhandler(_ipc_controller.get()));
                 _iris_engine->SetEventHandler(_iris_event_handler.get());
                 char result[512];
@@ -91,7 +88,6 @@ namespace agora
 
             void VideoSource::Run()
             {
-                LOG_F(INFO, "VideoSource::Run11()");
 #ifdef _WIN32
                 std::string idstr = _parameter_parser->getParameter("pid");
 #else
@@ -103,7 +99,6 @@ namespace agora
                     LOG_F(INFO, "VideoSource process open fail");
                     return;
                 }
-                LOG_F(INFO, "VideoSource::Run22()");
                 _process->Monitor([this](INodeProcess *) {
                     this->Exit(false);
                 });
@@ -118,7 +113,6 @@ namespace agora
 
             void VideoSource::OnMessage(unsigned int msg, char *payload, unsigned int len)
             {
-                LOG_F(INFO, "VideoSource::OnMessage  msg: %d", msg);
                 if (!_initialize)
                     return;
 
@@ -126,15 +120,10 @@ namespace agora
                 {
                     case AGORA_IPC_CALL_API:
                     {
-                        LOG_F(INFO, "VideoSource::OnMessage  111 ");
-                        LOG_F(INFO, "VideoSource::OnMessage  111  %p", payload);
                         ApiParameter *parameter = (ApiParameter *)payload;
-                        LOG_F(INFO, "VideoSource::OnMessage  23232323 ");
                         char result[512];
                         try {
-                            LOG_F(INFO, "VideoSource::OnMessage  2222 ");
                             _iris_engine->CallApi(ApiTypeEngine(parameter->_apiType), parameter->_parameters, result);
-                            LOG_F(INFO, "VideoSource::OnMessage  333 ");
                         } catch (std::exception& e) {
                             LOG_F(INFO, "VideoSourcePluginCallApi catch exception: %s", e.what());
                             this->OnApiError("videoSourceApiError", e.what());
@@ -157,18 +146,10 @@ namespace agora
 
                     case AGORA_IPC_PLUGIN_CALL_API:
                     {   
-                        LOG_F(INFO, "VideoSourcePluginCallApi xxxx");
-                        if (!payload) {
-                            LOG_F(INFO, "VideoSourcePluginCallApi 32323");
-                        }
-
                         ApiParameter *parameter = (ApiParameter *)payload;
-                        LOG_F(INFO, "VideoSourcePluginCallApi type: %d, msg: %s", parameter->_apiType, parameter->_parameters);
                         char result[512];
                         try {
-                            LOG_F(INFO, "VideoSourcePluginCallApi 1111");
                             _iris_raw_data_plugin_manager->CallApi(ApiTypeRawDataPlugin(parameter->_apiType), parameter->_parameters, result);
-                            LOG_F(INFO, "VideoSourcePluginCallApi 2222");
                         } catch (std::exception& e) {
                             LOG_F(INFO, "VideoSourcePluginCallApi catch exception: %s", e.what());
                             this->OnApiError("videoSourceApiError", e.what());

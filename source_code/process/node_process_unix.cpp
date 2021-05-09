@@ -12,7 +12,6 @@
 #include "node_process.h"
 #include <memory>
 #include <thread>
-#include <string>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -20,7 +19,7 @@
 #include <thread>
 #include <dlfcn.h>
 #include "node_log.h"
-#include "../common/loguru.hpp"
+#include "loguru.hpp"
 
 class NodeProcessUnixImpl : public INodeProcess
 {

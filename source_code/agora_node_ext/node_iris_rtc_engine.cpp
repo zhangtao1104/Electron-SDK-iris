@@ -2,10 +2,9 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:37 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-30 00:32:30
+ * @Last Modified time: 2021-05-07 15:10:11
  */
-#include "node_iris_engine.h"
-#include <exception>
+#include "node_iris_rtc_engine.h"
 
 namespace agora
 {
@@ -13,22 +12,24 @@ namespace agora
     {
         namespace electron
         {
-            using namespace iris;
+            using namespace iris::rtc;
 
-            Nan_Persistent<v8_Function> NodeIrisEngine::_constructor;
+            Nan_Persistent<v8_Function> NodeIrisRtcEngine::_constructor;
 
-            NodeIrisEngine::NodeIrisEngine(v8_Isolate *isolate) : _isolate(isolate)
+            NodeIrisRtcEngine::NodeIrisRtcEngine(v8_Isolate *isolate) : _isolate(isolate)
             {
                 _iris_event_handler.reset(new NodeIrisEventHandler());
-                _iris_engine.reset(new IrisEngine());
-                _iris_raw_data.reset(_iris_engine->iris_raw_data());
-                _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->iris_raw_data_plugin_manager());
+                _iris_engine.reset(new IrisRtcEngine());
+                _iris_raw_data.reset(_iris_engine->raw_data());
+                _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->plugin_manager());
+                _video_processer.reset(new VideoProcesser(_iris_engine.get()));
                 _video_source_proxy.reset(new VideoSourceProxy());
                 _iris_engine->SetEventHandler(_iris_event_handler.get());
             }
 
-            NodeIrisEngine::~NodeIrisEngine()
+            NodeIrisRtcEngine::~NodeIrisRtcEngine()
             {
+                _video_processer.reset();
                 _iris_event_handler.reset();
                 _iris_raw_data_plugin_manager.reset();
                 _iris_raw_data.reset();
@@ -37,12 +38,12 @@ namespace agora
                 stopLogService();
             }
 
-            void NodeIrisEngine::Init(v8_Local<v8_Object> &_module)
+            void NodeIrisRtcEngine::Init(v8_Local<v8_Object> &_module)
             {
                 auto _isolate = _module->GetIsolate();
                 auto _context = _isolate->GetCurrentContext();
                 auto _template = v8_FunctionTemplate::New(_isolate, CreateInstance);
-                _template->SetClassName(Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked());
+                _template->SetClassName(Nan::New<v8_String>("NodeIrisRtcEngine").ToLocalChecked());
                 _template->InstanceTemplate()->SetInternalFieldCount(5);
 
                 Nan::SetPrototypeMethod(_template, "CallApi", CallApi);
@@ -62,19 +63,24 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "SetAddonLogFile", SetAddonLogFile);
                 Nan::SetPrototypeMethod(_template, "PluginCallApi", PluginCallApi);
                 Nan::SetPrototypeMethod(_template, "VideoSourcePluginCallApi", VideoSourcePluginCallApi);
+
+                Nan::SetPrototypeMethod(_template, "EnableVideoFrameCache", EnableVideoFrameCache);
+                Nan::SetPrototypeMethod(_template, "DisableVideoFrameCache", DisableVideoFrameCache);
+                Nan::SetPrototypeMethod(_template, "GetVideoStreamData", GetVideoStreamData);
+
                 _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
-                _module->Set(_context, Nan::New<v8_String>("NodeIrisEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
+                _module->Set(_context, Nan::New<v8_String>("NodeIrisRtcEngine").ToLocalChecked(), _template->GetFunction(_context).ToLocalChecked());
 
                 LOG_F(INFO, "Init");
             }
 
-            void NodeIrisEngine::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _isolate = args.GetIsolate();
                 if (args.IsConstructCall())
                 {
                     LOG_F(INFO, "CreateInstance");
-                    auto _iris_engine = new NodeIrisEngine(_isolate);
+                    auto _iris_engine = new NodeIrisRtcEngine(_isolate);
                     _iris_engine->Wrap(args.This());
                     args.GetReturnValue().Set(args.This());
                 }
@@ -87,9 +93,9 @@ namespace agora
                 }
             }
 
-            void NodeIrisEngine::CallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::CallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -108,9 +114,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -158,9 +164,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _parameter = nan_api_get_value_utf8string_(args[0]);
                 auto _callback = args[1].As<v8_Function>();
                 Nan_Persistent<v8_Function> _persist;
@@ -172,28 +178,28 @@ namespace agora
                 _engine->_iris_event_handler->addEvent(_parameter, _persistObj, _persist);
             }
 
-            void NodeIrisEngine::GetChannel(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::GetChannel(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                LOG_F(INFO, " NodeIrisEngine::GetChannel");
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                LOG_F(INFO, " NodeIrisRtcEngine::GetChannel");
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
 
-                auto _iris_channel = _engine->_iris_engine->iris_channel();
-                auto _js_channel = NodeIrisChannel::Init(_isolate, _iris_channel);
+                auto _iris_channel = _engine->_iris_engine->channel();
+                auto _js_channel = NodeIrisRtcChannel::Init(_isolate, _iris_channel);
                 args.GetReturnValue().Set(_js_channel);
             }
 
-            void NodeIrisEngine::GetDeviceManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::GetDeviceManager(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
 
-                auto _device_manager = _engine->_iris_engine->iris_device_manager();
-                auto _js_device_manager = NodeIrisDeviceManager::Init(_isolate, _device_manager);
+                auto _device_manager = _engine->_iris_engine->device_manager();
+                auto _js_device_manager = NodeIrisRtcDeviceManager::Init(_isolate, _device_manager);
                 args.GetReturnValue().Set(_js_device_manager);
             }
 
-            void NodeIrisEngine::GetScreenWindowsInfo(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::GetScreenWindowsInfo(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _isolate = args.GetIsolate();
                 auto _context = _isolate->GetCurrentContext();
@@ -229,7 +235,7 @@ namespace agora
                 args.GetReturnValue().Set(_screenWindowInfoArray);
             }
 
-            void NodeIrisEngine::GetScreenDisplaysInfo(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::GetScreenDisplaysInfo(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _isolate = args.GetIsolate();
                 auto _context = _isolate->GetCurrentContext();
@@ -269,9 +275,9 @@ namespace agora
                 }
             }
 
-            void NodeIrisEngine::VideoSourceInitialize(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::VideoSourceInitialize(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _parameter = nan_api_get_value_utf8string_(args[0]);
                 auto _result = -1;
@@ -287,9 +293,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _result = _engine->_video_source_proxy->Release();
                 auto _retObj = v8_Object::New(_isolate);
@@ -298,9 +304,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -318,9 +324,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::VideoSourceCallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::VideoSourceCallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -341,7 +347,7 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _isolate = args.GetIsolate();
                 auto _filePath = nan_api_get_value_utf8string_(args[0]);
@@ -353,14 +359,14 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::OnApiError(int apiType, const char *errorMessage)
+            void NodeIrisRtcEngine::OnApiError(int apiType, const char *errorMessage)
             {
                 _iris_event_handler->OnEvent("apiError", errorMessage);
             }
 
-            void NodeIrisEngine::PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -380,9 +386,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisEngine::VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _engine = ObjectWrap::Unwrap<NodeIrisEngine>(args.Holder());
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -397,6 +403,82 @@ namespace agora
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
                 v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                args.GetReturnValue().Set(_retObj);
+            }
+
+            void NodeIrisRtcEngine::EnableVideoFrameCache(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
+                auto _isolate = args.GetIsolate();
+                v8_Local<v8_Object> _obj = nan_api_get_value_object_(_isolate, args[0]);
+                auto _uid = nan_api_get_object_uint32_(_isolate, _obj, "uid");
+                auto _channelId = nan_api_get_object_utf8string_(_isolate, _obj, "channelId");
+                auto _width = nan_api_get_object_int32_(_isolate, _obj, "width");
+                auto _height = nan_api_get_object_int32_(_isolate, _obj, "height");
+
+                IrisRtcRendererCacheConfig config(IrisRtcVideoFrameObserver::VideoFrameType::kFrameTypeYUV420, nullptr, _width, _height);
+                _engine->_video_processer->EnableVideoFrameCache(config, _uid, _channelId.c_str());
+            }
+                
+            void NodeIrisRtcEngine::DisableVideoFrameCache(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
+                auto _isolate = args.GetIsolate();
+                auto _obj = nan_api_get_value_object_(_isolate, args[0]);
+                auto _uid = nan_api_get_object_uint32_(_isolate, _obj, "uid");
+                auto _channelId = nan_api_get_object_utf8string_(_isolate, _obj, "channelId");
+
+                _engine->_video_processer->DisableVideoFrameCache(_uid, _channelId.c_str());
+            }
+            
+            void NodeIrisRtcEngine::GetVideoStreamData(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            {
+                auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
+                auto _isolate = args.GetIsolate();
+
+                auto _videoStreamObj = nan_api_get_value_object_(_isolate, args[0]);
+                auto _uid = nan_api_get_object_uint32_(_isolate, _videoStreamObj, "uid");
+                auto _channelId = nan_api_get_object_utf8string_(_isolate, _videoStreamObj, "channelId");
+                auto _yBufferVal = nan_api_get_object_property_value_(_isolate, _videoStreamObj, "yBuffer");
+                auto _uBufferVal = nan_api_get_object_property_value_(_isolate, _videoStreamObj, "uBuffer");
+                auto _vBufferVal = nan_api_get_object_property_value_(_isolate, _videoStreamObj, "vBuffer");
+                auto _frameHeaderVal = nan_api_get_object_property_value_(_isolate, _videoStreamObj, "frameHeader");
+
+                auto _yBuffer = node::Buffer::Data(_yBufferVal);
+                auto _uBuffer = node::Buffer::Data(_uBufferVal);
+                auto _vBuffer = node::Buffer::Data(_vBufferVal);
+                // auto _frameHeaderBuffer = node::Buffer::Data(_frameHeaderVal);
+
+                // auto _nodeVideoFrameHeaderPtr = (IVideoFrameEventHandler::NodeVideoFrameHeader *)_frameHeaderBuffer;
+                IrisRtcVideoFrameObserver::VideoFrame _videoFrame;
+                _videoFrame.y_buffer = _yBuffer;
+                _videoFrame.u_buffer = _uBuffer;
+                _videoFrame.v_buffer = _vBuffer;
+                
+                bool isFresh = false;
+                auto ret =  _engine->_video_processer->GetVideoFrame(_videoFrame, isFresh, _uid, _channelId.c_str());
+                // _nodeVideoFrameHeaderPtr->isNewFrame = (uint8_t)(isFresh ? 1 : 0);
+                // _nodeVideoFrameHeaderPtr->width = htons((uint16_t)_videoFrame.width);
+                // _nodeVideoFrameHeaderPtr->height = htons((uint16_t)_videoFrame.height);
+                // _nodeVideoFrameHeaderPtr->left = htons((uint16_t)(_videoFrame.y_stride - _videoFrame.width) / 2);
+                // _nodeVideoFrameHeaderPtr->right = htons((uint16_t)(_videoFrame.y_stride - _videoFrame.width) / 2);
+                // _nodeVideoFrameHeaderPtr->top = htons((uint16_t)0);
+                // _nodeVideoFrameHeaderPtr->bottom = htons((uint16_t)0);
+                // _nodeVideoFrameHeaderPtr->rotation = htons((uint16_t)_videoFrame.rotation);
+                // _nodeVideoFrameHeaderPtr->timestamp = (uint32_t)_videoFrame.render_time_ms;
+                
+                auto _retObj = v8_Object::New(_isolate);
+                v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "ret", ret);
+                v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "isNewFrame", isFresh);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "width", _videoFrame.width);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "height", _videoFrame.height);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "left", (_videoFrame.y_stride - _videoFrame.width) / 2);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "right", (_videoFrame.y_stride - _videoFrame.width) / 2);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "top", 0);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "bottom", 0);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "rotation", _videoFrame.rotation);
+                v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "timestamp", _videoFrame.render_time_ms);
+                // LOG_F(INFO, "GetVideoStreamData  isNewStream: %d, width: %d, height: %d, left: %d, right: %d, top: %d, bottom: %d, rotation: %d, timeStamp: %d",  _nodeVideoFrameHeaderPtr->isNewFrame,  _nodeVideoFrameHeaderPtr->width,  _nodeVideoFrameHeaderPtr->height,  _nodeVideoFrameHeaderPtr->left,  _nodeVideoFrameHeaderPtr->right,  _nodeVideoFrameHeaderPtr->top,  _nodeVideoFrameHeaderPtr->bottom,  _nodeVideoFrameHeaderPtr->rotation,  _nodeVideoFrameHeaderPtr->timestamp);
                 args.GetReturnValue().Set(_retObj);
             }
         }

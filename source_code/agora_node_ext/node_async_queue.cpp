@@ -1,13 +1,11 @@
 /*
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:10 
- * @Last Modified by:   zhangtao@agora.io 
- * @Last Modified time: 2021-04-22 20:53:10 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-05-06 16:24:55
  */
 
 #include "node_async_queue.h"
-#include <uv.h>
-#include <functional>
 
 namespace agora
 {

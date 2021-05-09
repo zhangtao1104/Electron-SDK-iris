@@ -1,37 +1,47 @@
 /*
- * @Author: zhangtao@agora.io 
- * @Date: 2021-04-28 13:34:48 
- * @Last Modified by:   zhangtao@agora.io 
- * @Last Modified time: 2021-04-28 13:34:48 
+ * @Author: zhangtao@agora.io
+ * @Date: 2021-04-28 13:34:48
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-05-09 18:46:55
  */
 
-const YUVBuffer = require('yuv-buffer');
-const YUVCanvas = require('yuv-canvas')
+const YUVBuffer = require("yuv-buffer");
+const YUVCanvas = require("yuv-canvas");
 const isEqual = require("lodash.isequal");
 
-import { CONTENT_MODE } from "../Api/types";
-import { VideoFrame, CanvasOptions } from "./type";
-import { IRenderer } from './IRender'
-import {EventEmitter} from 'events'
+import { CONTENT_MODE, VideoFrame } from "../Api/types";
+import {CanvasOptions } from "./type";
+import { IRenderer } from "./IRender";
+import { logWarn } from "../Utils";
 
-
-
-export class Renderer implements IRenderer{
+export class YUVCanvasRenderer implements IRenderer {
   private _cacheCanvasOptions?: CanvasOptions;
   private _yuvCanvasSink?: any;
-  private _ready: boolean;
   private _contentMode: CONTENT_MODE;
+  private _mirror: boolean;
   private _canvas?: HTMLCanvasElement;
   private _customeElement?: Element;
   private _container?: Element;
   private _isWebGL: boolean;
-  event?: EventEmitter;
+  private _videoFrame: VideoFrame;
 
   constructor(isWebGL: boolean) {
-    this._yuvCanvasSink = {};
-    this._ready = false;
     this._contentMode = CONTENT_MODE.CROPPED;
     this._isWebGL = isWebGL;
+    this._mirror = false;
+    this._videoFrame = {
+      mirror: false,
+      rotation: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+      yBuffer: new Uint8Array(0),
+      uBuffer: new Uint8Array(0),
+      vBuffer: new Uint8Array(0),
+    };
   }
 
   bind(element: Element) {
@@ -48,20 +58,20 @@ export class Renderer implements IRenderer{
     this._customeElement.appendChild(this._container);
     this._canvas = document.createElement("canvas");
     this._container.appendChild(this._canvas);
-    this._yuvCanvasSink = YUVCanvas.attah(this._canvas, {
+
+    logWarn(`current render is webGL ${this._isWebGL}`);
+    this._yuvCanvasSink = YUVCanvas.attach(this._canvas, {
       webGL: this._isWebGL,
     });
   }
 
   unbind() {
+    this._canvas &&
+    this._container?.removeChild(this._canvas);
     this._container &&
-      this._canvas &&
-      this._container.removeChild(this._canvas);
-    this._customeElement &&
-      this._container &&
-      this._customeElement.removeChild(this._container);
-    this._yuvCanvasSink && this._yuvCanvasSink.loseContext();
-    this._yuvCanvasSink = {};
+    this._customeElement?.removeChild(this._container);
+    this._isWebGL && this._yuvCanvasSink?.loseContext();
+    this._yuvCanvasSink = undefined;
     this._canvas && (this._canvas = undefined);
     this._container && (this._container = undefined);
   }
@@ -154,7 +164,7 @@ export class Renderer implements IRenderer{
 
       this._canvas.style.zoom = scale.toString();
 
-      if (options.mirror) {
+      if (this._mirror) {
         transformItems.push("rotateY(180deg)");
       }
 
@@ -167,51 +177,79 @@ export class Renderer implements IRenderer{
 
   drawFrame(frame: VideoFrame) {
     if (!this._container || !this._yuvCanvasSink) {
-        return
+      return;
     }
 
-      if (!this._ready) {
-          this._ready = true
-      }
+    let frameWidth =
+      frame.width +
+      (frame.left ? frame.left : 0) +
+      (frame.right ? frame.right : 0);
+    let frameHeight =
+      frame.height +
+      (frame.top ? frame.top : 0) +
+      (frame.bottom ? frame.bottom : 0);
 
-      let frameWidth = frame.width + frame.left + frame.right
-      let frameHeight = frame.height + frame.top + frame.bottom
+    if (
+      this._videoFrame.width === 0 ||
+      this._videoFrame.height === 0 ||
+      this._videoFrame.width != frame.width ||
+      this._videoFrame.height != frame.height
+    ) {
+      this._videoFrame.yBuffer = new Uint8Array(frameWidth * frameHeight);
+      this._videoFrame.uBuffer = new Uint8Array((frameWidth * frameHeight) / 4);
+      this._videoFrame.vBuffer = new Uint8Array((frameWidth * frameHeight) / 4);
+    }
 
-      let options: CanvasOptions = {
-        frameWidth: frameWidth,
-        frameHeight: frameHeight,
-        rotation: frame.rotation,
-        mirror: frame.mirror,
-        contentMode: this._contentMode,
-        clientWidth: this._container.clientWidth,
-        clientHeight: this._container.clientHeight
-      }
+    this._videoFrame.yBuffer.set(frame.yBuffer as Buffer);
+    this._videoFrame.uBuffer.set(frame.uBuffer as Buffer);
+    this._videoFrame.vBuffer.set(frame.vBuffer as Buffer);
 
-      this.updateCanvas(options)
+    this._videoFrame.width = frame.width;
+    this._videoFrame.height = frame.height;
+    this._videoFrame.left = frame.left;
+    this._videoFrame.right = frame.right;
+    this._videoFrame.top = frame.top;
+    this._videoFrame.bottom = frame.bottom;
+    this._videoFrame.mirror = frame.mirror;
+    this._videoFrame.rotation = frame.rotation;
 
-      let format: object = YUVBuffer.format({
-          frameWidth,
-          frameHeight,
-          chromaWidth: frameWidth/2,
-          chromaHeight: frameHeight/2,
-      });
+    let options: CanvasOptions = {
+      frameWidth: frameWidth,
+      frameHeight: frameHeight,
+      rotation: frame.rotation ? frame.rotation : 0,
+      mirror: frame.mirror ? frame.mirror : false,
+      contentMode: this._contentMode,
+      clientWidth: this._container.clientWidth,
+      clientHeight: this._container.clientHeight,
+    };
 
-      let y = YUVBuffer.lumaPlane(format, frame.yBuffer)
-      let u = YUVBuffer.chromaPlane(format, frame.uBuffer)
-      let v = YUVBuffer.chromaPlane(format, frame.vBuffer)
-      let yuvBufferFrame = YUVBuffer.frame(format, y, u, v);
-      this._yuvCanvasSink.drawFrame(yuvBufferFrame);
+    this.updateCanvas(options);
+
+    let format = YUVBuffer.format({
+      width: frameWidth,
+      height: frameHeight,
+      chromaWidth: frameWidth / 2,
+      chromaHeight: frameHeight / 2,
+    });
+
+    let y = YUVBuffer.lumaPlane(format, this._videoFrame.yBuffer);
+    let u = YUVBuffer.chromaPlane(format, this._videoFrame.uBuffer);
+    let v = YUVBuffer.chromaPlane(format, this._videoFrame.vBuffer);
+    let yuvBufferFrame = YUVBuffer.frame(format, y, u, v);
+    this._yuvCanvasSink.drawFrame(yuvBufferFrame);
   }
 
-  setContentMode(mode: CONTENT_MODE = CONTENT_MODE.CROPPED) {
-      this._contentMode = mode
+  setContentMode(
+    mode: CONTENT_MODE = CONTENT_MODE.CROPPED,
+    mirror: boolean = false
+  ) {
+    this._contentMode = mode;
+    this._mirror = mirror;
   }
 
   equalsElement(element: Element) {
-    return this._customeElement ? false : this._customeElement === element
+    return this._customeElement ? false : this._customeElement === element;
   }
 
-  refreshCanvas() {
-
-  }
+  refreshCanvas() {}
 }

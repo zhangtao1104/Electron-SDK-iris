@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 11:36:26 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-24 13:17:24
+ * @Last Modified time: 2021-05-09 14:03:23
  */
 
 export enum ApiTypeEngine {
@@ -264,3 +264,19 @@ export enum ApiTypeEngine {
     retCode: number; 
     result: string;
   }
+
+  export interface VideoFrameCacheConfig {
+    uid: number;
+    channelId: string;
+    width: number;
+    height: number;
+  }
+
+  // export interface VideoStream {
+  //   uid: number;
+  //   channelId: string;
+  //   yBuffer: Buffer|Uint8Array|undefined;
+  //   uBuffer: Buffer|Uint8Array|undefined;
+  //   vBuffer: Buffer|Uint8Array|undefined;
+  //   frameHeader: Buffer|Uint8Array|undefined;
+  // }

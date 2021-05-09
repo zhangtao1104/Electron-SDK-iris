@@ -1,8 +1,8 @@
 /*
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:01 
- * @Last Modified by:   zhangtao@agora.io 
- * @Last Modified time: 2021-04-22 20:53:01 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-05-07 14:42:16
  */
 #pragma once
 #include <nan.h>
@@ -33,8 +33,8 @@ namespace agora
             using v8_Isolate = v8::Isolate;
             using v8_FunctionTemplate = v8::FunctionTemplate;
             using v8_String = v8::String;
-            using v8_Uint32 = v8::Uint32;
-            using v8_Int32 = v8::Int32;
+            using v8_Uint32 = v8::Number;
+            using v8_Int32 = v8::Number;
             using v8_Function = v8::Function;
             using v8_HandleScope = v8::HandleScope;
             using v8_External = v8::External;
@@ -42,6 +42,7 @@ namespace agora
             using v8_ArrayBuffer = v8::ArrayBuffer;
             using v8_Boolean = v8::Boolean;
             using v8_Uint8Array = v8::Uint8Array;
+            using v8_Name = v8::Name;
 
 #define v8_SET_OBJECT_PROP_STRING(isolate, object, name, value)                                                     \
     {                                                                                                               \
@@ -101,6 +102,13 @@ namespace agora
 
             std::string nan_api_get_value_utf8string_(const v8_Local<v8_Value> &value);
             int nan_api_get_value_int32_(const v8_Local<v8_Value> &value);
+            v8_Local<v8_Object> nan_api_get_value_object_(v8_Isolate *isolate, const v8_Local<v8_Value> &value);
+            v8_Local<v8_Value> nan_api_get_object_property_value_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName);
+            
+            int nan_api_get_object_int32_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName);
+            unsigned int nan_api_get_object_uint32_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName);
+            std::string nan_api_get_object_utf8string_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName);
+
             v8_Local<v8_Value> nan_create_local_value_string_(v8_Isolate *isolate, const char *value);
         }
     }

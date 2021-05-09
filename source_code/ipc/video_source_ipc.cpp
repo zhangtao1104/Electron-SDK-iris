@@ -9,9 +9,6 @@
 */
 
 #include "video_source_ipc.h"
-#include "ipc_shm.h"
-#include "node_log.h"
-#include "loguru.hpp"
 
 #define VIDEO_SOURCE_BLOCK_NUM 10
 #define VIDEO_SOURCE_BLOCK_SIZE 1536

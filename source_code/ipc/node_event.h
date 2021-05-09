@@ -15,6 +15,8 @@
 #include <condition_variable>
 #include <atomic>
 #include "loguru.hpp"
+#include <chrono>
+
 namespace agora {
     namespace rtc {
 class NodeEvent

@@ -10,7 +10,6 @@
 
 
 #include "node_event.h"
-#include <chrono>
 
 namespace agora {
     namespace rtc {

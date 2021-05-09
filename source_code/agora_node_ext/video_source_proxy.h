@@ -10,9 +10,13 @@
 #endif
 #include "video_source_event_handler.h"
 #include "video_source_ipc.h"
-#include "iris_engine.h"
+#include "iris_rtc_engine.h"
 #include "node_process.h"
 #include "node_event.h"
+#include <iosfwd>
+#include <sstream>
+#include <fstream>
+#include "loguru.hpp"
 
 
 

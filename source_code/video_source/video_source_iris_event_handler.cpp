@@ -1,5 +1,4 @@
 #include "video_source_iris_event_handler.h"
-#include "loguru.hpp"
 
 namespace agora {
     namespace rtc {

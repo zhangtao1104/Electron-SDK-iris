@@ -1,10 +1,10 @@
 /*
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:18 
- * @Last Modified by:   zhangtao@agora.io 
- * @Last Modified time: 2021-04-22 20:53:18 
+ * @Last Modified by: zhangtao@agora.io
+ * @Last Modified time: 2021-05-07 11:08:30
  */
-#include "node_iris_channel.h"
+#include "node_iris_rtc_channel.h"
 
 namespace agora
 {
@@ -12,30 +12,30 @@ namespace agora
     {
         namespace electron
         {
-            using namespace iris;
+            using namespace iris::rtc;
 
-            Nan_Persistent<v8_Function> NodeIrisChannel::_constructor;
+            Nan_Persistent<v8_Function> NodeIrisRtcChannel::_constructor;
 
-            NodeIrisChannel::NodeIrisChannel(v8_Isolate *isolate, IrisChannel *channel)
+            NodeIrisRtcChannel::NodeIrisRtcChannel(v8_Isolate *isolate, IrisRtcChannel *irisChannel)
             {
                 node::AddEnvironmentCleanupHook(isolate, Release, this);
                 _isolate = isolate;
-                _iris_channel.reset(channel);
+                _iris_channel.reset(irisChannel);
                 _iris_channel_event_handler.reset(new NodeIrisEventHandler());
                 _iris_channel->SetEventHandler(_iris_channel_event_handler.get());
             }
 
-            NodeIrisChannel::~NodeIrisChannel()
+            NodeIrisRtcChannel::~NodeIrisRtcChannel()
             {
                 _iris_channel.reset(nullptr);
                 _iris_channel_event_handler.reset(nullptr);
             }
 
-            v8_Local<v8_Object> NodeIrisChannel::Init(v8_Isolate *isolate, IrisChannel *irisChannel)
+            v8_Local<v8_Object> NodeIrisRtcChannel::Init(v8_Isolate *isolate, IrisRtcChannel *irisChannel)
             {
                 auto _context = isolate->GetCurrentContext();
                 auto _template = v8_FunctionTemplate::New(isolate, CreateInstance);
-                _template->SetClassName(Nan::New<v8_String>("NodeIrisChannel").ToLocalChecked());
+                _template->SetClassName(Nan::New<v8_String>("NodeIrisRtcChannel").ToLocalChecked());
                 _template->InstanceTemplate()->SetInternalFieldCount(5);
 
                 Nan::SetPrototypeMethod(_template, "CallApi", CallApi);
@@ -50,19 +50,19 @@ namespace agora
                 return jschannel;
             }
 
-            void NodeIrisChannel::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcChannel::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto *_isolate = args.GetIsolate();
                 auto _argChannel = v8_Local<v8_External>::Cast(args[0]);
-                auto *_irisChannel = static_cast<IrisChannel *>(_argChannel->Value());
-                auto *_channel = new NodeIrisChannel(_isolate, _irisChannel);
+                auto *_irisChannel = static_cast<IrisRtcChannel *>(_argChannel->Value());
+                auto *_channel = new NodeIrisRtcChannel(_isolate, _irisChannel);
                 _channel->Wrap(args.This());
                 args.GetReturnValue().Set(args.This());
             }
 
-            void NodeIrisChannel::CallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcChannel::CallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _channel = ObjectWrap::Unwrap<NodeIrisChannel>(args.Holder());
+                auto _channel = ObjectWrap::Unwrap<NodeIrisRtcChannel>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -76,9 +76,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisChannel::CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcChannel::CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _channel = ObjectWrap::Unwrap<NodeIrisChannel>(args.Holder());
+                auto _channel = ObjectWrap::Unwrap<NodeIrisRtcChannel>(args.Holder());
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
@@ -116,9 +116,9 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisChannel::OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcChannel::OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                auto _channel = ObjectWrap::Unwrap<NodeIrisChannel>(args.Holder());
+                auto _channel = ObjectWrap::Unwrap<NodeIrisRtcChannel>(args.Holder());
                 auto _parameter = nan_api_get_value_utf8string_(args[0]);
                 auto _callback = args[1].As<v8_Function>();
                 Nan_Persistent<v8_Function> _persist;
@@ -131,14 +131,14 @@ namespace agora
                 _channel->_iris_channel_event_handler->addEvent(_parameter, _persistObj, _persist);
             }
 
-            void NodeIrisChannel::OnApiError(const char *errorMessage)
+            void NodeIrisRtcChannel::OnApiError(const char *errorMessage)
             {
                 _iris_channel_event_handler->OnEvent("apiError", errorMessage);
             }
 
-            void NodeIrisChannel::Release(void *data)
+            void NodeIrisRtcChannel::Release(void *data)
             {
-                NodeIrisChannel *_irisChannel = static_cast<NodeIrisChannel *>(data);
+                NodeIrisRtcChannel *_irisChannel = static_cast<NodeIrisRtcChannel *>(data);
                 delete _irisChannel;
                 _irisChannel = nullptr;
             }

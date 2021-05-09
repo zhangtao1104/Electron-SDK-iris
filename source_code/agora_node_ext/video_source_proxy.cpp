@@ -1,9 +1,4 @@
 #include "video_source_proxy.h"
-#include "node_event.h"
-#include <iosfwd>
-#include <sstream>
-#include <fstream>
-#include "loguru.hpp"
 
 
 namespace agora {

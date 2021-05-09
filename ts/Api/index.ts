@@ -2,10 +2,10 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-04-30 01:47:41
+ * @Last Modified time: 2021-05-09 20:06:56
  */
 
-import { Renderer } from "../Renderer";
+import { YUVCanvasRenderer } from "../Renderer/YUVCanvasRenderer";
 import { IRenderer } from "../Renderer/IRender";
 import {
   ApiTypeEngine,
@@ -13,14 +13,18 @@ import {
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
   ApiTypeRawDataPlugin,
+  VideoFrameCacheConfig,
 } from "./internal/native_api_type";
 import {
-  NodeIrisEngine,
-  NodeIrisChannel,
-  NodeIrisDeviceManager,
+  NodeIrisRtcEngine,
+  NodeIrisRtcChannel,
+  NodeIrisRtcDeviceManager,
 } from "./internal/native_interface";
 import {
+  Rect,
+  Rectangle,
   RtcStats,
+  QUALITY_TYPE,
   LocalVideoStats,
   LocalAudioStats,
   RemoteVideoStats,
@@ -29,7 +33,6 @@ import {
   REMOTE_VIDEO_STATE,
   REMOTE_VIDEO_STATE_REASON,
   REMOTE_AUDIO_STATE,
-  QUALITY_TYPE,
   LastmileProbeResult,
   CLIENT_ROLE_TYPE,
   REMOTE_VIDEO_STREAM_TYPE,
@@ -69,8 +72,6 @@ import {
   AUDIO_SCENARIO_TYPE,
   VIDEO_MIRROR_MODE_TYPE,
   STREAM_FALLBACK_OPTIONS,
-  Rect,
-  Rectangle,
   USER_OFFLINE_REASON_TYPE,
   LOCAL_AUDIO_STREAM_STATE,
   LOCAL_AUDIO_STREAM_ERROR,
@@ -97,6 +98,7 @@ import {
   WindowInfo,
   User,
   Channel,
+  VideoFrame,
 } from "./types";
 import { EventEmitter } from "events";
 import { deprecate, logWarn, logInfo, logError } from "../Utils";
@@ -108,26 +110,36 @@ const agora = require("../../build/Release/agora_node_ext");
  * The AgoraRtcEngine class.
  */
 class AgoraRtcEngine extends EventEmitter {
-  rtcEngine: NodeIrisEngine;
-  rtcChannel: NodeIrisChannel;
-  rtcDeviceManager: NodeIrisDeviceManager;
-  streams: Map<string, Map<string, IRenderer[]>>;
-  renderMode: RENDER_MODE;
+  _rtcEngine: NodeIrisRtcEngine;
+  _rtcChannel: NodeIrisRtcChannel;
+  _rtcDeviceManager: NodeIrisRtcDeviceManager;
+
+  _config: {
+    videoFps: number;
+    videoFrameUpdateInterval?: NodeJS.Timeout;
+    renderers: Map<
+      string,
+      Map<string, { cachedVideoFrame?: VideoFrame; render?: IRenderer[] }>>;
+    renderMode: RENDER_MODE;
+    currentChannel?: string;
+  };
+
   constructor() {
     super();
     logInfo("AgoraRtcEngine constructor()");
-    this.rtcEngine = new agora.NodeIrisEngine();
-    this.rtcChannel = this.rtcEngine.GetChannel();
-    this.rtcDeviceManager = this.rtcEngine.GetDeviceManager();
+    this._rtcEngine = new agora.NodeIrisRtcEngine();
+    this._rtcChannel = this._rtcEngine.GetChannel();
+    this._rtcDeviceManager = this._rtcEngine.GetDeviceManager();
     this.initEventHandler();
-    this.renderMode = this._checkWebGL()
-      ? RENDER_MODE.WEBGL
-      : RENDER_MODE.SOFTWARE;
-    this.streams = new Map();
+    this._config = {
+      videoFps: 10,
+      renderers: new Map(),
+      renderMode: this._checkWebGL() ? RENDER_MODE.WEBGL : RENDER_MODE.SOFTWARE,
+    };
   }
 
   setAddonLogFile(filePath: string): number {
-    let ret = this.rtcEngine.SetAddonLogFile(filePath);
+    let ret = this._rtcEngine.SetAddonLogFile(filePath);
     return ret.retCode;
   }
 
@@ -138,8 +150,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - 2 for software rendering.
    * - 3 for custom rendering.
    */
-  setRenderMode(mode: RENDER_MODE = RENDER_MODE.WEBGL): void {
-    this.renderMode = mode;
+  setRenderMode(mode: RENDER_MODE): void {
+    this._config.renderMode = mode;
   }
 
   /**
@@ -149,8 +161,8 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {boolean}
    */
   _checkWebGL(): boolean {
-    const canvas = document.createElement("canvas");
     let gl;
+    const canvas = document.createElement("canvas");
     canvas.width = 1;
     canvas.height = 1;
     const options = {
@@ -167,13 +179,32 @@ class AgoraRtcEngine extends EventEmitter {
         canvas.getContext("webgl", options) ||
         canvas.getContext("experimental-webgl", options);
     } catch (e) {
+      logWarn("webGL not support");
       return false;
     }
+
     if (gl) {
       return true;
     } else {
       return false;
     }
+  }
+
+  resizeBuffer(
+    uid: number,
+    channelId: string,
+    width: number,
+    height: number
+  ): VideoFrame {
+    return {
+      uid,
+      channelId,
+      yBuffer: Buffer.alloc(width * height),
+      uBuffer: Buffer.alloc((width * height) / 4),
+      vBuffer: Buffer.alloc((width * height) / 4),
+      width,
+      height,
+    };
   }
 
   /**
@@ -190,7 +221,7 @@ class AgoraRtcEngine extends EventEmitter {
       });
     };
 
-    this.rtcEngine.OnEvent(
+    this._rtcEngine.OnEvent(
       "call_back",
       (_eventName: string, _eventData: string) => {
         switch (_eventName) {
@@ -224,6 +255,7 @@ class AgoraRtcEngine extends EventEmitter {
                 uid: number;
                 elapsed: number;
               } = JSON.parse(_eventData);
+              self._config.currentChannel = data.channel;
               fire("joinedChannel", data.channel, data.uid, data.elapsed);
               fire("joinedchannel", data.channel, data.uid, data.elapsed);
             }
@@ -246,6 +278,7 @@ class AgoraRtcEngine extends EventEmitter {
               let data: { stats: RtcStats } = JSON.parse(_eventData);
               fire("leaveChannel", data.stats);
               fire("leavechannel", data.stats);
+              self._config.currentChannel = undefined;
             }
             break;
 
@@ -277,7 +310,10 @@ class AgoraRtcEngine extends EventEmitter {
                 reason: USER_OFFLINE_REASON_TYPE;
               } = JSON.parse(_eventData);
               fire("userOffline", data.uid, data.reason);
-              self.removeRender(String(data.uid), "");
+
+              if (!self._config.currentChannel) return;
+              self.removeRender(String(data.uid), self._config.currentChannel);
+              fire("removeStream", data.uid, data.reason);
             }
             break;
 
@@ -554,21 +590,63 @@ class AgoraRtcEngine extends EventEmitter {
           case "onFirstLocalVideoFrame":
             {
               let data: {
+                uid: number;
+                channelId: string;
+                width: number;
+                height: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+
+              fire(
+                "firstLocalVideoFrame",
+                data.uid,
+                data.channelId,
+                data.width,
+                data.height,
+                data.elapsed
+              );
+
+              let videoFrameItem = self.resizeBuffer(
+                0,
+                "",
+                data.width,
+                data.height
+              );
+              this.addVideoFrameCacheToMap("local", "", videoFrameItem);
+            }
+            break;
+
+          case "onFirstRemoteVideoFrame":
+            {
+              let data: {
+                uid: number;
+                channelId: string;
                 width: number;
                 height: number;
                 elapsed: number;
               } = JSON.parse(_eventData);
               fire(
-                "firstlocalvideoframe",
+                "firstRemoteVideoFrame",
+                data.uid,
+                data.channelId,
                 data.width,
                 data.height,
                 data.elapsed
               );
-              fire(
-                "firstLocalVideoFrame",
+
+              logWarn(
+                `onFirstRemoteVideoFrame uid: ${data.uid}, channelId ${data.channelId}`
+              );
+              let videoFrameItem = self.resizeBuffer(
+                data.uid,
+                data.channelId,
                 data.width,
-                data.height,
-                data.elapsed
+                data.height
+              );
+              this.addVideoFrameCacheToMap(
+                data.uid,
+                data.channelId,
+                videoFrameItem
               );
             }
             break;
@@ -590,33 +668,6 @@ class AgoraRtcEngine extends EventEmitter {
               } = JSON.parse(_eventData);
               fire(
                 "firstRemoteVideoDecoded",
-                data.uid,
-                data.width,
-                data.height,
-                data.elapsed
-              );
-              fire("addstream", data.uid, data.elapsed);
-              fire("addStream", data.uid, data.elapsed);
-            }
-            break;
-
-          case "onFirstRemoteVideoFrame":
-            {
-              let data: {
-                uid: number;
-                width: number;
-                height: number;
-                elapsed: number;
-              } = JSON.parse(_eventData);
-              fire(
-                "firstremotevideoframe",
-                data.uid,
-                data.width,
-                data.height,
-                data.elapsed
-              );
-              fire(
-                "firstRemoteVideoFrame",
                 data.uid,
                 data.width,
                 data.height,
@@ -1139,13 +1190,24 @@ class AgoraRtcEngine extends EventEmitter {
             }
             break;
 
+          case "videoFrameSizeChanged":
+            {
+              let data: {
+                uid: number;
+                channel: string;
+                width: number;
+                height: number;
+              } = JSON.parse(_eventData);
+            }
+            break;
+
           default:
             break;
         }
       }
     );
 
-    this.rtcEngine.OnEvent(
+    this._rtcEngine.OnEvent(
       "call_back_with_buffer",
       (_eventName: string, _eventData: string, _eventBuffer: string) => {
         switch (_eventName) {
@@ -1180,7 +1242,7 @@ class AgoraRtcEngine extends EventEmitter {
       }
     );
 
-    this.rtcEngine.OnEvent(
+    this._rtcEngine.OnEvent(
       "video_source_call_back",
       (_eventName: string, _eventData: string) => {
         switch (_eventName) {
@@ -1217,7 +1279,7 @@ class AgoraRtcEngine extends EventEmitter {
                 elapsed: number;
               } = JSON.parse(_eventData);
               fire(
-                "videoSourceJoinedChannel",
+                "videoSourceJoinChannelSuccess",
                 data.channel,
                 data.uid,
                 data.elapsed
@@ -1233,7 +1295,7 @@ class AgoraRtcEngine extends EventEmitter {
                 elapsed: number;
               } = JSON.parse(_eventData);
               fire(
-                "videoSourceRejoinedChannel",
+                "videoSourceRejoinChannelSuccess",
                 data.channel,
                 data.uid,
                 data.elapsed
@@ -1277,24 +1339,6 @@ class AgoraRtcEngine extends EventEmitter {
               self.removeRender(String(data.uid), "");
             }
             break;
-
-          // case "onLastmileQuality":
-          //   {
-          //     let data: { quality: QUALITY_TYPE } = JSON.parse(_eventData);
-          //     fire("lastmilequality", data.quality);
-          //     fire("lastmileQuality", data.quality);
-          //   }
-          //   break;
-
-          // case "onLastmileProbeResult":
-          //   {
-          //     let data: { result: LastmileProbeResult } = JSON.parse(
-          //       _eventData
-          //     );
-          //     fire("lastmileProbeResult", data.result);
-          //     fire("lastmileproberesult", data.result);
-          //   }
-          //   break;
 
           case "onConnectionInterrupted":
             {
@@ -1549,12 +1593,36 @@ class AgoraRtcEngine extends EventEmitter {
           case "onFirstLocalVideoFrame":
             {
               let data: {
+                uid: number;
+                channelId: string;
                 width: number;
                 height: number;
                 elapsed: number;
               } = JSON.parse(_eventData);
               fire(
                 "videoSourceFirstLocalVideoFrame",
+                data.uid,
+                data.channelId,
+                data.width,
+                data.height,
+                data.elapsed
+              );
+            }
+            break;
+
+          case "onFirstRemoteVideoFrame":
+            {
+              let data: {
+                uid: number;
+                channelId: string;
+                width: number;
+                height: number;
+                elapsed: number;
+              } = JSON.parse(_eventData);
+              fire(
+                "videoSourceFirstRemoteVideoFrame",
+                data.uid,
+                data.channelId,
                 data.width,
                 data.height,
                 data.elapsed
@@ -1586,24 +1654,6 @@ class AgoraRtcEngine extends EventEmitter {
               );
               fire("addstream", data.uid, data.elapsed);
               fire("addStream", data.uid, data.elapsed);
-            }
-            break;
-
-          case "onFirstRemoteVideoFrame":
-            {
-              let data: {
-                uid: number;
-                width: number;
-                height: number;
-                elapsed: number;
-              } = JSON.parse(_eventData);
-              fire(
-                "videoSourceFirstRemoteVideoFrame",
-                data.uid,
-                data.width,
-                data.height,
-                data.elapsed
-              );
             }
             break;
 
@@ -2104,112 +2154,28 @@ class AgoraRtcEngine extends EventEmitter {
       }
     );
 
-    this.rtcEngine.OnEvent(
+    this._rtcEngine.OnEvent(
       "video_source_on_event_with_buffer",
       (_eventName: string, _eventData: string, buffer: string) => {}
     );
   } //TODO(input)
 
-  /**
-   * check if data is valid
-   * @private
-   * @ignore
-   * @param {*} header
-   * @param {*} ydata
-   * @param {*} udata
-   * @param {*} vdata
-   */
-
-  _checkData(
-    header: ArrayBuffer,
-    ydata: ArrayBuffer,
-    udata: ArrayBuffer,
-    vdata: ArrayBuffer
-  ) {
-    if (header.byteLength !== 20) {
-      logError("invalid image header " + header.byteLength);
-      return false;
-    }
-    if (ydata.byteLength === 20) {
-      logError("invalid image yplane " + ydata.byteLength);
-      return false;
-    }
-    if (udata.byteLength === 20) {
-      logError("invalid image uplanedata " + udata.byteLength);
-      return false;
-    }
-    if (
-      ydata.byteLength !== udata.byteLength * 4 ||
-      udata.byteLength !== vdata.byteLength
-    ) {
-      logError(
-        "invalid image header " +
-          ydata.byteLength +
-          " " +
-          udata.byteLength +
-          " " +
-          vdata.byteLength
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * register renderer for target info
-   * @private
-   * @ignore
-   * @param {number} infos
-   */
-  onRegisterDeliverFrame(infos: any) {
-    // const len = infos.length;
-    // for (let i = 0; i < len; i++) {
-    //   const info = infos[i];
-    //   const { type, uid, channelId, header, ydata, udata, vdata } = info;
-    //   if (!header || !ydata || !udata || !vdata) {
-    //     console.log(
-    //       "Invalid data param ： " +
-    //         header +
-    //         " " +
-    //         ydata +
-    //         " " +
-    //         udata +
-    //         " " +
-    //         vdata
-    //     );
-    //     continue;
-    //   }
-    //   const renderers = this._getRenderers(type, uid, channelId);
-    //   if (!renderers || renderers.length === 0) {
-    //     console.warn(`Can't find renderer for uid : ${uid} ${channelId}`);
-    //     continue;
-    //   }
-    //   if (this._checkData(header, ydata, udata, vdata)) {
-    //     renderers.forEach((renderer) => {
-    //       renderer.drawFrame({
-    //         header,
-    //         yUint8Array: ydata,
-    //         uUint8Array: udata,
-    //         vUint8Array: vdata,
-    //       });
-    //     });
-    //   }
-    // }
-  }
-
   setView(
     user: User,
-    view: Element,
-    channelId?: Channel,
-    renderOptions?: RendererOptions
+    view: Element | undefined,
+    channelId: Channel = "",
+    renderOptions: RendererOptions = {
+      append: false,
+      contentMode: CONTENT_MODE.FIT,
+      mirror: false,
+    }
   ): void {
-    this.setRender(
-      user,
-      view,
-      channelId ? channelId : "",
-      renderOptions ? renderOptions : { append: false }
-    );
+    if (view) {
+      this.setRender(user, view, channelId, renderOptions);
+    } else {
+      logWarn("Note: setView view is null!");
+      this.removeRender(user, channelId);
+    }
   }
 
   /**
@@ -2239,10 +2205,13 @@ class AgoraRtcEngine extends EventEmitter {
     user: User,
     view: Element,
     channelId: Channel = "",
-    options: RendererOptions = { append: false }
+    options: RendererOptions = {
+      append: false,
+      contentMode: CONTENT_MODE.FIT,
+      mirror: false,
+    }
   ): void {
-    let _renders = this.getRender(channelId, channelId);
-
+    let _renders = this.getRender(user, channelId);
     if (_renders) {
       options.append
         ? _renders.forEach((item) => {
@@ -2254,7 +2223,14 @@ class AgoraRtcEngine extends EventEmitter {
         : this.removeRender(user, channelId);
     }
 
+    this.enableVideoFrameCache(user, channelId, 0, 0);
     this.addRender(user, view, channelId);
+    this.setupViewContentMode(
+      user,
+      channelId,
+      options.contentMode,
+      options.mirror
+    );
   }
 
   /**
@@ -2262,7 +2238,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @ignore
    */
   createRender(): IRenderer {
-    return new Renderer(this.renderMode === RENDER_MODE.WEBGL);
+    return new YUVCanvasRenderer(this._config.renderMode === RENDER_MODE.WEBGL);
   }
 
   /**
@@ -2270,19 +2246,14 @@ class AgoraRtcEngine extends EventEmitter {
    * @ignore
    */
   addRender(user: User, view: Element, channelId: Channel): void {
-    let streamMap = this.streams.get(channelId);
-
-    if (!streamMap) {
-      this.streams.set(channelId, new Map());
-    }
-
-    if (!streamMap?.get(String(user))) {
-      streamMap?.set(String(user), []);
+    let rendererMap = this.ensureRendererMap(user, channelId)
+    if (!rendererMap?.get(String(user))) {
+      rendererMap?.set(String(user), { render: [] });
     }
 
     let renderer = this.createRender();
     renderer.bind(view);
-    streamMap?.get(String(user))?.push(renderer);
+    rendererMap?.get(String(user))?.render?.push(renderer);
   }
 
   /**
@@ -2290,37 +2261,31 @@ class AgoraRtcEngine extends EventEmitter {
    * @ignore
    */
   getRender(user: User, channelId: Channel = ""): IRenderer[] | undefined {
-    return this.streams.get(channelId)?.get(String(user));
+    return this._config.renderers.get(channelId)?.get(String(user))?.render;
   }
 
-  /**
-   * @private
-   * @ignore
-   */
-  removeRender(user: User, channelId: Channel): void {
-    this.streams
+  removeRender(user: User, channelId: Channel = ""): void {
+    this.disableVideoFrameCache(user, channelId, 0, 0);
+    this.removeVideoFrameCacheFromMap(user, channelId);
+    this._config.renderers
       .get(channelId)
       ?.get(String(user))
-      ?.forEach((renderItem) => {
+      ?.render?.forEach((renderItem) => {
         renderItem.unbind();
       });
 
-    this.streams.get(channelId)?.delete(String(user));
+    this._config.renderers.get(channelId)?.delete(String(user));
   }
 
-  /**
-   * @private
-   * @ignore
-   */
   removeAllRender(): void {
-    this.streams.forEach((renderMap, key) => {
-      renderMap.forEach((renderList, key) => {
-        renderList.forEach((renderItem) => {
+    this._config.renderers.forEach((renderMap, key) => {
+      renderMap.forEach((renderObject, key) => {
+        renderObject.render?.forEach((renderItem) => {
           renderItem.unbind();
         });
         renderMap.delete(key);
       });
-      this.streams.delete(key);
+      this._config.renderers.delete(key);
     });
   }
 
@@ -2382,10 +2347,13 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       context,
     };
-    let ret = this.rtcEngine.CallApi(
+
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineInitialize,
       JSON.stringify(param)
     );
+
+    this.startInterval();
     return ret.retCode;
   }
 
@@ -2424,12 +2392,12 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       channelId,
     };
-    this.rtcChannel.CallApi(
+    this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelCreateChannel,
       JSON.stringify(param)
     );
 
-    return new AgoraRtcChannel(this.rtcChannel);
+    return new AgoraRtcChannel(this._rtcChannel, this);
   }
 
   /**
@@ -2437,7 +2405,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The version of the current SDK.
    */
   getVersion(): string {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetVersion, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineGetVersion, "");
     return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
@@ -2451,7 +2419,7 @@ class AgoraRtcEngine extends EventEmitter {
       code,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetErrorDescription,
       JSON.stringify(param)
     );
@@ -2463,7 +2431,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {ConnectionState} Connect states. See {@link ConnectionState}.
    */
   getConnectionState(): CONNECTION_STATE_TYPE {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetConnectionState,
       ""
     );
@@ -2538,7 +2506,7 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineJoinChannel,
       JSON.stringify(param)
     );
@@ -2569,8 +2537,90 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "");
     return ret.retCode;
+  }
+
+  /**
+   * @private
+   * @ignore
+   */
+  startInterval(): void {
+    this._config.videoFrameUpdateInterval = setInterval(() => {
+      this._config.renderers.forEach((rendererCache, channelId) => {
+        rendererCache.forEach((rendererItem, user) => {
+          let cachedVideoFrame = rendererItem.cachedVideoFrame;
+          if (!cachedVideoFrame)
+          {
+            logWarn(`Channel: ${channelId} User: ${user} have no cachedVideoFrame`)
+            return;
+          }
+
+          let retObj = this._rtcEngine.GetVideoStreamData(cachedVideoFrame);
+
+          if (!retObj.ret) {
+            logWarn(`Channel: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} have no stream`);
+            return;
+          }
+
+          if (cachedVideoFrame.uid != null) {
+
+            let user = this.uidToUser(cachedVideoFrame.uid);
+            let render = this.getRender(user, cachedVideoFrame.channelId);
+            let videoFrame: VideoFrame = {
+              left: retObj.left,
+              right: retObj.right,
+              top: retObj.top,
+              bottom: retObj.bottom,
+              width: retObj.width,
+              height: retObj.height,
+              yBuffer: cachedVideoFrame.yBuffer as Buffer,
+              uBuffer: cachedVideoFrame.uBuffer as Buffer,
+              vBuffer: cachedVideoFrame.vBuffer as Buffer,
+              mirror: false,
+              rotation: retObj.rotation,
+            };
+
+            if (render) {
+              render.forEach((renderItem) => {
+                renderItem.drawFrame(videoFrame);
+              });
+            } else {
+              logWarn(
+                `Channel: ${channelId} User: ${user} have no renderer`
+              );
+            }
+          }
+        });
+      });
+    }, 1000 / this._config.videoFps);
+  }
+
+  /**
+   * @private
+   * @ignore
+   */
+  stopInterval(): void {
+    this._config.videoFrameUpdateInterval
+      ? clearInterval(this._config.videoFrameUpdateInterval)
+      : logWarn("video stream interval is not start!");
+
+    this._config.videoFrameUpdateInterval = undefined;
+  }
+
+  /**
+   * @private
+   * @ignore
+   */
+  restartInterval(): void {
+    let self = this;
+    this._config.videoFrameUpdateInterval
+      ? () => {
+          self.stopInterval();
+          self.startInterval();
+          logInfo(`setFps ${this._config.videoFps} restartInterval`);
+        }
+      : logInfo(`setFps ${this._config.videoFps}`);
   }
 
   /**
@@ -2588,7 +2638,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   release(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
+    this.stopInterval();
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
     return ret.retCode;
   }
 
@@ -2624,7 +2675,7 @@ class AgoraRtcEngine extends EventEmitter {
       fullBitrate,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetHighQualityAudioParameters,
       JSON.stringify(param)
     );
@@ -2649,17 +2700,16 @@ class AgoraRtcEngine extends EventEmitter {
     uid: number,
     view?: Element,
     channel?: string,
-    options?: RendererOptions
+    options: RendererOptions = {
+      append: false,
+      contentMode: CONTENT_MODE.FIT,
+      mirror: false,
+    }
   ): number {
     deprecate("setupRemoteVideo", "setView");
     if (view) {
       //bind
-      this.setView(
-        uid,
-        view,
-        channel ? channel : "",
-        options ? options : { append: false }
-      );
+      this.setView(uid, view, channel ? channel : "", options);
       return 0;
     } else {
       //unbind
@@ -2696,12 +2746,14 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {*} height The target height.
    */
   setVideoRenderDimension(
-    rendertype: number,
-    uid: number,
+    user: User,
     width: number,
-    height: number
+    height: number,
+    channelId: string = ""
   ) {
-    // this.rtcEngine.setVideoRenderDimension(rendertype, uid, width, height);
+    this.stopInterval();
+    this.enableVideoFrameCache(user, channelId, width, height);
+    this.startInterval();
   }
 
   /**
@@ -2715,7 +2767,110 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} fps The renderer frame rate (fps).
    */
   setVideoRenderFPS(fps: number) {
-    // this.rtcEngine.setFPS(fps);
+    this._config.videoFps = fps;
+    this.restartInterval();
+  }
+
+  userToUid(user: User): number {
+    let uid;
+    if (user === "local") {
+      uid = 0;
+    } else if (user === "videoSource") {
+      uid = 0;
+    } else {
+      uid = user as number;
+    }
+
+    return uid;
+  }
+
+  uidToUser(uid: number): User {
+    let user: User;
+    if (uid === 0) {
+      user = "local";
+    } else {
+      user = String(uid);
+    }
+    /**
+     * @todo
+     */
+    return user;
+  }
+
+  enableVideoFrameCache(
+    user: User,
+    channelId: string,
+    width: number,
+    height: number
+  ): number {
+    let uid = this.userToUid(user);
+    let config: VideoFrameCacheConfig = {
+      uid,
+      channelId,
+      width,
+      height,
+    };
+
+    logInfo(`enableVideoFrameCache ${JSON.stringify(config)}`);
+    return this._rtcEngine.EnableVideoFrameCache(config);
+  }
+
+  disableVideoFrameCache(
+    user: User,
+    channelId: string,
+    width: number,
+    height: number
+  ): number {
+    let uid = this.userToUid(user);
+    let config: VideoFrameCacheConfig = {
+      uid,
+      channelId,
+      width,
+      height,
+    };
+
+    logInfo(`disableVideoFrameCache ${JSON.stringify(config)}`);
+    return this._rtcEngine.DisableVideoFrameCache(config);
+  }
+
+  ensureRendererMap(
+    user: User,
+    channelId: string
+  ):
+    | Map<string, { cachedVideoFrame?: VideoFrame; render?: IRenderer[] }>
+    | undefined {
+    let rendererMap = this._config.renderers.get(channelId);
+    if (!rendererMap) {
+      logWarn(`ensureRendererMap for ${channelId}  ${user}`);
+      this._config.renderers.set(channelId, new Map());
+    }
+    rendererMap = this._config.renderers.get(channelId);
+    return rendererMap;
+  }
+
+  addVideoFrameCacheToMap(
+    user: User,
+    channelId: string,
+    videoFrame: VideoFrame
+  ): void {
+    let rendererMap = this.ensureRendererMap(user, channelId);
+    rendererMap
+      ? Object.assign(rendererMap.get(String(user)), {
+          cachedVideoFrame: videoFrame,
+        })
+      : logWarn(
+          `addVideoFrameCacheToMap rendererMap ${channelId}  ${user} is null`
+        );
+  }
+
+  removeVideoFrameCacheFromMap(user: User, channelId: string): void {
+    let rendererMap = this._config.renderers.get(channelId);
+    let rendererItem = rendererMap?.get(String(user));
+    rendererItem
+      ? Object.assign(rendererItem, { cachedVideoFrame: undefined })
+      : logWarn(
+          `removeVideoFrameCacheFromMap rendererItem ${channelId}  ${user} is null`
+        );
   }
 
   /**
@@ -2731,7 +2886,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} fps The renderer high frame rate (fps).
    */
   setVideoRenderHighFPS(fps: number) {
-    // this.rtcEngine.setHighFPS(fps);
+    // this._rtcEngine.setHighFPS(fps);
   }
 
   /**
@@ -2741,7 +2896,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} uid The User ID.
    */
   addVideoRenderToHighFPS(uid: number) {
-    // this.rtcEngine.addToHighVideo(uid);
+    // this._rtcEngine.addToHighVideo(uid);
   }
 
   /**
@@ -2751,7 +2906,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @param {number} uid The User ID.
    */
   removeVideoRenderFromHighFPS(uid: number) {
-    // this.rtcEngine.removeFromHighVideo(uid);
+    // this._rtcEngine.removeFromHighVideo(uid);
   }
 
   /**
@@ -2774,13 +2929,18 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setupViewContentMode(
     user: User,
-    mode: CONTENT_MODE,
-    channelId: Channel
+    channelId: Channel = "",
+    mode: CONTENT_MODE = CONTENT_MODE.FIT,
+    mirror: boolean = false
   ): number {
     let renderList = this.getRender(user, channelId);
     renderList
-      ? renderList.forEach((renderItem) => renderItem.setContentMode(mode))
-      : console.warn(`User: ${user} have no render view`);
+      ? renderList.forEach((renderItem) =>
+          renderItem.setContentMode(mode, mirror)
+        )
+      : console.warn(
+          `User: ${user} have no render view, you need to call this api after setView`
+        );
     return 0;
   }
 
@@ -2806,7 +2966,7 @@ class AgoraRtcEngine extends EventEmitter {
     let param = {
       token,
     };
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineRenewToken,
       JSON.stringify(param)
     );
@@ -2835,7 +2995,7 @@ class AgoraRtcEngine extends EventEmitter {
       profile,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetChannelProfile,
       JSON.stringify(param)
     );
@@ -2868,7 +3028,7 @@ class AgoraRtcEngine extends EventEmitter {
       role,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetClientRole,
       JSON.stringify(param)
     );
@@ -2915,7 +3075,7 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetClientRole,
       JSON.stringify(param)
     );
@@ -2949,7 +3109,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startEchoTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartEchoTest, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStartEchoTest, "");
     return ret.retCode;
   }
 
@@ -2960,7 +3120,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopEchoTest(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopEchoTest, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopEchoTest, "");
     return ret.retCode;
   }
 
@@ -2993,7 +3153,7 @@ class AgoraRtcEngine extends EventEmitter {
       intervalInSeconds,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartEchoTest,
       JSON.stringify(param)
     );
@@ -3054,7 +3214,7 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAddVideoWaterMark,
       JSON.stringify(param)
     );
@@ -3069,7 +3229,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   clearVideoWatermarks(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineClearVideoWaterMarks,
       ""
     );
@@ -3108,7 +3268,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableLastmileTest(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableLastMileTest,
       ""
     );
@@ -3122,7 +3282,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableLastmileTest(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineDisableLastMileTest,
       ""
     );
@@ -3167,7 +3327,7 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartLastMileProbeTest,
       JSON.stringify(param)
     );
@@ -3181,7 +3341,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopLastmileProbeTest(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStopLastMileProbeTest,
       ""
     );
@@ -3219,7 +3379,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableVideo(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableVideo, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineEnableVideo, "");
     return ret.retCode;
   }
 
@@ -3253,7 +3413,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableVideo(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableVideo, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineDisableVideo, "");
     return ret.retCode;
   }
 
@@ -3273,7 +3433,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startPreview(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStartPreview, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStartPreview, "");
     return ret.retCode;
   }
 
@@ -3284,7 +3444,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopPreview(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopPreview, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopPreview, "");
     return ret.retCode;
   }
 
@@ -3313,7 +3473,7 @@ class AgoraRtcEngine extends EventEmitter {
       swapWidthAndHeight,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVideoProfile,
       JSON.stringify(param)
     );
@@ -3354,7 +3514,7 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetCameraCapturerConfiguration,
       JSON.stringify(param)
     );
@@ -3397,7 +3557,7 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVideoEncoderConfiguration,
       JSON.stringify(param)
     );
@@ -3440,7 +3600,7 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetBeautyEffectOptions,
       JSON.stringify(param)
     );
@@ -3469,7 +3629,7 @@ class AgoraRtcEngine extends EventEmitter {
       userPriority,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetRemoteUserPriority,
       JSON.stringify(param)
     );
@@ -3501,7 +3661,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableAudio(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineEnableAudio, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineEnableAudio, "");
     return ret.retCode;
   }
 
@@ -3528,7 +3688,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableAudio(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineDisableAudio, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineDisableAudio, "");
     return ret.retCode;
   }
 
@@ -3590,7 +3750,7 @@ class AgoraRtcEngine extends EventEmitter {
       scenario,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetAudioProfile,
       JSON.stringify(param)
     );
@@ -3615,7 +3775,7 @@ class AgoraRtcEngine extends EventEmitter {
       preferFrameRateOverImageQuality,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVideoQualityParameters,
       JSON.stringify(param)
     );
@@ -3650,7 +3810,7 @@ class AgoraRtcEngine extends EventEmitter {
       secret,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetEncryptionSecret,
       JSON.stringify(param)
     );
@@ -3689,7 +3849,7 @@ class AgoraRtcEngine extends EventEmitter {
       encryptionMode,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetEncryptionMode,
       JSON.stringify(param)
     );
@@ -3722,7 +3882,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineMuteLocalAudioStream,
       JSON.stringify(param)
     );
@@ -3744,7 +3904,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineMuteAllRemoteAudioStreams,
       JSON.stringify(param)
     );
@@ -3778,7 +3938,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetDefaultMuteAllRemoteAudioStreams,
       JSON.stringify(param)
     );
@@ -3802,7 +3962,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineMuteRemoteAudioStream,
       JSON.stringify(param)
     );
@@ -3835,7 +3995,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineMuteLocalVideoStream,
       JSON.stringify(param)
     );
@@ -3874,7 +4034,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableLocalVideo,
       JSON.stringify(param)
     );
@@ -3921,7 +4081,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableLocalAudio,
       JSON.stringify(param)
     );
@@ -3944,7 +4104,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineMuteAllRemoteVideoStreams,
       JSON.stringify(param)
     );
@@ -3979,7 +4139,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetDefaultMuteAllRemoteVideoStreams,
       JSON.stringify(param)
     );
@@ -4027,7 +4187,7 @@ class AgoraRtcEngine extends EventEmitter {
       report_vad,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableAudioVolumeIndication,
       JSON.stringify(param)
     );
@@ -4051,7 +4211,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineMuteRemoteVideoStream,
       JSON.stringify(param)
     );
@@ -4075,7 +4235,7 @@ class AgoraRtcEngine extends EventEmitter {
       filePath,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLogFile,
       JSON.stringify(param)
     );
@@ -4116,7 +4276,7 @@ class AgoraRtcEngine extends EventEmitter {
       fileSizeInKBytes,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLogFileSize,
       JSON.stringify(param)
     );
@@ -4150,7 +4310,7 @@ class AgoraRtcEngine extends EventEmitter {
       filter,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLogFilter,
       JSON.stringify(param)
     );
@@ -4175,7 +4335,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableDualStreamMode,
       JSON.stringify(param)
     );
@@ -4219,7 +4379,7 @@ class AgoraRtcEngine extends EventEmitter {
       streamType,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetRemoteVideoStreamType,
       JSON.stringify(param)
     );
@@ -4243,7 +4403,7 @@ class AgoraRtcEngine extends EventEmitter {
       streamType,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetRemoteDefaultVideoStreamType,
       JSON.stringify(param)
     );
@@ -4276,7 +4436,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableWebSdkInteroperability,
       JSON.stringify(param)
     );
@@ -4302,7 +4462,7 @@ class AgoraRtcEngine extends EventEmitter {
       mirrorMode,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVideoMirrorMode,
       JSON.stringify(param)
     );
@@ -4323,7 +4483,7 @@ class AgoraRtcEngine extends EventEmitter {
       pitch,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVoicePitch,
       JSON.stringify(param)
     );
@@ -4349,7 +4509,7 @@ class AgoraRtcEngine extends EventEmitter {
       bandGain,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVoiceEqualization,
       JSON.stringify(param)
     );
@@ -4382,7 +4542,7 @@ class AgoraRtcEngine extends EventEmitter {
       value,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVoiceReverb,
       JSON.stringify(param)
     );
@@ -4403,7 +4563,7 @@ class AgoraRtcEngine extends EventEmitter {
       voiceChanger,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVoiceChanger,
       JSON.stringify(param)
     );
@@ -4429,7 +4589,7 @@ class AgoraRtcEngine extends EventEmitter {
       reverbPreset,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalVoiceReverbPreset,
       JSON.stringify(param)
     );
@@ -4478,7 +4638,7 @@ class AgoraRtcEngine extends EventEmitter {
       option,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLocalPublishFallbackOption,
       JSON.stringify(param)
     );
@@ -4524,7 +4684,7 @@ class AgoraRtcEngine extends EventEmitter {
       option,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetRemoteSubscribeFallbackOption,
       JSON.stringify(param)
     );
@@ -4585,7 +4745,7 @@ class AgoraRtcEngine extends EventEmitter {
       userAccount,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineRegisterLocalUserAccount,
       JSON.stringify(param)
     );
@@ -4650,7 +4810,7 @@ class AgoraRtcEngine extends EventEmitter {
       userAccount,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineJoinChannelWithUserAccount,
       JSON.stringify(param)
     );
@@ -4682,7 +4842,7 @@ class AgoraRtcEngine extends EventEmitter {
       userAccount,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetUserInfoByUserAccount,
       JSON.stringify(param)
     );
@@ -4717,7 +4877,7 @@ class AgoraRtcEngine extends EventEmitter {
       uid,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetUserInfoByUid,
       JSON.stringify(param)
     );
@@ -4775,7 +4935,7 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSwitchChannel,
       JSON.stringify(param)
     );
@@ -4800,7 +4960,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAdjustRecordingSignalVolume,
       JSON.stringify(param)
     );
@@ -4824,7 +4984,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAdjustPlaybackSignalVolume,
       JSON.stringify(param)
     );
@@ -4861,7 +5021,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAdjustUserPlaybackSignalVolume,
       JSON.stringify(param)
     );
@@ -4937,7 +5097,7 @@ class AgoraRtcEngine extends EventEmitter {
       quality,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartAudioRecording,
       JSON.stringify(param)
     );
@@ -4954,7 +5114,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   stopAudioRecording(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStopAudioRecording,
       ""
     );
@@ -4969,7 +5129,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Array} The array of the video devices.
    */
   getVideoDevices(): Array<Device> {
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+    let ret = this._rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kGetVideoDeviceCount,
       ""
     );
@@ -4980,7 +5140,7 @@ class AgoraRtcEngine extends EventEmitter {
         index: i,
       };
 
-      let ret = this.rtcDeviceManager.CallApiVideoDevice(
+      let ret = this._rtcDeviceManager.CallApiVideoDevice(
         ApiTypeVideoDeviceManager.kGetVideoDeviceInfoByIndex,
         JSON.stringify(param)
       );
@@ -5002,7 +5162,7 @@ class AgoraRtcEngine extends EventEmitter {
       deviceId,
     };
 
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+    let ret = this._rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kSetCurrentVideoDeviceId,
       JSON.stringify(param)
     );
@@ -5014,7 +5174,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Object} The video device.
    */
   getCurrentVideoDevice(): Device {
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+    let ret = this._rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kGetCurrentVideoDeviceId,
       ""
     );
@@ -5044,7 +5204,7 @@ class AgoraRtcEngine extends EventEmitter {
       hwnd: 1,
     };
 
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+    let ret = this._rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kStartVideoDeviceTest,
       JSON.stringify(param)
     );
@@ -5064,7 +5224,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopVideoDeviceTest(): number {
-    let ret = this.rtcDeviceManager.CallApiVideoDevice(
+    let ret = this._rtcDeviceManager.CallApiVideoDevice(
       ApiTypeVideoDeviceManager.kStopVideoDeviceTest,
       ""
     );
@@ -5076,7 +5236,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Array} The array of the audio playback device.
    */
   getAudioPlaybackDevices(): Array<Device> {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceCount,
       ""
     );
@@ -5087,7 +5247,7 @@ class AgoraRtcEngine extends EventEmitter {
         index: i,
       };
 
-      let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      let ret = this._rtcDeviceManager.CallApiAudioDevice(
         ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceInfoByIndex,
         JSON.stringify(param)
       );
@@ -5109,7 +5269,7 @@ class AgoraRtcEngine extends EventEmitter {
       deviceId,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kSetCurrentAudioPlaybackDeviceId,
       JSON.stringify(param)
     );
@@ -5136,7 +5296,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Object} The current audio playback device.
    */
   getCurrentAudioPlaybackDevice(): Device {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceId,
       ""
     );
@@ -5163,7 +5323,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kSetAudioPlaybackDeviceVolume,
       JSON.stringify(param)
     );
@@ -5175,7 +5335,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The audio playback device volume.
    */
   getAudioPlaybackVolume(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceVolume,
       ""
     );
@@ -5187,7 +5347,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Array} The array of the audio recording device.
    */
   getAudioRecordingDevices(): Array<Device> {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceCount,
       ""
     );
@@ -5198,7 +5358,7 @@ class AgoraRtcEngine extends EventEmitter {
         index: i,
       };
 
-      let ret = this.rtcDeviceManager.CallApiAudioDevice(
+      let ret = this._rtcDeviceManager.CallApiAudioDevice(
         ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceInfoByIndex,
         JSON.stringify(param)
       );
@@ -5220,7 +5380,7 @@ class AgoraRtcEngine extends EventEmitter {
       deviceId,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kSetCurrentAudioRecordingDeviceId,
       JSON.stringify(param)
     );
@@ -5246,7 +5406,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Object} The audio recording device.
    */
   getCurrentAudioRecordingDevice(): Device {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetCurrentAudioPlaybackDeviceInfo,
       ""
     );
@@ -5260,7 +5420,7 @@ class AgoraRtcEngine extends EventEmitter {
    * 0 (lowest volume) and 255 (highest volume).
    */
   getAudioRecordingVolume(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceVolume,
       ""
     );
@@ -5280,7 +5440,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kSetAudioRecordingDeviceVolume,
       JSON.stringify(param)
     );
@@ -5306,7 +5466,7 @@ class AgoraRtcEngine extends EventEmitter {
       testAudioFilePath,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kStartAudioPlaybackDeviceTest,
       JSON.stringify(param)
     );
@@ -5324,7 +5484,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioPlaybackDeviceTest(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kStopAudioPlaybackDeviceTest,
       ""
     );
@@ -5351,7 +5511,7 @@ class AgoraRtcEngine extends EventEmitter {
       indicationInterval,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kStartAudioDeviceLoopbackTest,
       JSON.stringify(param)
     );
@@ -5370,7 +5530,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioDeviceLoopbackTest(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kStopAudioDeviceLoopbackTest,
       ""
     );
@@ -5407,7 +5567,7 @@ class AgoraRtcEngine extends EventEmitter {
       deviceName,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableLoopBackRecording,
       JSON.stringify(param)
     );
@@ -5428,7 +5588,7 @@ class AgoraRtcEngine extends EventEmitter {
       testAudioFilePath,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kStartAudioRecordingDeviceTest,
       JSON.stringify(param)
     );
@@ -5447,7 +5607,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioRecordingDeviceTest(): number {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kStopAudioRecordingDeviceTest,
       ""
     );
@@ -5459,7 +5619,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {boolean} muted/unmuted
    */
   getAudioPlaybackDeviceMute(): boolean {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioPlaybackDeviceMute,
       ""
     );
@@ -5481,7 +5641,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kSetAudioPlaybackDeviceMute,
       JSON.stringify(param)
     );
@@ -5495,7 +5655,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - false: Unmutes.
    */
   getAudioRecordingDeviceMute(): boolean {
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kGetAudioRecordingDeviceMute,
       ""
     );
@@ -5517,7 +5677,7 @@ class AgoraRtcEngine extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcDeviceManager.CallApiAudioDevice(
+    let ret = this._rtcDeviceManager.CallApiAudioDevice(
       ApiTypeAudioDeviceManager.kSetAudioRecordingDeviceMute,
       JSON.stringify(param)
     );
@@ -5532,7 +5692,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return {Array} The array list of the window ID and relevant information.
    */
   getScreenWindowsInfo(): Array<WindowInfo> {
-    return this.rtcEngine.GetScreenWindowsInfo();
+    return this._rtcEngine.GetScreenWindowsInfo();
   }
 
   /**
@@ -5546,7 +5706,7 @@ class AgoraRtcEngine extends EventEmitter {
    * object, just use it for screen sharing.
    */
   getScreenDisplaysInfo(): Array<Object> {
-    return this.rtcEngine.GetScreenDisplaysInfo();
+    return this._rtcEngine.GetScreenDisplaysInfo();
   }
 
   /**
@@ -5575,7 +5735,7 @@ class AgoraRtcEngine extends EventEmitter {
       captureParams,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
       JSON.stringify(param)
     );
@@ -5608,7 +5768,7 @@ class AgoraRtcEngine extends EventEmitter {
         captureParams,
       };
 
-      let ret = this.rtcEngine.CallApi(
+      let ret = this._rtcEngine.CallApi(
         ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
         JSON.stringify(param)
       );
@@ -5621,7 +5781,7 @@ class AgoraRtcEngine extends EventEmitter {
         captureParams,
       };
 
-      let ret = this.rtcEngine.CallApi(
+      let ret = this._rtcEngine.CallApi(
         ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
         JSON.stringify(param)
       );
@@ -5645,7 +5805,7 @@ class AgoraRtcEngine extends EventEmitter {
       captureParams,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineUpdateScreenCaptureParameters,
       JSON.stringify(param)
     );
@@ -5669,7 +5829,7 @@ class AgoraRtcEngine extends EventEmitter {
       contentHint,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetScreenCaptureContentHint,
       JSON.stringify(param)
     );
@@ -5683,7 +5843,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopScreenCapture(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStopScreenCapture,
       ""
     );
@@ -5703,7 +5863,7 @@ class AgoraRtcEngine extends EventEmitter {
       regionRect,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineUpdateScreenCaptureRegion,
       JSON.stringify(param)
     );
@@ -5765,7 +5925,7 @@ class AgoraRtcEngine extends EventEmitter {
       cycle,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartAudioMixing,
       JSON.stringify(param)
     );
@@ -5781,7 +5941,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioMixing(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAudioMixing, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopAudioMixing, "");
     return ret.retCode;
   }
 
@@ -5794,7 +5954,10 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   pauseAudioMixing(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAudioMixing, "");
+    let ret = this._rtcEngine.CallApi(
+      ApiTypeEngine.kEnginePauseAudioMixing,
+      ""
+    );
     return ret.retCode;
   }
 
@@ -5807,7 +5970,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   resumeAudioMixing(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineResumeAudioMixing,
       ""
     );
@@ -5833,7 +5996,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAdjustAudioMixingVolume,
       JSON.stringify(param)
     );
@@ -5853,7 +6016,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAdjustAudioMixingPlayoutVolume,
       JSON.stringify(param)
     );
@@ -5873,7 +6036,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAdjustAudioMixingPublishVolume,
       JSON.stringify(param)
     );
@@ -5889,7 +6052,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingDuration(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetAudioMixingDuration,
       ""
     );
@@ -5906,7 +6069,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingCurrentPosition(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetAudioMixingCurrentPosition,
       ""
     );
@@ -5924,7 +6087,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingPlayoutVolume(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetAudioMixingPlayoutVolume,
       ""
     );
@@ -5942,7 +6105,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getAudioMixingPublishVolume(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineGetAudioMixingPublishVolume,
       ""
     );
@@ -5967,7 +6130,7 @@ class AgoraRtcEngine extends EventEmitter {
       pos,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetAudioMixingPosition,
       JSON.stringify(param)
     );
@@ -6000,7 +6163,7 @@ class AgoraRtcEngine extends EventEmitter {
       pitch,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetAudioMixingPitch,
       JSON.stringify(param)
     );
@@ -6046,7 +6209,7 @@ class AgoraRtcEngine extends EventEmitter {
       transcodingEnabled,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAddPublishStreamUrl,
       JSON.stringify(param)
     );
@@ -6072,7 +6235,7 @@ class AgoraRtcEngine extends EventEmitter {
       url,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineRemovePublishStreamUrl,
       JSON.stringify(param)
     );
@@ -6106,7 +6269,7 @@ class AgoraRtcEngine extends EventEmitter {
       transcoding,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetLiveTranscoding,
       JSON.stringify(param)
     );
@@ -6167,7 +6330,7 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineAddInjectStreamUrl,
       JSON.stringify(param)
     );
@@ -6188,7 +6351,7 @@ class AgoraRtcEngine extends EventEmitter {
       url,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineRemoveInjectStreamUrl,
       JSON.stringify(param)
     );
@@ -6229,7 +6392,7 @@ class AgoraRtcEngine extends EventEmitter {
       ordered,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineCreateDataStream,
       JSON.stringify(param)
     );
@@ -6270,7 +6433,7 @@ class AgoraRtcEngine extends EventEmitter {
       length: msg.length,
     };
 
-    let ret = this.rtcEngine.CallApiWithBuffer(
+    let ret = this._rtcEngine.CallApiWithBuffer(
       ApiTypeEngine.kEngineSendStreamMessage,
       JSON.stringify(param),
       msg
@@ -6323,7 +6486,7 @@ class AgoraRtcEngine extends EventEmitter {
       configuration,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartChannelMediaRelay,
       JSON.stringify(param)
     );
@@ -6359,7 +6522,7 @@ class AgoraRtcEngine extends EventEmitter {
       configuration,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineUpdateChannelMediaRelay,
       JSON.stringify(param)
     );
@@ -6387,7 +6550,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure
    */
   stopChannelMediaRelay(): number {
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStopChannelMediaRelay,
       ""
     );
@@ -6406,7 +6569,10 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getEffectsVolume(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetEffectsVolume, "");
+    let ret = this._rtcEngine.CallApi(
+      ApiTypeEngine.kEngineGetEffectsVolume,
+      ""
+    );
     return ret.retCode;
   }
   /**
@@ -6422,7 +6588,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetEffectsVolume,
       JSON.stringify(param)
     );
@@ -6444,7 +6610,7 @@ class AgoraRtcEngine extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVolumeOfEffect,
       JSON.stringify(param)
     );
@@ -6517,7 +6683,7 @@ class AgoraRtcEngine extends EventEmitter {
       publish,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEnginePlayEffect,
       JSON.stringify(param)
     );
@@ -6536,7 +6702,7 @@ class AgoraRtcEngine extends EventEmitter {
       soundId,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStopEffect,
       JSON.stringify(param)
     );
@@ -6549,7 +6715,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAllEffects(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineStopAllEffects, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopAllEffects, "");
     return ret.retCode;
   }
   /**
@@ -6577,7 +6743,7 @@ class AgoraRtcEngine extends EventEmitter {
       filePath,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEnginePreloadEffect,
       JSON.stringify(param)
     );
@@ -6596,7 +6762,7 @@ class AgoraRtcEngine extends EventEmitter {
       soundId,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineUnloadEffect,
       JSON.stringify(param)
     );
@@ -6615,7 +6781,7 @@ class AgoraRtcEngine extends EventEmitter {
       soundId,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEnginePauseEffect,
       JSON.stringify(param)
     );
@@ -6628,7 +6794,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   pauseAllEffects(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAllEffects, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAllEffects, "");
     return ret.retCode;
   }
   /**
@@ -6643,7 +6809,7 @@ class AgoraRtcEngine extends EventEmitter {
       soundId,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineResumeEffect,
       JSON.stringify(param)
     );
@@ -6656,7 +6822,10 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   resumeAllEffects(): number {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineResumeAllEffects, "");
+    let ret = this._rtcEngine.CallApi(
+      ApiTypeEngine.kEngineResumeAllEffects,
+      ""
+    );
     return ret.retCode;
   }
 
@@ -6681,7 +6850,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableSoundPositionIndication,
       JSON.stringify(param)
     );
@@ -6725,7 +6894,7 @@ class AgoraRtcEngine extends EventEmitter {
       gain,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetRemoteVoicePosition,
       JSON.stringify(param)
     );
@@ -6751,7 +6920,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The current call ID.
    */
   getCallId(): string {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineGetCallId, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineGetCallId, "");
     return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
@@ -6774,7 +6943,7 @@ class AgoraRtcEngine extends EventEmitter {
       description,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineRate,
       JSON.stringify(param)
     );
@@ -6796,7 +6965,7 @@ class AgoraRtcEngine extends EventEmitter {
       description,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineComplain,
       JSON.stringify(param)
     );
@@ -6816,7 +6985,7 @@ class AgoraRtcEngine extends EventEmitter {
       samplesPerCall,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetRecordingAudioFrameParameters,
       JSON.stringify(param)
     );
@@ -6828,7 +6997,7 @@ class AgoraRtcEngine extends EventEmitter {
       parameters,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetParameters,
       JSON.stringify(param)
     );
@@ -6846,7 +7015,7 @@ class AgoraRtcEngine extends EventEmitter {
       type,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineUnRegisterMediaMetadataObserver,
       JSON.stringify(param)
     );
@@ -6863,7 +7032,7 @@ class AgoraRtcEngine extends EventEmitter {
       type,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineRegisterMediaMetadataObserver,
       JSON.stringify(param)
     );
@@ -6889,7 +7058,7 @@ class AgoraRtcEngine extends EventEmitter {
       metadata,
     };
 
-    let ret = this.rtcEngine.CallApiWithBuffer(
+    let ret = this._rtcEngine.CallApiWithBuffer(
       ApiTypeEngine.kEngineSendMetadata,
       JSON.stringify(param),
       metadata.buffer
@@ -6912,7 +7081,7 @@ class AgoraRtcEngine extends EventEmitter {
       size,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetMaxMetadataSize,
       JSON.stringify(param)
     );
@@ -6945,7 +7114,7 @@ class AgoraRtcEngine extends EventEmitter {
       value,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSendCustomReportMessage,
       JSON.stringify(param)
     );
@@ -6984,7 +7153,7 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableEncryption,
       JSON.stringify(param)
     );
@@ -7037,7 +7206,7 @@ class AgoraRtcEngine extends EventEmitter {
       preset,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetAudioEffectPreset,
       JSON.stringify(param)
     );
@@ -7088,7 +7257,7 @@ class AgoraRtcEngine extends EventEmitter {
       preset,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVoiceBeautifierPreset,
       JSON.stringify(param)
     );
@@ -7197,7 +7366,7 @@ class AgoraRtcEngine extends EventEmitter {
       param2,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetAudioEffectParameters,
       JSON.stringify(param)
     );
@@ -7210,7 +7379,7 @@ class AgoraRtcEngine extends EventEmitter {
       type,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetCloudProxy,
       JSON.stringify(param)
     );
@@ -7222,7 +7391,7 @@ class AgoraRtcEngine extends EventEmitter {
       enable,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineEnableDeepLearningDenoise,
       JSON.stringify(param)
     );
@@ -7240,7 +7409,7 @@ class AgoraRtcEngine extends EventEmitter {
       param2,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineSetVoiceBeautifierParameters,
       JSON.stringify(param)
     );
@@ -7248,7 +7417,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   uploadLogFile(): string {
-    let ret = this.rtcEngine.CallApi(ApiTypeEngine.kEngineUploadLogFile, "");
+    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineUploadLogFile, "");
     return ret.result;
   }
 
@@ -7263,7 +7432,7 @@ class AgoraRtcEngine extends EventEmitter {
       order: pluginInfo.order,
     };
 
-    let ret = this.rtcEngine.PluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
       ApiTypeRawDataPlugin.kRegisterPlugin,
       JSON.stringify(param)
     );
@@ -7275,7 +7444,7 @@ class AgoraRtcEngine extends EventEmitter {
       pluginId,
     };
 
-    let ret = this.rtcEngine.PluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
       ApiTypeRawDataPlugin.kUnregisterPlugin,
       JSON.stringify(param)
     );
@@ -7283,7 +7452,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   getPlugins(): Plugin[] {
-    let ret = this.rtcEngine.PluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
       ApiTypeRawDataPlugin.kGetPlugins,
       ""
     );
@@ -7318,7 +7487,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.PluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
       ApiTypeRawDataPlugin.kEnablePlugin,
       JSON.stringify(param)
     );
@@ -7331,7 +7500,7 @@ class AgoraRtcEngine extends EventEmitter {
       parameter,
     };
 
-    let ret = this.rtcEngine.PluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
       ApiTypeRawDataPlugin.kSetPluginParameter,
       JSON.stringify(param)
     );
@@ -7344,7 +7513,7 @@ class AgoraRtcEngine extends EventEmitter {
       key,
     };
 
-    let ret = this.rtcEngine.PluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
       ApiTypeRawDataPlugin.kGetPluginParameter,
       JSON.stringify(param)
     );
@@ -7385,7 +7554,7 @@ class AgoraRtcEngine extends EventEmitter {
       context,
     };
 
-    let ret = this.rtcEngine.VideoSourceInitialize(JSON.stringify(param));
+    let ret = this._rtcEngine.VideoSourceInitialize(JSON.stringify(param));
     return ret.retCode;
   }
 
@@ -7404,7 +7573,7 @@ class AgoraRtcEngine extends EventEmitter {
       filePath,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetLogFile,
       JSON.stringify(param)
     );
@@ -7447,7 +7616,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineEnableWebSdkInteroperability,
       JSON.stringify(param)
     );
@@ -7485,7 +7654,7 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineJoinChannel,
       JSON.stringify(param)
     );
@@ -7503,7 +7672,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceLeaveChannel(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineLeaveChannel,
       ""
     );
@@ -7527,7 +7696,7 @@ class AgoraRtcEngine extends EventEmitter {
       token,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineRenewToken,
       JSON.stringify(param)
     );
@@ -7551,7 +7720,7 @@ class AgoraRtcEngine extends EventEmitter {
       profile,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetChannelProfile,
       JSON.stringify(param)
     );
@@ -7579,7 +7748,7 @@ class AgoraRtcEngine extends EventEmitter {
       swapWidthAndHeight,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetVideoProfile,
       JSON.stringify(param)
     );
@@ -7600,7 +7769,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineEnableDualStreamMode,
       JSON.stringify(param)
     );
@@ -7619,7 +7788,7 @@ class AgoraRtcEngine extends EventEmitter {
       parameters,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetParameters,
       JSON.stringify(param)
     );
@@ -7639,7 +7808,7 @@ class AgoraRtcEngine extends EventEmitter {
       regionRect,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineUpdateScreenCaptureRegion,
       JSON.stringify(param)
     );
@@ -7675,7 +7844,7 @@ class AgoraRtcEngine extends EventEmitter {
       deviceName,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineEnableLoopBackRecording,
       JSON.stringify(param)
     );
@@ -7706,7 +7875,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceEnableAudio(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineEnableAudio,
       ""
     );
@@ -7714,7 +7883,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceDisableAudio(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineDisableAudio,
       ""
     );
@@ -7722,7 +7891,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceEnableVideo(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineEnableVideo,
       ""
     );
@@ -7730,7 +7899,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceDisableVideo(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineDisableVideo,
       ""
     );
@@ -7772,7 +7941,7 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineEnableEncryption,
       JSON.stringify(param)
     );
@@ -7800,7 +7969,7 @@ class AgoraRtcEngine extends EventEmitter {
       encryptionMode,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetEncryptionMode,
       JSON.stringify(param)
     );
@@ -7823,7 +7992,7 @@ class AgoraRtcEngine extends EventEmitter {
       secret,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetEncryptionSecret,
       JSON.stringify(param)
     );
@@ -7855,7 +8024,7 @@ class AgoraRtcEngine extends EventEmitter {
         captureParams,
       };
 
-      let ret = this.rtcEngine.CallApi(
+      let ret = this._rtcEngine.CallApi(
         ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
         JSON.stringify(param)
       );
@@ -7868,7 +8037,7 @@ class AgoraRtcEngine extends EventEmitter {
         captureParams,
       };
 
-      let ret = this.rtcEngine.CallApi(
+      let ret = this._rtcEngine.CallApi(
         ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
         JSON.stringify(param)
       );
@@ -7896,7 +8065,7 @@ class AgoraRtcEngine extends EventEmitter {
       captureParams,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
       JSON.stringify(param)
     );
@@ -7917,7 +8086,7 @@ class AgoraRtcEngine extends EventEmitter {
       captureParams,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineUpdateScreenCaptureParameters,
       JSON.stringify(param)
     );
@@ -7938,7 +8107,7 @@ class AgoraRtcEngine extends EventEmitter {
       contentHint,
     };
 
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineSetScreenCaptureContentHint,
       JSON.stringify(param)
     );
@@ -7981,7 +8150,7 @@ class AgoraRtcEngine extends EventEmitter {
       bitrate,
     };
 
-    let ret = this.rtcEngine.CallApi(
+    let ret = this._rtcEngine.CallApi(
       ApiTypeEngine.kEngineStartScreenCapture,
       JSON.stringify(param)
     );
@@ -7999,7 +8168,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceStopScreenCapture(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineStopScreenCapture,
       ""
     );
@@ -8017,7 +8186,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceStartPreview(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineStartPreview,
       ""
     );
@@ -8035,7 +8204,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceStopPreview(): number {
-    let ret = this.rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.VideoSourceCallApi(
       ApiTypeEngine.kEngineStopPreview,
       ""
     );
@@ -8049,7 +8218,7 @@ class AgoraRtcEngine extends EventEmitter {
       order: pluginInfo.order,
     };
 
-    let ret = this.rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.VideoSourcePluginCallApi(
       ApiTypeRawDataPlugin.kRegisterPlugin,
       JSON.stringify(param)
     );
@@ -8061,7 +8230,7 @@ class AgoraRtcEngine extends EventEmitter {
       pluginId,
     };
 
-    let ret = this.rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.VideoSourcePluginCallApi(
       ApiTypeRawDataPlugin.kUnregisterPlugin,
       JSON.stringify(param)
     );
@@ -8069,7 +8238,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceGetPlugins(): Plugin[] {
-    let ret = this.rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.VideoSourcePluginCallApi(
       ApiTypeRawDataPlugin.kGetPlugins,
       ""
     );
@@ -8104,7 +8273,7 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this.rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.VideoSourcePluginCallApi(
       ApiTypeRawDataPlugin.kEnablePlugin,
       JSON.stringify(param)
     );
@@ -8117,7 +8286,7 @@ class AgoraRtcEngine extends EventEmitter {
       parameter,
     };
 
-    let ret = this.rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.VideoSourcePluginCallApi(
       ApiTypeRawDataPlugin.kSetPluginParameter,
       JSON.stringify(param)
     );
@@ -8130,7 +8299,7 @@ class AgoraRtcEngine extends EventEmitter {
       key,
     };
 
-    let ret = this.rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.VideoSourcePluginCallApi(
       ApiTypeRawDataPlugin.kGetPluginParameter,
       JSON.stringify(param)
     );
@@ -8144,7 +8313,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceRelease(): number {
-    let ret = this.rtcEngine.VideoSourceRelease();
+    let ret = this._rtcEngine.VideoSourceRelease();
     return ret.retCode;
   }
 }
@@ -8755,7 +8924,10 @@ declare interface AgoraRtcEngine {
   /** Occurs when the user for sharing screen joined the channel.
    * - uid: The User ID.
    */
-  on(evt: "videoSourceJoinedSuccess", cb: (uid: number) => void): this;
+  on(
+    evt: "videoSourceJoinChannelSuccess",
+    cb: (channel: string, uid: number, elapsed: number) => void
+  ): this;
   /** Occurs when the token expires. */
   on(evt: "videoSourceRequestNewToken", cb: () => void): this;
   /** Occurs when the user for sharing screen leaved the channel.
@@ -9913,10 +10085,6 @@ declare interface AgoraRtcEngine {
     evt: "audioDeviceVolumeChanged",
     cb: (deviceType: MEDIA_DEVICE_TYPE, volume: number, muted: boolean) => void
   ): this;
-  /** Occurs when the user for sharing screen joined the channel.
-   * - uid: The User ID.
-   */
-  on(evt: "videoSourceJoinedSuccess", cb: (uid: number) => void): this;
   /** Occurs when the token expires. */
   on(evt: "videoSourceRequestNewToken", cb: () => void): this;
   /** Occurs when the user for sharing screen leaved the channel.
@@ -10473,6 +10641,28 @@ declare interface AgoraRtcEngine {
     ) => void
   ): this;
 
+  on(
+    evt: "onFirstLocalVideoFrame",
+    cb: (
+      uid: number,
+      channelId: string,
+      width: number,
+      height: number,
+      elapsed: number
+    ) => void
+  ): this;
+
+  on(
+    evt: "onFirstRemoteVideoFrame",
+    cb: (
+      uid: number,
+      channelId: string,
+      width: number,
+      height: number,
+      elapsed: number
+    ) => void
+  ): this;
+
   /**
    * Occurs when an API method is executed.
    *
@@ -10500,17 +10690,6 @@ declare interface AgoraRtcEngine {
    * @param cb.msg The error message.
    */
   on(evt: "videoSourceError", cb: (err: number, msg: string) => void): this;
-  /** Occurs when a user joins a specified channel.
-   * @param cb.channel The channel name.
-   * @param cb.uid User ID of the user joining the channel.
-   * @param cb.elapsed Time elapsed (ms) from the user calling the
-   * {@link joinChannel}
-   * method until the SDK triggers this callback.
-   */
-  on(
-    evt: "videoSourceJoinedChannel",
-    cb: (channel: string, uid: number, elapsed: number) => void
-  ): this;
   /** Occurs when a user rejoins the channel after disconnection due to network
    * problems.
    * When a user loses connection with the server because of network problems,
@@ -10523,16 +10702,10 @@ declare interface AgoraRtcEngine {
    * method until the SDK triggers this callback.
    */
   on(
-    evt: "videoSourceRejoinedChannel",
+    evt: "videoSourceRejoinChannelSuccess",
     cb: (channel: string, uid: number, elapsed: number) => void
   ): this;
-  // on(evt: 'audioQuality', cb: (
-  //   uid: number, quality: AgoraNetworkQuality, delay: number, lost: number
-  // ) => void): this;
-  /**
-   * @deprecated Deprecated. Use the `groupAudioVolumeIndication` callback
-   * instead.
-   */
+
   on(
     evt: "videoSourceAudioVolumeIndication",
     cb: (
@@ -11119,7 +11292,10 @@ declare interface AgoraRtcEngine {
   /** Occurs when the user for sharing screen joined the channel.
    * - uid: The User ID.
    */
-  on(evt: "videoSourceJoinedSuccess", cb: (uid: number) => void): this;
+  on(
+    evt: "videoSourceJoinedSuccess",
+    cb: (channel: string, uid: number, elapsed: number) => void
+  ): this;
   /** Occurs when the token expires. */
   on(evt: "videoSourceRequestNewToken", cb: () => void): this;
   /** Occurs when the user for sharing screen leaved the channel.
@@ -11690,6 +11866,28 @@ declare interface AgoraRtcEngine {
       elapseSinceLastState: number
     ) => void
   ): this;
+
+  on(
+    evt: "videoSourceOnFirstLocalVideoFrame",
+    cb: (
+      uid: number,
+      channelId: string,
+      width: number,
+      height: number,
+      elapsed: number
+    ) => void
+  ): this;
+
+  on(
+    evt: "videoSourceOnFirstRemoteVideoFrame",
+    cb: (
+      uid: number,
+      channelId: string,
+      width: number,
+      height: number,
+      elapsed: number
+    ) => void
+  ): this;
 }
 
 /**
@@ -11698,11 +11896,13 @@ declare interface AgoraRtcEngine {
  * The AgoraRtcChannel class.
  */
 class AgoraRtcChannel extends EventEmitter {
-  rtcChannel: NodeIrisChannel;
-  constructor(rtcChannel: NodeIrisChannel) {
+  _rtcChannel: NodeIrisRtcChannel;
+  _rtcEngine: AgoraRtcEngine;
+  constructor(rtcChannel: NodeIrisRtcChannel, rtcEngine: AgoraRtcEngine) {
     super();
-    this.rtcChannel = rtcChannel;
+    this._rtcChannel = rtcChannel;
     this.initEventHandler();
+    this._rtcEngine = rtcEngine;
   }
 
   /**
@@ -11717,7 +11917,7 @@ class AgoraRtcChannel extends EventEmitter {
       });
     };
 
-    this.rtcChannel.OnEvent(
+    this._rtcChannel.OnEvent(
       "call_back",
       (_eventName: string, _eventData: string) => {
         switch (_eventName) {
@@ -11819,6 +12019,13 @@ class AgoraRtcChannel extends EventEmitter {
                 reason: USER_OFFLINE_REASON_TYPE;
               } = JSON.parse(_eventData);
               fire("userOffline", data.channelId, data.uid, data.reason);
+              let config: VideoFrameCacheConfig = {
+                uid: data.uid,
+                channelId: data.channelId,
+                width: 0,
+                height: 0,
+              };
+              this.removeRender(data.uid);
             }
             break;
 
@@ -12214,7 +12421,7 @@ class AgoraRtcChannel extends EventEmitter {
       }
     );
 
-    this.rtcChannel.OnEvent(
+    this._rtcChannel.OnEvent(
       "call_back_with_buffer",
       (_eventName: string, _eventData: string, _eventBuffer: string) => {
         switch (_eventName) {
@@ -12238,6 +12445,37 @@ class AgoraRtcChannel extends EventEmitter {
       }
     );
   }
+
+  /**
+   * @param user
+   * - local video set-> 'local'
+   * - local video source set-> 'videoSource'
+   * - remote video set-> uid
+   *
+   * @param view
+   * - dom which render video
+   *
+   * @param channelId
+   *
+   * -local video set->''
+   * -remteo video set->channelId
+   *
+   */
+  setView(
+    user: User,
+    view: Element,
+    channelId: Channel = "",
+    renderOptions?: RendererOptions
+  ): void {
+    view ? {} : logWarn("Note: setView view is null!!!");
+
+    this._rtcEngine.setView(user, view, this.channelId(), renderOptions);
+  }
+
+  removeRender(user: User): void {
+    this._rtcEngine.removeRender(user, this.channelId());
+  }
+
   /**
    * Joins the channel with a user ID.
    *
@@ -12302,7 +12540,7 @@ class AgoraRtcChannel extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelJoinChannel,
       JSON.stringify(param)
     );
@@ -12361,12 +12599,13 @@ class AgoraRtcChannel extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelJoinChannelWithUserAccount,
       JSON.stringify(param)
     );
     return ret.retCode;
   }
+
   /**
    * Gets the channel ID of the current `AgoraRtcChannel` object.
    *
@@ -12376,7 +12615,7 @@ class AgoraRtcChannel extends EventEmitter {
    * - The empty string "", if the method call fails.
    */
   channelId(): string {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelChannelId, "");
+    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelChannelId, "");
     return ret.result;
   }
   /**
@@ -12396,7 +12635,7 @@ class AgoraRtcChannel extends EventEmitter {
    * - The empty string "", if the method call fails.
    */
   getCallId(): string {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelGetCallId, "");
+    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelGetCallId, "");
     return ret.result;
   }
   /**
@@ -12426,7 +12665,7 @@ class AgoraRtcChannel extends EventEmitter {
       role,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetClientRole,
       JSON.stringify(param)
     );
@@ -12473,7 +12712,7 @@ class AgoraRtcChannel extends EventEmitter {
       options,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetClientRole,
       JSON.stringify(param)
     );
@@ -12504,7 +12743,7 @@ class AgoraRtcChannel extends EventEmitter {
       userPriority,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetRemoteUserPriority,
       JSON.stringify(param)
     );
@@ -12532,7 +12771,7 @@ class AgoraRtcChannel extends EventEmitter {
       token,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelRenewToken,
       JSON.stringify(param)
     );
@@ -12567,7 +12806,7 @@ class AgoraRtcChannel extends EventEmitter {
       secret,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetEncryptionSecret,
       JSON.stringify(param)
     );
@@ -12608,7 +12847,7 @@ class AgoraRtcChannel extends EventEmitter {
       encryptionMode,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetEncryptionMode,
       JSON.stringify(param)
     );
@@ -12650,7 +12889,7 @@ class AgoraRtcChannel extends EventEmitter {
       gain,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetRemoteVoicePosition,
       JSON.stringify(param)
     );
@@ -12685,7 +12924,7 @@ class AgoraRtcChannel extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetDefaultMuteAllRemoteAudioStreams,
       JSON.stringify(param)
     );
@@ -12719,7 +12958,7 @@ class AgoraRtcChannel extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetDefaultMuteAllRemoteVideoStreams,
       JSON.stringify(param)
     );
@@ -12742,7 +12981,7 @@ class AgoraRtcChannel extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelMuteAllRemoteAudioStreams,
       JSON.stringify(param)
     );
@@ -12775,7 +13014,7 @@ class AgoraRtcChannel extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelMuteRemoteAudioStream,
       JSON.stringify(param)
     );
@@ -12798,7 +13037,7 @@ class AgoraRtcChannel extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelMuteAllRemoteVideoStreams,
       JSON.stringify(param)
     );
@@ -12827,7 +13066,7 @@ class AgoraRtcChannel extends EventEmitter {
       mute,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelMuteRemoteVideoStream,
       JSON.stringify(param)
     );
@@ -12870,7 +13109,7 @@ class AgoraRtcChannel extends EventEmitter {
       streamType,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetRemoteVideoStreamType,
       JSON.stringify(param)
     );
@@ -12908,7 +13147,7 @@ class AgoraRtcChannel extends EventEmitter {
       streamType,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetRemoteDefaultVideoStreamType,
       JSON.stringify(param)
     );
@@ -12946,7 +13185,7 @@ class AgoraRtcChannel extends EventEmitter {
       ordered,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelCreateDataStream,
       JSON.stringify(param)
     );
@@ -12987,7 +13226,7 @@ class AgoraRtcChannel extends EventEmitter {
       length: msg.length,
     };
 
-    let ret = this.rtcChannel.CallApiWithBuffer(
+    let ret = this._rtcChannel.CallApiWithBuffer(
       ApiTypeChannel.kChannelSendStreamMessage,
       JSON.stringify(param),
       msg
@@ -13038,7 +13277,7 @@ class AgoraRtcChannel extends EventEmitter {
       transcodingEnabled,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelAddPublishStreamUrl,
       JSON.stringify(param)
     );
@@ -13073,7 +13312,7 @@ class AgoraRtcChannel extends EventEmitter {
       url,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelRemovePublishStreamUrl,
       JSON.stringify(param)
     );
@@ -13106,7 +13345,7 @@ class AgoraRtcChannel extends EventEmitter {
       transcoding,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetLiveTranscoding,
       JSON.stringify(param)
     );
@@ -13160,7 +13399,7 @@ class AgoraRtcChannel extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelAddInjectStreamUrl,
       JSON.stringify(param)
     );
@@ -13186,7 +13425,7 @@ class AgoraRtcChannel extends EventEmitter {
       url,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelRemoveInjectStreamUrl,
       JSON.stringify(param)
     );
@@ -13229,7 +13468,7 @@ class AgoraRtcChannel extends EventEmitter {
       configuration,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelStartChannelMediaRelay,
       JSON.stringify(param)
     );
@@ -13261,7 +13500,7 @@ class AgoraRtcChannel extends EventEmitter {
       configuration,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelUpdateChannelMediaRelay,
       JSON.stringify(param)
     );
@@ -13287,7 +13526,7 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure
    */
   stopChannelMediaRelay(): number {
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelStopChannelMediaRelay,
       ""
     );
@@ -13298,7 +13537,7 @@ class AgoraRtcChannel extends EventEmitter {
    * @return {ConnectionState} Connect states. See {@link ConnectionState}.
    */
   getConnectionState(): CONNECTION_STATE_TYPE {
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelGetConnectionState,
       ""
     );
@@ -13323,7 +13562,7 @@ class AgoraRtcChannel extends EventEmitter {
    *  - ERR_REFUSED (5): The method call is refused.
    */
   publish(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelPublish, "");
+    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelPublish, "");
     return ret.retCode;
   }
   /**
@@ -13338,7 +13577,7 @@ class AgoraRtcChannel extends EventEmitter {
    *  - ERR_REFUSED (5): The method call is refused.
    */
   unpublish(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelUnPublish, "");
+    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelUnPublish, "");
     return ret.retCode;
   }
   /**
@@ -13365,7 +13604,7 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelLeaveChannel, "");
+    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelLeaveChannel, "");
     return ret.retCode;
   }
   /**
@@ -13378,7 +13617,7 @@ class AgoraRtcChannel extends EventEmitter {
    * this method.
    */
   release(): number {
-    let ret = this.rtcChannel.CallApi(ApiTypeChannel.kChannelRelease, "");
+    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelRelease, "");
     return ret.retCode;
   }
 
@@ -13413,7 +13652,7 @@ class AgoraRtcChannel extends EventEmitter {
       volume,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelAdjustUserPlaybackSignalVolume,
       JSON.stringify(param)
     );
@@ -13426,7 +13665,7 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   unRegisterMediaMetadataObserver(): number {
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelUnRegisterMediaMetadataObserver,
       ""
     );
@@ -13439,7 +13678,7 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   registerMediaMetadataObserver(): number {
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelRegisterMediaMetadataObserver,
       ""
     );
@@ -13467,7 +13706,7 @@ class AgoraRtcChannel extends EventEmitter {
       timeStampMs: metadata.timeStampMs,
     };
 
-    let ret = this.rtcChannel.CallApiWithBuffer(
+    let ret = this._rtcChannel.CallApiWithBuffer(
       ApiTypeChannel.kChannelSendMetadata,
       JSON.stringify(param),
       metadata.buffer
@@ -13490,7 +13729,7 @@ class AgoraRtcChannel extends EventEmitter {
       size,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelSetMaxMetadataSize,
       JSON.stringify(param)
     );
@@ -13529,7 +13768,7 @@ class AgoraRtcChannel extends EventEmitter {
       config,
     };
 
-    let ret = this.rtcChannel.CallApi(
+    let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelEnableEncryption,
       JSON.stringify(param)
     );
@@ -13545,19 +13784,25 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "joinChannelSuccess",
-    cb: (uid: number, elapsed: number) => void
+    cb: (channelId: string, uid: number, elapsed: number) => void
   ): this;
   /**
    * Reports a warning during SDK runtime.
    * @param cb.warn Warning code.
    * @param cb.msg The warning message.
    */
-  on(evt: "channelWarning", cb: (warn: number, msg: string) => void): this;
+  on(
+    evt: "channelWarning",
+    cb: (channelId: string, warn: number, msg: string) => void
+  ): this;
   /** Reports an error during SDK runtime.
    * @param cb.err Error code.
    * @param cb.msg The error message.
    */
-  on(evt: "channelError", cb: (err: number, msg: string) => void): this;
+  on(
+    evt: "channelError",
+    cb: (channelId: string, err: number, msg: string) => void
+  ): this;
   /** Occurs when a user rejoins the channel after disconnection due to network
    * problems.
    * When a user loses connection with the server because of network problems,
@@ -13570,7 +13815,7 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "rejoinChannelSuccess",
-    cb: (uid: number, elapsed: number) => void
+    cb: (channelId: string, uid: number, elapsed: number) => void
   ): this;
   /** Occurs when the user leaves the channel.
    *
@@ -13580,7 +13825,10 @@ declare interface AgoraRtcChannel {
    *
    * @param cb.stats The call statistics, see {@link RtcStats}
    */
-  on(evt: "leaveChannel", cb: (stats: RtcStats) => void): this;
+  on(
+    evt: "leaveChannel",
+    cb: (channelId: string, stats: RtcStats) => void
+  ): this;
   /** Occurs when the user role switches in a live streaming.
    *
    * For example,
@@ -13594,7 +13842,11 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "clientRoleChanged",
-    cb: (oldRole: CLIENT_ROLE_TYPE, newRole: CLIENT_ROLE_TYPE) => void
+    cb: (
+      channelId: string,
+      oldRole: CLIENT_ROLE_TYPE,
+      newRole: CLIENT_ROLE_TYPE
+    ) => void
   ): this;
   /** Occurs when a user or host joins the channel.
    *
@@ -13618,7 +13870,11 @@ declare interface AgoraRtcChannel {
    * @param cb.elapsed Time delay (ms) from the local user calling the
    * {@link joinChannel} method until the SDK triggers this callback.
    */
-  on(evt: "userJoined", cb: (uid: number, elapsed: number) => void): this;
+  on(
+    channelId: string,
+    evt: "userJoined",
+    cb: (channelId: string, uid: number, elapsed: number) => void
+  ): this;
   /** Occurs when a remote user (Communication)/host (Live streaming) leaves
    * the channel.
    *
@@ -13642,7 +13898,10 @@ declare interface AgoraRtcChannel {
    *  - (Live streaming only.) The client role switched from the host to the
    * audience.
    */
-  on(evt: "userOffline", cb: (uid: number, reason: number) => void): this;
+  on(
+    evt: "userOffline",
+    cb: (channelId: string, uid: number, reason: number) => void
+  ): this;
   /** Occurs when the SDK cannot reconnect to Agora's edge server 10 seconds
    * after its connection to the server is interrupted.
    *
@@ -13650,7 +13909,7 @@ declare interface AgoraRtcChannel {
    * seconds after calling the {@link joinChannel} method, whether or not it
    * is in the channel.
    */
-  on(evt: "connectionLost", cb: () => void): this;
+  on(evt: "connectionLost", cb: (channelId: string) => void): this;
   /** Occurs when the token expires.
    *
    * After a token(channel key) is specified by calling the {@link joinChannel}
@@ -13674,12 +13933,15 @@ declare interface AgoraRtcChannel {
    *
    * @param cb.token The token that expires in 30 seconds.
    */
-  on(evt: "tokenPrivilegeWillExpire", cb: (token: string) => void): this;
+  on(
+    evt: "tokenPrivilegeWillExpire",
+    cb: (channelId: string, token: string) => void
+  ): this;
   /** Reports the statistics of the AgoraRtcChannel once every two seconds.
    *
    * @param cb.stats AgoraRtcChannel's statistics, see {@link RtcStats}
    */
-  on(evt: "rtcStats", cb: (stats: RtcStats) => void): this;
+  on(evt: "rtcStats", cb: (channelId: string, stats: RtcStats) => void): this;
   /**
    * Reports the last mile network quality of each user in the channel
    * once every two seconds.
@@ -13701,20 +13963,31 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "networkQuality",
-    cb: (uid: number, txquality: QUALITY_TYPE, rxquality: QUALITY_TYPE) => void
+    cb: (
+      channelId: string,
+      uid: number,
+      txquality: QUALITY_TYPE,
+      rxquality: QUALITY_TYPE
+    ) => void
   ): this;
   /** Reports the statistics of the video stream from each remote user/host.
    *
    * @param cb.stats Statistics of the received remote video streams. See
    * {@link RemoteVideoState}.
    */
-  on(evt: "remoteVideoStats", cb: (stats: RemoteVideoStats) => void): this;
+  on(
+    evt: "remoteVideoStats",
+    cb: (channelId: string, stats: RemoteVideoStats) => void
+  ): this;
   /** Reports the statistics of the audio stream from each remote user/host.
    *
    * @param cb.stats Statistics of the received remote audio streams. See
    * {@link RemoteAudioStats}.
    */
-  on(evt: "remoteAudioStats", cb: (stats: RemoteAudioStats) => void): this;
+  on(
+    evt: "remoteAudioStats",
+    cb: (channelId: string, stats: RemoteAudioStats) => void
+  ): this;
   /**
    * Occurs when the remote audio state changes.
    *
@@ -13734,6 +14007,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "remoteAudioStateChanged",
     cb: (
+      channelId: string,
       uid: number,
       state: REMOTE_AUDIO_STATE,
       reason: REMOTE_AUDIO_STATE_REASON,
@@ -13757,7 +14031,7 @@ declare interface AgoraRtcChannel {
    * active speaker detected by the audio volume detection module of the SDK.
    *
    */
-  on(evt: "activeSpeaker", cb: (uid: number) => void): this;
+  on(evt: "activeSpeaker", cb: (channelId: string, uid: number) => void): this;
   /** Occurs when the video size or rotation of a specified user changes.
    * @param cb.uid User ID of the remote user or local user (0) whose video
    * size or
@@ -13768,7 +14042,13 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "videoSizeChanged",
-    cb: (uid: number, width: number, height: number, rotation: number) => void
+    cb: (
+      channelId: string,
+      uid: number,
+      width: number,
+      height: number,
+      rotation: number
+    ) => void
   ): this;
   /** Occurs when the remote video state changes.
    *
@@ -13783,6 +14063,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "remoteVideoStateChanged",
     cb: (
+      channelId: string,
       uid: number,
       state: REMOTE_VIDEO_STATE,
       reason: REMOTE_VIDEO_STATE_REASON,
@@ -13801,7 +14082,7 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "streamMessage",
-    cb: (uid: number, streamId: number, data: string) => void
+    cb: (channelId: string, uid: number, streamId: number, data: string) => void
   ): this;
   /** Occurs when the local user does not receive the data stream from the
    * remote user within five seconds.
@@ -13820,6 +14101,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "streamMessageError",
     cb: (
+      channelId: string,
       uid: number,
       streamId: number,
       code: number,
@@ -13839,6 +14121,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "channelMediaRelayState",
     cb: (
+      channelId: string,
       state: CHANNEL_MEDIA_RELAY_STATE,
       code: CHANNEL_MEDIA_RELAY_ERROR
     ) => void
@@ -13850,7 +14133,7 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "channelMediaRelayEvent",
-    cb: (event: CHANNEL_MEDIA_RELAY_EVENT) => void
+    cb: (channelId: string, event: CHANNEL_MEDIA_RELAY_EVENT) => void
   ): this;
   /** @deprecated This callback is deprecated. Please use
    * `remoteAudioStateChanged` instead.
@@ -13865,7 +14148,7 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "firstRemoteAudioFrame",
-    cb: (uid: number, elapsed: number) => void
+    cb: (channelId: string, uid: number, elapsed: number) => void
   ): this;
 
   on(evt: string, listener: Function): this;
@@ -13920,10 +14203,10 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "rtmpStreamingStateChanged",
-    cb: (url: string, state: number, code: number) => void
+    cb: (channelId: string, url: string, state: number, code: number) => void
   ): this;
   /** Occurs when the publisher's transcoding is updated. */
-  on(evt: "transcodingUpdated", cb: () => void): this;
+  on(evt: "transcodingUpdated", cb: (channelId: string) => void): this;
   /** Occurs when a voice or video stream URL address is added to a live
    * broadcast.
    *
@@ -13945,7 +14228,7 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "streamInjectedStatus",
-    cb: (url: string, uid: number, status: number) => void
+    cb: (channelId: string, url: string, uid: number, status: number) => void
   ): this;
   /** Occurs when the remote media stream falls back to audio-only stream due
    * to poor network conditions or switches back to the video stream after the
@@ -13966,7 +14249,7 @@ declare interface AgoraRtcChannel {
    */
   on(
     evt: "remoteSubscribeFallbackToAudioOnly",
-    cb: (uid: number, isFallbackOrRecover: boolean) => void
+    cb: (channelId: string, uid: number, isFallbackOrRecover: boolean) => void
   ): this;
   // on(evt: 'refreshRecordingServiceStatus', cb: () => void): this;
   /** Occurs when the connection state between the SDK and the server changes.
@@ -13976,6 +14259,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "connectionStateChanged",
     cb: (
+      channelId: string,
       state: CONNECTION_STATE_TYPE,
       reason: CONNECTION_CHANGED_REASON_TYPE
     ) => void
@@ -13996,6 +14280,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "audioPublishStateChanged",
     cb: (
+      channelId: string,
       oldState: STREAM_PUBLISH_STATE,
       newState: STREAM_PUBLISH_STATE,
       elapseSinceLastState: number
@@ -14017,6 +14302,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "videoPublishStateChanged",
     cb: (
+      channelId: string,
       oldState: STREAM_PUBLISH_STATE,
       newState: STREAM_PUBLISH_STATE,
       elapseSinceLastState: number
@@ -14039,6 +14325,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "audioSubscribeStateChanged",
     cb: (
+      channelId: string,
       uid: number,
       oldState: STREAM_SUBSCRIBE_STATE,
       newState: STREAM_SUBSCRIBE_STATE,
@@ -14062,6 +14349,7 @@ declare interface AgoraRtcChannel {
   on(
     evt: "videoSubscribeStateChanged",
     cb: (
+      channelId: string,
       uid: number,
       oldState: STREAM_SUBSCRIBE_STATE,
       newState: STREAM_SUBSCRIBE_STATE,
@@ -14069,7 +14357,16 @@ declare interface AgoraRtcChannel {
     ) => void
   ): this;
 
-  on(evt: "streamMessage", uid: number, streamId: number, buffer: string): void;
+  on(
+    evt: "streamMessage",
+    channelId: string,
+    uid: number,
+    streamId: number,
+    buffer: string
+  ): void;
 }
 
 export default AgoraRtcEngine;
+
+
+

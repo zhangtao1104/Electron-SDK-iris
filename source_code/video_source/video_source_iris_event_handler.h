@@ -2,6 +2,8 @@
 #include <memory>
 #include "iris_event_handler.h"
 #include "video_source_ipc.h"
+#include "loguru.hpp"
+#include "i_video_frame_event_handler_base.h"
 
 namespace agora {
     namespace rtc {
