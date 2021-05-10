@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:18 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 16:18:06
+ * @Last Modified time: 2021-05-10 21:24:50
  */
 #include "node_iris_rtc_channel.h"
 
@@ -74,16 +74,20 @@ namespace agora
                 char _result[512];
                 memset(_result, '\0', 512);
                 int _ret = ERROR_PARAMETER_1;
-                try{
+                try
+                {
                     _ret = _channel->_iris_channel.get()->CallApi((ApiTypeChannel)_apiType, _parameter.c_str(), _result);
-                } catch (std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     _channel->OnApiError(e.what());
                     LOG_F(INFO, "NodeIrisRtcChannel::CallApi apiType: %d, parameter: %s, exception: %s", _apiType, _parameter.c_str(), e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcChannel::CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -96,8 +100,9 @@ namespace agora
                 int _ret = -1;
                 memset(_result, '\0', 512);
                 auto _retObj = v8_Object::New(_isolate);
-                
-                try{
+
+                try
+                {
                     switch (ApiTypeChannel(_apiType))
                     {
                     case ApiTypeChannel::kChannelRegisterPacketObserver:
@@ -122,14 +127,17 @@ namespace agora
                         break;
                     }
                     }
-                } catch (std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     LOG_F(INFO, "NodeIrisRtcChannel::CallApiWithBuffer apiType: %d, parameter: %s, exception: %s", _apiType, _parameter.c_str(), e.what());
                     _channel->OnApiError(e.what());
-                } 
+                }
 
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcChannel::OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args)

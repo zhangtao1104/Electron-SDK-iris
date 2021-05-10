@@ -2,19 +2,21 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:29 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-07 11:11:12
+ * @Last Modified time: 2021-05-10 21:24:56
  */
 #include "node_iris_rtc_device_manager.h"
 
-
-namespace agora {
-    namespace rtc {
-        namespace electron {
+namespace agora
+{
+    namespace rtc
+    {
+        namespace electron
+        {
             using namespace iris::rtc;
 
             Nan_Persistent<v8_Function> NodeIrisRtcDeviceManager::_constructor;
 
-            NodeIrisRtcDeviceManager::NodeIrisRtcDeviceManager(v8_Isolate* isolate, IrisRtcDeviceManager* deviceManager):_isolate(isolate), _deviceManager(deviceManager)
+            NodeIrisRtcDeviceManager::NodeIrisRtcDeviceManager(v8_Isolate *isolate, IrisRtcDeviceManager *deviceManager) : _isolate(isolate), _deviceManager(deviceManager)
             {
                 node::AddEnvironmentCleanupHook(isolate, Release, this);
             }
@@ -25,7 +27,7 @@ namespace agora {
                 _isolate = nullptr;
             }
 
-            v8_Local<v8_Object> NodeIrisRtcDeviceManager::Init(v8_Isolate *isolate, IrisRtcDeviceManager* deviceManager)
+            v8_Local<v8_Object> NodeIrisRtcDeviceManager::Init(v8_Isolate *isolate, IrisRtcDeviceManager *deviceManager)
             {
                 auto _context = isolate->GetCurrentContext();
                 auto _template = v8_FunctionTemplate::New(isolate, CreateInstance);
@@ -40,9 +42,9 @@ namespace agora {
                 auto argDeviceManager = v8_Local<v8_External>::New(isolate, v8_External::New(isolate, deviceManager));
                 v8_Local<v8_Value> argv[1] = {argDeviceManager};
                 auto jsDeviceManager = cons->NewInstance(_context, 1, argv).ToLocalChecked();
-                return jsDeviceManager;   
+                return jsDeviceManager;
             }
-            
+
             void NodeIrisRtcDeviceManager::CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto *_isolate = args.GetIsolate();
@@ -52,7 +54,7 @@ namespace agora {
                 _deviceManager->Wrap(args.This());
                 args.GetReturnValue().Set(args.This());
             }
-            
+
             void NodeIrisRtcDeviceManager::CallApiAudioDevice(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _deviceManager = ObjectWrap::Unwrap<NodeIrisRtcDeviceManager>(args.Holder());
@@ -67,10 +69,11 @@ namespace agora {
 
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
-            
+
             void NodeIrisRtcDeviceManager::CallApiVideoDevice(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _deviceManager = ObjectWrap::Unwrap<NodeIrisRtcDeviceManager>(args.Holder());
@@ -85,8 +88,9 @@ namespace agora {
 
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcDeviceManager::Release(void *selfPtr)

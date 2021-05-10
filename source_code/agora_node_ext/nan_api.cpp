@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:52:54 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:21:17
+ * @Last Modified time: 2021-05-10 21:24:26
  */
 #include "nan_api.h"
 
@@ -38,25 +38,25 @@ namespace agora
                 return value->ToObject(isolate->GetCurrentContext()).ToLocalChecked();
             }
 
-            v8_Local<v8_Value> nan_api_get_object_property_value_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName)
+            v8_Local<v8_Value> nan_api_get_object_property_value_(v8_Isolate *isolate, const v8_Local<v8_Object> &obj, const std::string &propName)
             {
                 v8_Local<v8_Name> _keyName = Nan::New<v8_String>(propName).ToLocalChecked();
                 return obj->Get(isolate->GetCurrentContext(), _keyName).ToLocalChecked();
             }
 
-            int nan_api_get_object_int32_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName)
+            int nan_api_get_object_int32_(v8_Isolate *isolate, const v8_Local<v8_Object> &obj, const std::string &propName)
             {
                 v8_Local<v8_Value> value = nan_api_get_object_property_value_(isolate, obj, propName);
                 return nan_api_get_value_int32_(value);
             }
 
-            unsigned int nan_api_get_object_uint32_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName)
+            unsigned int nan_api_get_object_uint32_(v8_Isolate *isolate, const v8_Local<v8_Object> &obj, const std::string &propName)
             {
                 v8_Local<v8_Value> value = nan_api_get_object_property_value_(isolate, obj, propName);
                 return nan_api_get_value_uint32_(value);
             }
 
-            std::string nan_api_get_object_utf8string_(v8_Isolate* isolate, const v8_Local<v8_Object>& obj, const std::string& propName)
+            std::string nan_api_get_object_utf8string_(v8_Isolate *isolate, const v8_Local<v8_Object> &obj, const std::string &propName)
             {
                 v8_Local<v8_Value> value = nan_api_get_object_property_value_(isolate, obj, propName);
                 return nan_api_get_value_utf8string_(value);

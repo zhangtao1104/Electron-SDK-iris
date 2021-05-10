@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:37 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 15:12:55
+ * @Last Modified time: 2021-05-10 21:25:07
  */
 #include "node_iris_rtc_engine.h"
 
@@ -48,13 +48,13 @@ namespace agora
 
                 Nan::SetPrototypeMethod(_template, "CallApi", CallApi);
                 Nan::SetPrototypeMethod(_template, "CallApiWithBuffer", CallApiWithBuffer);
-                
+
                 Nan::SetPrototypeMethod(_template, "OnEvent", OnEvent);
                 Nan::SetPrototypeMethod(_template, "CreateChannel", CreateChannel);
                 Nan::SetPrototypeMethod(_template, "GetDeviceManager", GetDeviceManager);
                 Nan::SetPrototypeMethod(_template, "GetScreenWindowsInfo", GetScreenWindowsInfo);
                 Nan::SetPrototypeMethod(_template, "GetScreenDisplaysInfo", GetScreenDisplaysInfo);
-                
+
                 Nan::SetPrototypeMethod(_template, "VideoSourceInitialize", VideoSourceInitialize);
                 Nan::SetPrototypeMethod(_template, "VideoSourceCallApi", VideoSourceCallApi);
                 Nan::SetPrototypeMethod(_template, "VideoSourceCallApiWithBuffer", VideoSourceCallApiWithBuffer);
@@ -103,15 +103,19 @@ namespace agora
                 memset(_result, '\0', 512);
                 LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
                 int _ret = ERROR_PARAMETER_1;
-                try {
+                try
+                {
                     _ret = _engine->_iris_engine.get()->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
-                } catch(std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -160,8 +164,9 @@ namespace agora
                 }
 
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -216,18 +221,18 @@ namespace agora
                     unsigned int windowId = _windowInfo.windowId;
 #endif
                     v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "windowId", windowId)
-                    v8_SET_OBJECT_PROP_STRING(_isolate, obj, "name", _windowInfo.name.c_str())
-                    v8_SET_OBJECT_PROP_STRING(_isolate, obj, "ownerName", _windowInfo.ownerName.c_str())
-                    v8_SET_OBJECT_PROP_BOOL(_isolate, obj, "isOnScreen", _windowInfo.isOnScreen)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "width", _windowInfo.width)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "height", _windowInfo.height)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "originWidth", _windowInfo.originWidth)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "originHeight", _windowInfo.originHeight)
+                        v8_SET_OBJECT_PROP_STRING(_isolate, obj, "name", _windowInfo.name.c_str())
+                            v8_SET_OBJECT_PROP_STRING(_isolate, obj, "ownerName", _windowInfo.ownerName.c_str())
+                                v8_SET_OBJECT_PROP_BOOL(_isolate, obj, "isOnScreen", _windowInfo.isOnScreen)
+                                    v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "width", _windowInfo.width)
+                                        v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "height", _windowInfo.height)
+                                            v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "originWidth", _windowInfo.originWidth)
+                                                v8_SET_OBJECT_PROP_UINT32(_isolate, obj, "originHeight", _windowInfo.originHeight)
 
-                    if (_windowInfo.imageData)
+                                                    if (_windowInfo.imageData)
                     {
                         v8_SET_OBJECT_PROP_UINT8_ARRAY(_isolate, obj, "image", _windowInfo.imageData, _windowInfo.imageDataLength)
-                        free(_windowInfo.imageData);
+                            free(_windowInfo.imageData);
                     }
                     auto resultObj = _screenWindowInfoArray->Set(_context, i, obj);
                     v8_MAYBE_CHECK_RESULT(resultObj);
@@ -250,24 +255,24 @@ namespace agora
                     auto _displayIdObj = v8_Object::New(_isolate);
 #ifdef _WIN32
                     v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "x", _displayId.x)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "y", _displayId.y)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "width", _displayId.width)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "height", _displayId.height)
+                        v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "y", _displayId.y)
+                            v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "width", _displayId.width)
+                                v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "height", _displayId.height)
 #elif defined(__APPLE__)
                     v8_SET_OBJECT_PROP_UINT32(_isolate, _displayIdObj, "id", _displayId.idVal)
 #endif
-                    auto propName = v8_String::NewFromUtf8(_isolate, "displayId", v8::NewStringType::kInternalized).ToLocalChecked();
+                                    auto propName = v8_String::NewFromUtf8(_isolate, "displayId", v8::NewStringType::kInternalized).ToLocalChecked();
                     auto resultObj = _obj->Set(_context, propName, _displayIdObj);
                     v8_MAYBE_CHECK_RESULT(resultObj);
 
                     v8_SET_OBJECT_PROP_UINT32(_isolate, _obj, "width", _displayInfo.width)
-                    v8_SET_OBJECT_PROP_UINT32(_isolate, _obj, "height", _displayInfo.height)
-                    v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isMain", _displayInfo.isMain)
-                    v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isActive", _displayInfo.isActive)
-                    v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isBuiltin", _displayInfo.isBuiltin) if (_displayInfo.imageData)
+                        v8_SET_OBJECT_PROP_UINT32(_isolate, _obj, "height", _displayInfo.height)
+                            v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isMain", _displayInfo.isMain)
+                                v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isActive", _displayInfo.isActive)
+                                    v8_SET_OBJECT_PROP_BOOL(_isolate, _obj, "isBuiltin", _displayInfo.isBuiltin) if (_displayInfo.imageData)
                     {
                         v8_SET_OBJECT_PROP_UINT8_ARRAY(_isolate, _obj, "image", _displayInfo.imageData, _displayInfo.imageDataLength)
-                        free(_displayInfo.imageData);
+                            free(_displayInfo.imageData);
                     }
                     auto result = _allDisplayInfoArray->Set(_context, i, _obj);
                     v8_MAYBE_CHECK_RESULT(result);
@@ -282,15 +287,15 @@ namespace agora
                 auto _parameter = nan_api_get_value_utf8string_(args[0]);
                 auto _result = -1;
                 LOG_F(INFO, "VideoSourceInitialize parameter: %s", _parameter.c_str());
-                
-            
+
                 if (_engine->_video_source_proxy->Initialize(_engine->_iris_event_handler.get(), _parameter))
                     _result = 0;
 
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -300,8 +305,9 @@ namespace agora
                 auto _result = _engine->_video_source_proxy->Release();
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -313,15 +319,19 @@ namespace agora
                 char _result[512];
                 memset(_result, '\0', 512);
                 int _ret = ERROR_PARAMETER_1;
-                try {
+                try
+                {
                     _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
-                 } catch (std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::VideoSourceCallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -335,16 +345,20 @@ namespace agora
                 char _result[512];
                 memset(_result, '\0', 512);
                 int _ret = ERROR_PARAMETER_1;
-                try {
+                try
+                {
                     _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _buffer.c_str(), _length, _result);
-                } catch (std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     LOG_F(INFO, "VideoSourceCallApiWithBuffer catch exception: %s", e.what());
                     _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -355,8 +369,9 @@ namespace agora
                 auto _result = ERROR_CODE::ERROR_OK;
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::OnApiError(const char *errorMessage)
@@ -374,16 +389,20 @@ namespace agora
                 memset(_result, '\0', 512);
                 LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
                 int _ret = ERROR_PARAMETER_1;
-                try {
+                try
+                {
                     _ret = _engine->_iris_raw_data_plugin_manager.get()->CallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
-                } catch(std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
                     _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -395,15 +414,19 @@ namespace agora
                 char _result[512];
                 memset(_result, '\0', 512);
                 int _ret = ERROR_PARAMETER_1;
-                try {
+                try
+                {
                     _ret = _engine->_video_source_proxy->PluginCallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
-                } catch (std::exception& e) {
+                }
+                catch (std::exception &e)
+                {
                     _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
-                v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
-                args.GetReturnValue().Set(_retObj);
+                    v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
+                        args.GetReturnValue()
+                            .Set(_retObj);
             }
 
             void NodeIrisRtcEngine::EnableVideoFrameCache(const Nan_FunctionCallbackInfo<v8_Value> &args)
@@ -419,7 +442,7 @@ namespace agora
                 IrisRtcRendererCacheConfig config(IrisRtcVideoFrameObserver::VideoFrameType::kFrameTypeYUV420, nullptr, _width, _height);
                 _engine->_video_processer->EnableVideoFrameCache(config, _uid, _channelId.c_str());
             }
-                
+
             void NodeIrisRtcEngine::DisableVideoFrameCache(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
@@ -430,7 +453,7 @@ namespace agora
 
                 _engine->_video_processer->DisableVideoFrameCache(_uid, _channelId.c_str());
             }
-            
+
             void NodeIrisRtcEngine::GetVideoStreamData(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
                 auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
@@ -454,9 +477,9 @@ namespace agora
                 _videoFrame.y_buffer = _yBuffer;
                 _videoFrame.u_buffer = _uBuffer;
                 _videoFrame.v_buffer = _vBuffer;
-                
+
                 bool isFresh = false;
-                auto ret =  _engine->_video_processer->GetVideoFrame(_videoFrame, isFresh, _uid, _channelId.c_str());
+                auto ret = _engine->_video_processer->GetVideoFrame(_videoFrame, isFresh, _uid, _channelId.c_str());
                 // _nodeVideoFrameHeaderPtr->isNewFrame = (uint8_t)(isFresh ? 1 : 0);
                 // _nodeVideoFrameHeaderPtr->width = htons((uint16_t)_videoFrame.width);
                 // _nodeVideoFrameHeaderPtr->height = htons((uint16_t)_videoFrame.height);
@@ -466,7 +489,7 @@ namespace agora
                 // _nodeVideoFrameHeaderPtr->bottom = htons((uint16_t)0);
                 // _nodeVideoFrameHeaderPtr->rotation = htons((uint16_t)_videoFrame.rotation);
                 // _nodeVideoFrameHeaderPtr->timestamp = (uint32_t)_videoFrame.render_time_ms;
-                
+
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "ret", ret);
                 v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "isNewFrame", isFresh);

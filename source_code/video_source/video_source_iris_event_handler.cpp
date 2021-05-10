@@ -1,9 +1,12 @@
 #include "video_source_iris_event_handler.h"
 
-namespace agora {
-    namespace rtc {
-        namespace electron {
-            VideoSourceIrisEventhandler::VideoSourceIrisEventhandler(IAgoraIpc* ipcController)
+namespace agora
+{
+    namespace rtc
+    {
+        namespace electron
+        {
+            VideoSourceIrisEventhandler::VideoSourceIrisEventhandler(IAgoraIpc *ipcController)
             {
                 _ipcController.reset(ipcController);
             }
@@ -22,7 +25,7 @@ namespace agora {
             }
 
             void VideoSourceIrisEventhandler::OnEvent(const char *event, const char *data, const void *buffer, unsigned int length)
-            {   
+            {
                 CallbackParameter _parameter;
                 strncpy(_parameter._eventName, event, MAX_CHAR_LENGTH);
                 strncpy(_parameter._eventData, data, MAX_CHAR_LENGTH);

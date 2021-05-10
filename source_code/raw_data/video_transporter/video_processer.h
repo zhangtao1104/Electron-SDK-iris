@@ -7,13 +7,15 @@
 #include "iris_rtc_raw_data_plugin.h"
 #include "i_video_frame_event_handler_base.h"
 
+namespace agora
+{
+    namespace rtc
+    {
+        namespace electron
+        {
 
-namespace agora {
-    namespace rtc {
-        namespace electron {
-            // using NodeVideoFrame = NodeIrisEventHandler::NodeVideoFrame ;
-
-            class VideoProcesser {
+            class VideoProcesser
+            {
             private:
                 std::mutex _video_frame_mutex;
                 std::shared_ptr<iris::rtc::IrisRtcEngine> _iris_rtc_engine;
@@ -21,27 +23,21 @@ namespace agora {
                 std::shared_ptr<iris::rtc::IrisRtcRenderer> _iris_rtc_renderer;
                 std::shared_ptr<std::thread> _video_frame_update_thread;
                 std::shared_ptr<IVideoFrameEventHandler> _video_frame_event_handler;
-                // std::map<unsigned int, NodeVideoFrame> _user_video_frame;
-                
+
             public:
-                explicit VideoProcesser(iris::rtc::IrisRtcEngine* irisRtcEngine);
+                explicit VideoProcesser(iris::rtc::IrisRtcEngine *irisRtcEngine);
                 ~VideoProcesser();
 
                 void EnableVideoFrameCache(const iris::rtc::IrisRtcRendererCacheConfig &cache_config,
-                                        unsigned int uid, const char *channel_id = "");
+                                           unsigned int uid, const char *channel_id = "");
 
                 void DisableVideoFrameCache(unsigned int uid = -1,
-                                        const char *channel_id = "");
+                                            const char *channel_id = "");
 
                 bool GetVideoFrame(iris::rtc::IrisRtcVideoFrameObserver::VideoFrame &video_frame,
-                                bool &is_new_frame, unsigned int uid,
-                                const char *channel_id = "");
-
-                // void ProcessVideoFrame();
-
-                // void OnFrame(iris::rtc::IrisRtcVideoFrameObserver::VideoFrame );
-                    
+                                   bool &is_new_frame, unsigned int uid,
+                                   const char *channel_id = "");
             };
-         }
+        }
     }
 }
