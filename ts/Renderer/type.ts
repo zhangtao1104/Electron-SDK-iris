@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:39
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:28:14
+ * @Last Modified time: 2021-05-10 20:24:22
  */
 
 export enum CONTENT_MODE {
@@ -32,8 +32,36 @@ export enum RENDER_MODE {
 }
 
 export interface VideoFrameCacheConfig {
-  uid: number;
+  user?: User;
+  uid?: number;
   channelId: string;
+  width?: number;
+  height?: number;
+}
+
+export type User = "local" | "videoSource" | number | string;
+
+export type Channel = "" | string;
+
+export interface RendererConfig {
+  user: User;
+  view: Element | undefined;
+  rendererOptions?: RendererOptions;
+  channelId?: Channel;
+}
+
+export interface VideoFrame {
   width: number;
   height: number;
+  yBuffer: Buffer | Uint8Array;
+  uBuffer: Buffer | Uint8Array;
+  vBuffer: Buffer | Uint8Array;
+  mirror?: boolean;
+  rotation?: number;
+  left?: number;
+  right?: number;
+  top?: number;
+  bottom?: number;
+  uid?: number;
+  channelId?: string;
 }

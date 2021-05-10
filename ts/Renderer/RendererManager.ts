@@ -1,13 +1,15 @@
-import { VideoFrame, User, Channel } from "../Api/types";
-import { IRenderer } from "./IRender";
-import { YUVCanvasRenderer } from "./YUVCanvasRenderer";
-import { NodeIrisRtcEngine } from "../Api/internal/native_interface";
 import {
-  RendererOptions,
+  User,
+  Channel,
+  VideoFrame,
   RENDER_MODE,
   CONTENT_MODE,
   VideoFrameCacheConfig,
+  RendererConfig,
 } from "./type";
+import { IRenderer } from "./IRender";
+import { YUVCanvasRenderer } from "./YUVCanvasRenderer";
+import { NodeIrisRtcEngine } from "../Api/internal/native_interface";
 import { logInfo, logWarn, logError } from "../Utils";
 
 class RendererManager {
@@ -29,6 +31,11 @@ class RendererManager {
       renderMode: this._checkWebGL() ? RENDER_MODE.WEBGL : RENDER_MODE.SOFTWARE,
     };
     this._rtcEngine = rtcEngine;
+  }
+
+  clear(): void {
+    this.stopRenderer();
+    this.removeAllRenderer();
   }
 
   /**
@@ -92,36 +99,39 @@ class RendererManager {
    * @private
    * @ignore
    */
-  setRenderer(
-    user: User,
-    view: Element,
-    channelId: Channel = "",
-    options: RendererOptions = {
-      append: false,
-      contentMode: CONTENT_MODE.FIT,
-      mirror: false,
-    }
-  ): void {
-    let _renders = this.getRenderer(user, channelId);
+  setRenderer(rendererConfig: RendererConfig): void {
+    let _renders = this.getRenderer(
+      rendererConfig.user,
+      rendererConfig.channelId
+    );
+
     if (_renders) {
-      options.append
+      rendererConfig.rendererOptions?.append
         ? _renders.forEach((item) => {
-            if (item.equalsElement(view)) {
-              console.warn("setVideoView: this view exists in list, ignore");
-              return;
+            if (rendererConfig.view) {
+              if (item.equalsElement(rendererConfig.view)) {
+                console.warn("setVideoView: this view exists in list, ignore");
+                return;
+              }
             }
           })
-        : this.removeRenderer(user, channelId);
+        : this.removeRenderer(rendererConfig.user, rendererConfig.channelId);
     }
 
-    this.enableVideoFrameCache(user, channelId, 0, 0);
-    this.addRenderer(user, view, channelId);
-    this.setupViewContentMode(
-      user,
-      channelId,
-      options.contentMode,
-      options.mirror
+    let config: VideoFrameCacheConfig = {
+      user: rendererConfig.user,
+      channelId: rendererConfig.channelId ? rendererConfig.channelId : "",
+      width: 0,
+      height: 0,
+    };
+
+    this.enableVideoFrameCache(config);
+    this.addRenderer(
+      rendererConfig.user,
+      rendererConfig.view!,
+      rendererConfig.channelId!
     );
+    this.setupViewContentMode(rendererConfig);
   }
 
   /**
@@ -156,7 +166,11 @@ class RendererManager {
   }
 
   removeRenderer(user: User, channelId: Channel = ""): void {
-    this.disableVideoFrameCache(user, channelId, 0, 0);
+    let videoFramCacheConfig: VideoFrameCacheConfig = {
+      user,
+      channelId,
+    };
+    this.disableVideoFrameCache(videoFramCacheConfig);
     this.removeVideoFrameCacheFromMap(user, channelId);
     this._config.renderers
       .get(channelId)
@@ -171,7 +185,12 @@ class RendererManager {
   removeAllRenderer(): void {
     this._config.renderers.forEach((renderMap, channelId) => {
       renderMap.forEach((renderObject, user) => {
-        this.disableVideoFrameCache(user, channelId, 0, 0);
+        let videoFramCacheConfig: VideoFrameCacheConfig = {
+          user,
+          channelId,
+        };
+
+        this.disableVideoFrameCache(videoFramCacheConfig);
         this.removeVideoFrameCacheFromMap(user, channelId);
         renderObject.render?.forEach((renderItem) => {
           renderItem.unbind();
@@ -243,11 +262,10 @@ class RendererManager {
    * @ignore
    */
   stopRenderer(): void {
-    this._config.videoFrameUpdateInterval
-      ? clearInterval(this._config.videoFrameUpdateInterval)
-      : logWarn("video stream interval is not start!");
-
-    this._config.videoFrameUpdateInterval = undefined;
+    if (this._config.videoFrameUpdateInterval) {
+      clearInterval(this._config.videoFrameUpdateInterval);
+      this._config.videoFrameUpdateInterval = undefined;
+    }
   }
 
   /**
@@ -255,14 +273,11 @@ class RendererManager {
    * @ignore
    */
   restartRenderer(): void {
-    let self = this;
-    this._config.videoFrameUpdateInterval
-      ? () => {
-          self.stopRenderer();
-          self.startRenderer();
-          logInfo(`setFps ${this._config.videoFps} restartInterval`);
-        }
-      : logInfo(`setFps ${this._config.videoFps}`);
+    if (this._config.videoFrameUpdateInterval) {
+      this.stopRenderer();
+      this.startRenderer();
+      logInfo(`setFps ${this._config.videoFps} restartInterval`);
+    }
   }
 
   userToUid(user: User): number {
@@ -291,40 +306,20 @@ class RendererManager {
     return user;
   }
 
-  enableVideoFrameCache(
-    user: User,
-    channelId: string,
-    width: number,
-    height: number
-  ): number {
-    let uid = this.userToUid(user);
-    let config: VideoFrameCacheConfig = {
-      uid,
-      channelId,
-      width,
-      height,
-    };
-
-    logInfo(`enableVideoFrameCache ${JSON.stringify(config)}`);
-    return this._rtcEngine.EnableVideoFrameCache(config);
+  enableVideoFrameCache(videoFrameCacheConfig: VideoFrameCacheConfig): number {
+    videoFrameCacheConfig.uid = videoFrameCacheConfig.user
+      ? this.userToUid(videoFrameCacheConfig.user)
+      : 0;
+    logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+    return this._rtcEngine.EnableVideoFrameCache(videoFrameCacheConfig);
   }
 
-  disableVideoFrameCache(
-    user: User,
-    channelId: string,
-    width: number,
-    height: number
-  ): number {
-    let uid = this.userToUid(user);
-    let config: VideoFrameCacheConfig = {
-      uid,
-      channelId,
-      width,
-      height,
-    };
-
-    logInfo(`disableVideoFrameCache ${JSON.stringify(config)}`);
-    return this._rtcEngine.DisableVideoFrameCache(config);
+  disableVideoFrameCache(videoFrameCacheConfig: VideoFrameCacheConfig): number {
+    videoFrameCacheConfig.uid = videoFrameCacheConfig.user
+      ? this.userToUid(videoFrameCacheConfig.user)
+      : 0;
+    logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+    return this._rtcEngine.DisableVideoFrameCache(videoFrameCacheConfig);
   }
 
   ensureRendererMap(
@@ -367,19 +362,39 @@ class RendererManager {
         );
   }
 
-  setupViewContentMode(
-    user: User,
-    channelId: Channel = "",
-    mode: CONTENT_MODE = CONTENT_MODE.FIT,
-    mirror: boolean = false
-  ): number {
-    let renderList = this.getRenderer(user, channelId);
+  getDefaultRenderConfig(): RendererConfig {
+    let rendererConfig: RendererConfig = {
+      user: "local",
+      view: undefined,
+      channelId: "",
+      rendererOptions: {
+        append: false,
+        contentMode: CONTENT_MODE.FIT,
+        mirror: false,
+      },
+    };
+    return rendererConfig;
+  }
+
+  setupViewContentMode(rendererConfig: RendererConfig): number {
+    let defaultConfig: RendererConfig = Object.assign(
+      this.getDefaultRenderConfig(),
+      rendererConfig
+    );
+
+    let renderList = this.getRenderer(
+      rendererConfig.user,
+      rendererConfig.channelId
+    );
     renderList
       ? renderList.forEach((renderItem) =>
-          renderItem.setContentMode(mode, mirror)
+          renderItem.setContentMode(
+            defaultConfig.rendererOptions!.contentMode,
+            defaultConfig.rendererOptions!.mirror
+          )
         )
       : console.warn(
-          `User: ${user} have no render view, you need to call this api after setView`
+          `User: ${defaultConfig.user} have no render view, you need to call this api after setView`
         );
     return 0;
   }

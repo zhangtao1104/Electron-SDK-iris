@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:27:31
+ * @Last Modified time: 2021-05-10 20:27:05
  */
 import {
   ApiTypeEngine,
@@ -57,7 +57,6 @@ import {
   EncryptionConfig,
   AUDIO_EFFECT_PRESET,
   VOICE_BEAUTIFIER_PRESET,
-  AUDIENCE_LATENCY_LEVEL_TYPE,
   ClientRoleOptions,
   CLOUD_PROXY_TYPE,
   LogConfig,
@@ -85,23 +84,23 @@ import {
   CHANNEL_MEDIA_RELAY_STATE,
   CHANNEL_MEDIA_RELAY_ERROR,
   ChannelMediaRelayConfiguration,
-  Device,
   METADATA_TYPE,
   CHANNEL_PROFILE_TYPE,
   WindowInfo,
-  User,
-  Channel,
-  VideoFrame,
+  Device,
 } from "./types";
 import { EventEmitter } from "events";
 import { deprecate, logWarn, logInfo, logError } from "../Utils";
 import { PluginInfo, Plugin } from "./plugin";
 import { RendererManager } from "../Renderer/RendererManager";
 import {
+  User,
+  Channel,
   RENDER_MODE,
   RendererOptions,
   CONTENT_MODE,
-  VideoFrameCacheConfig,
+  RendererConfig,
+  VideoFrame,
 } from "../Renderer/type";
 
 const agora = require("../../build/Release/agora_node_ext");
@@ -111,7 +110,6 @@ const agora = require("../../build/Release/agora_node_ext");
  */
 class AgoraRtcEngine extends EventEmitter {
   _rtcEngine: NodeIrisRtcEngine;
-  _rtcChannel: NodeIrisRtcChannel;
   _rtcDeviceManager: NodeIrisRtcDeviceManager;
   _rendererManager?: RendererManager;
   _info: {
@@ -122,7 +120,6 @@ class AgoraRtcEngine extends EventEmitter {
     super();
     logInfo("AgoraRtcEngine constructor()");
     this._rtcEngine = new agora.NodeIrisRtcEngine();
-    this._rtcChannel = this._rtcEngine.GetChannel();
     this._rtcDeviceManager = this._rtcEngine.GetDeviceManager();
     this.initEventHandler();
     this._rendererManager = new RendererManager(this._rtcEngine);
@@ -2160,21 +2157,21 @@ class AgoraRtcEngine extends EventEmitter {
     );
   } //TODO(input)
 
-  setView(
-    user: User,
-    view: Element | undefined,
-    channelId: Channel = "",
-    renderOptions: RendererOptions = {
-      append: false,
-      contentMode: CONTENT_MODE.FIT,
-      mirror: false,
-    }
-  ): void {
-    if (view) {
-      this._rendererManager?.setRenderer(user, view, channelId, renderOptions);
+  setView(rendererConfig: RendererConfig): void {
+    let defaultConfig: RendererConfig = Object.assign(
+      this._rendererManager?.getDefaultRenderConfig(),
+      rendererConfig
+    );
+
+    logWarn(`setView: ${rendererConfig}`);
+    if (rendererConfig.view) {
+      this._rendererManager?.setRenderer(defaultConfig);
     } else {
       logWarn("Note: setView view is null!");
-      this._rendererManager?.removeRenderer(user, channelId);
+      this._rendererManager?.removeRenderer(
+        defaultConfig.user,
+        defaultConfig.channelId
+      );
     }
   }
 
@@ -2296,15 +2293,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - If the method call fails, returns empty or `ERR_REFUSED (5)`.
    */
   createChannel(channelId: string): AgoraRtcChannel | null {
-    let param = {
-      channelId,
-    };
-    this._rtcChannel.CallApi(
-      ApiTypeChannel.kChannelCreateChannel,
-      JSON.stringify(param)
-    );
-
-    return new AgoraRtcChannel(this._rtcChannel, this);
+    let _rtcChannel = this._rtcEngine.CreateChannel(channelId);
+    return new AgoraRtcChannel(channelId, _rtcChannel, this);
   }
 
   /**
@@ -2463,8 +2453,10 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   release(): number {
+    this._rendererManager?.clear();
     this._rendererManager = undefined;
     let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
+
     return ret.retCode;
   }
 
@@ -2525,7 +2517,7 @@ class AgoraRtcEngine extends EventEmitter {
     uid: number,
     view?: Element,
     channel?: string,
-    options: RendererOptions = {
+    rendererOptions: RendererOptions = {
       append: false,
       contentMode: CONTENT_MODE.FIT,
       mirror: false,
@@ -2534,7 +2526,13 @@ class AgoraRtcEngine extends EventEmitter {
     deprecate("setupRemoteVideo", "setView");
     if (view) {
       //bind
-      this.setView(uid, view, channel ? channel : "", options);
+      let config: RendererConfig = {
+        user: uid,
+        view,
+        channelId: channel,
+        rendererOptions,
+      };
+      this.setView(config);
       return 0;
     } else {
       //unbind
@@ -2550,9 +2548,15 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setupLocalVideo(view: Element, options?: RendererOptions): number {
+  setupLocalVideo(view: Element, rendererOptions?: RendererOptions): number {
     deprecate("setupLocalVideo", "setView");
-    this.setView("local", view, "", options);
+    let rendererConfig: RendererConfig = {
+      user: "local",
+      view,
+      rendererOptions,
+      channelId: "",
+    };
+    this.setView(rendererConfig);
     return 0;
   }
 
@@ -2577,12 +2581,14 @@ class AgoraRtcEngine extends EventEmitter {
     channelId: string = ""
   ) {
     this._rendererManager?.stopRenderer();
-    this._rendererManager?.enableVideoFrameCache(
+
+    let videoFrameCacheConfig = {
       user,
-      channelId,
       width,
-      height
-    );
+      height,
+      channelId,
+    };
+    this._rendererManager?.enableVideoFrameCache(videoFrameCacheConfig);
     this._rendererManager?.startRenderer();
   }
 
@@ -2601,42 +2607,6 @@ class AgoraRtcEngine extends EventEmitter {
       this._rendererManager._config.videoFps = fps;
       this._rendererManager.restartRenderer();
     }
-  }
-
-  /**
-   * Sets renderer frame rate for the high stream.
-   *
-   * The high stream here has nothing to do with the dual stream.
-   * It means the stream that is added to the high frame rate stream by calling
-   * the {@link addVideoRenderToHighFPS} method.
-   *
-   * This is often used when we want to set the low frame rate for most of
-   * views, but high frame rate for one
-   * or two special views, e.g. screen sharing.
-   * @param {number} fps The renderer high frame rate (fps).
-   */
-  setVideoRenderHighFPS(fps: number) {
-    // this._rtcEngine.setHighFPS(fps);
-  }
-
-  /**
-   * Adds a video stream to the high frame rate stream.
-   * Streams added to the high frame rate stream will be controlled by the
-   * {@link setVideoRenderHighFPS} method.
-   * @param {number} uid The User ID.
-   */
-  addVideoRenderToHighFPS(uid: number) {
-    // this._rtcEngine.addToHighVideo(uid);
-  }
-
-  /**
-   * Removes a stream from the high frame rate stream.
-   * Streams removed from the high frame rate stream will be controlled by the
-   * {@link setVideoRenderFPS} method.
-   * @param {number} uid The User ID.
-   */
-  removeVideoRenderFromHighFPS(uid: number) {
-    // this._rtcEngine.removeFromHighVideo(uid);
   }
 
   /**
@@ -3272,16 +3242,19 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   setVideoEncoderConfiguration(config: VideoEncoderConfiguration): number {
-    const {
-      dimensions: { width = 640, height = 360 },
-      frameRate = 15,
-      minFrameRate = -1,
-      bitrate = 0,
-      minBitrate = -1,
-      orientationMode = 0,
-      degradationPreference = 0,
-      mirrorMode = 0,
-    } = config;
+    Object.assign(
+      {
+        dimensions: { width: 640, height: 360 },
+        frameRate: 15,
+        minFrameRate: -1,
+        bitrate: 0,
+        minBitrate: -1,
+        orientationMode: 0,
+        degradationPreference: 0,
+        mirrorMode: 0,
+      },
+      config
+    );
 
     let param = {
       config,
@@ -7317,7 +7290,11 @@ class AgoraRtcEngine extends EventEmitter {
    */
   setupLocalVideoSource(view: Element): void {
     deprecate("setupLocalVideoSource", "setView");
-    this.setView("videosource", view, "");
+    let rendererConfig: RendererConfig = {
+      user: "videoSource",
+      view,
+    };
+    this.setView(rendererConfig);
   }
 
   /**
@@ -11628,11 +11605,18 @@ declare interface AgoraRtcEngine {
 class AgoraRtcChannel extends EventEmitter {
   _rtcChannel: NodeIrisRtcChannel;
   _rtcEngine: AgoraRtcEngine;
-  constructor(rtcChannel: NodeIrisRtcChannel, rtcEngine: AgoraRtcEngine) {
+  _channelId: string;
+  constructor(
+    channelId: string,
+    rtcChannel: NodeIrisRtcChannel,
+    rtcEngine: AgoraRtcEngine
+  ) {
     super();
     this._rtcChannel = rtcChannel;
-    this.initEventHandler();
+    this._channelId = channelId;
     this._rtcEngine = rtcEngine;
+    this.createChannel(this._channelId);
+    this.initEventHandler();
   }
 
   /**
@@ -11749,12 +11733,6 @@ class AgoraRtcChannel extends EventEmitter {
                 reason: USER_OFFLINE_REASON_TYPE;
               } = JSON.parse(_eventData);
               fire("userOffline", data.channelId, data.uid, data.reason);
-              let config: VideoFrameCacheConfig = {
-                uid: data.uid,
-                channelId: data.channelId,
-                width: 0,
-                height: 0,
-              };
               this.destroyRenderer(data.uid);
             }
             break;
@@ -12176,6 +12154,19 @@ class AgoraRtcChannel extends EventEmitter {
     );
   }
 
+  createChannel(channelId: string): number {
+    let param = {
+      channelId,
+    };
+
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelCreateChannel,
+      JSON.stringify(param)
+    );
+
+    return ret.retCode;
+  }
+
   /**
    * @param user
    * - local video set-> 'local'
@@ -12191,15 +12182,10 @@ class AgoraRtcChannel extends EventEmitter {
    * -remteo video set->channelId
    *
    */
-  setView(
-    user: User,
-    view: Element,
-    channelId: Channel = "",
-    renderOptions?: RendererOptions
-  ): void {
-    view ? {} : logWarn("Note: setView view is null!!!");
+  setView(rendererConfig: RendererConfig): void {
+    rendererConfig.view ? {} : logWarn("Note: setView view is null!!!");
 
-    this._rtcEngine.setView(user, view, this.channelId(), renderOptions);
+    this._rtcEngine.setView(rendererConfig);
   }
 
   destroyRenderer(user: User): void {
@@ -12268,6 +12254,7 @@ class AgoraRtcChannel extends EventEmitter {
       info,
       uid,
       options,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12327,6 +12314,7 @@ class AgoraRtcChannel extends EventEmitter {
       token,
       userAccount,
       options,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12345,7 +12333,13 @@ class AgoraRtcChannel extends EventEmitter {
    * - The empty string "", if the method call fails.
    */
   channelId(): string {
-    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelChannelId, "");
+    let param = {
+      channelId: this._channelId,
+    };
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelChannelId,
+      JSON.stringify(param)
+    );
     return ret.result;
   }
   /**
@@ -12365,7 +12359,13 @@ class AgoraRtcChannel extends EventEmitter {
    * - The empty string "", if the method call fails.
    */
   getCallId(): string {
-    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelGetCallId, "");
+    let param = {
+      channelId: this._channelId,
+    };
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelGetCallId,
+      JSON.stringify(param)
+    );
     return ret.result;
   }
   /**
@@ -12393,6 +12393,7 @@ class AgoraRtcChannel extends EventEmitter {
   setClientRole(role: CLIENT_ROLE_TYPE): number {
     let param = {
       role,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12440,6 +12441,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       role,
       options,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12471,6 +12473,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       uid,
       userPriority,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12499,6 +12502,7 @@ class AgoraRtcChannel extends EventEmitter {
   renewToken(token: string): number {
     let param = {
       token,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12534,6 +12538,7 @@ class AgoraRtcChannel extends EventEmitter {
   setEncryptionSecret(secret: string): number {
     let param = {
       secret,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12575,6 +12580,7 @@ class AgoraRtcChannel extends EventEmitter {
   setEncryptionMode(encryptionMode: string): number {
     let param = {
       encryptionMode,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12617,6 +12623,7 @@ class AgoraRtcChannel extends EventEmitter {
       uid,
       pan,
       gain,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12652,6 +12659,7 @@ class AgoraRtcChannel extends EventEmitter {
   setDefaultMuteAllRemoteAudioStreams(mute: boolean): number {
     let param = {
       mute,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12686,6 +12694,7 @@ class AgoraRtcChannel extends EventEmitter {
   setDefaultMuteAllRemoteVideoStreams(mute: boolean): number {
     let param = {
       mute,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12709,6 +12718,7 @@ class AgoraRtcChannel extends EventEmitter {
   muteAllRemoteAudioStreams(mute: boolean): number {
     let param = {
       mute,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12742,6 +12752,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       userId,
       mute,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12765,6 +12776,7 @@ class AgoraRtcChannel extends EventEmitter {
   muteAllRemoteVideoStreams(mute: boolean): number {
     let param = {
       mute,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12794,6 +12806,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       userId,
       mute,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12837,6 +12850,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       userId,
       streamType,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12875,6 +12889,7 @@ class AgoraRtcChannel extends EventEmitter {
   ): number {
     let param = {
       streamType,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12913,6 +12928,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       reliable,
       ordered,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -12954,6 +12970,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       streamId,
       length: msg.length,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApiWithBuffer(
@@ -13005,6 +13022,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       url,
       transcodingEnabled,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13040,6 +13058,7 @@ class AgoraRtcChannel extends EventEmitter {
   removePublishStreamUrl(url: string): number {
     let param = {
       url,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13073,6 +13092,7 @@ class AgoraRtcChannel extends EventEmitter {
   setLiveTranscoding(transcoding: LiveTranscoding): number {
     let param = {
       transcoding,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13127,6 +13147,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       url,
       config,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13153,6 +13174,7 @@ class AgoraRtcChannel extends EventEmitter {
   removeInjectStreamUrl(url: string): number {
     let param = {
       url,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13196,6 +13218,7 @@ class AgoraRtcChannel extends EventEmitter {
   ): number {
     let param = {
       configuration,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13228,6 +13251,7 @@ class AgoraRtcChannel extends EventEmitter {
   ): number {
     let param = {
       configuration,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13256,9 +13280,13 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure
    */
   stopChannelMediaRelay(): number {
+    let param = {
+      channelId: this._channelId,
+    };
+
     let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelStopChannelMediaRelay,
-      ""
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -13267,9 +13295,13 @@ class AgoraRtcChannel extends EventEmitter {
    * @return {ConnectionState} Connect states. See {@link ConnectionState}.
    */
   getConnectionState(): CONNECTION_STATE_TYPE {
+    let param = {
+      channelId: this._channelId,
+    };
+
     let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelGetConnectionState,
-      ""
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -13292,7 +13324,14 @@ class AgoraRtcChannel extends EventEmitter {
    *  - ERR_REFUSED (5): The method call is refused.
    */
   publish(): number {
-    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelPublish, "");
+    let param = {
+      channelId: this._channelId,
+    };
+
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelPublish,
+      JSON.stringify(param)
+    );
     return ret.retCode;
   }
   /**
@@ -13307,7 +13346,14 @@ class AgoraRtcChannel extends EventEmitter {
    *  - ERR_REFUSED (5): The method call is refused.
    */
   unpublish(): number {
-    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelUnPublish, "");
+    let param = {
+      channelId: this._channelId,
+    };
+
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelUnPublish,
+      JSON.stringify(param)
+    );
     return ret.retCode;
   }
   /**
@@ -13334,7 +13380,14 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelLeaveChannel, "");
+    let param = {
+      channelId: this._channelId,
+    };
+
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelLeaveChannel,
+      JSON.stringify(param)
+    );
     return ret.retCode;
   }
   /**
@@ -13347,7 +13400,14 @@ class AgoraRtcChannel extends EventEmitter {
    * this method.
    */
   release(): number {
-    let ret = this._rtcChannel.CallApi(ApiTypeChannel.kChannelRelease, "");
+    let param = {
+      channelId: this._channelId,
+    };
+
+    let ret = this._rtcChannel.CallApi(
+      ApiTypeChannel.kChannelRelease,
+      JSON.stringify(param)
+    );
     return ret.retCode;
   }
 
@@ -13380,6 +13440,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       userId,
       volume,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13395,9 +13456,13 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   unRegisterMediaMetadataObserver(): number {
+    let param = {
+      channelId: this._channelId,
+    };
+
     let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelUnRegisterMediaMetadataObserver,
-      ""
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -13408,9 +13473,13 @@ class AgoraRtcChannel extends EventEmitter {
    * - < 0: Failure.
    */
   registerMediaMetadataObserver(): number {
+    let param = {
+      channelId: this._channelId,
+    };
+
     let ret = this._rtcChannel.CallApi(
       ApiTypeChannel.kChannelRegisterMediaMetadataObserver,
-      ""
+      JSON.stringify(param)
     );
     return ret.retCode;
   }
@@ -13434,6 +13503,7 @@ class AgoraRtcChannel extends EventEmitter {
       uid: metadata.uid,
       size: metadata.size,
       timeStampMs: metadata.timeStampMs,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApiWithBuffer(
@@ -13457,6 +13527,7 @@ class AgoraRtcChannel extends EventEmitter {
   setMaxMetadataSize(size: number): number {
     let param = {
       size,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13496,6 +13567,7 @@ class AgoraRtcChannel extends EventEmitter {
     let param = {
       enabled,
       config,
+      channelId: this._channelId,
     };
 
     let ret = this._rtcChannel.CallApi(
@@ -13601,7 +13673,6 @@ declare interface AgoraRtcChannel {
    * {@link joinChannel} method until the SDK triggers this callback.
    */
   on(
-    channelId: string,
     evt: "userJoined",
     cb: (channelId: string, uid: number, elapsed: number) => void
   ): this;

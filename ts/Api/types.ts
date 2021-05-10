@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:41:00
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:27:51
+ * @Last Modified time: 2021-05-10 20:26:51
  */
 
 /**
@@ -2774,24 +2774,4 @@ export interface WindowInfo {
   originWidth: number;
   originHeight: number;
   image: Uint8Array;
-}
-
-export type User = "local" | "videoSource" | number | string;
-
-export type Channel = "" | string;
-
-export interface VideoFrame {
-  width: number;
-  height: number;
-  yBuffer: Buffer | Uint8Array;
-  uBuffer: Buffer | Uint8Array;
-  vBuffer: Buffer | Uint8Array;
-  mirror?: boolean;
-  rotation?: number;
-  left?: number;
-  right?: number;
-  top?: number;
-  bottom?: number;
-  uid?: number;
-  channelId?: string;
 }

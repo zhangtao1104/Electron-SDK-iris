@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:44 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-07 15:09:55
+ * @Last Modified time: 2021-05-10 15:12:00
  */
 #pragma once
 #include <exception>
@@ -39,7 +39,7 @@ namespace agora
                 static void CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 
-                static void GetChannel(const Nan_FunctionCallbackInfo<v8_Value> &args);
+                static void CreateChannel(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void GetDeviceManager(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void GetScreenWindowsInfo(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void GetScreenDisplaysInfo(const Nan_FunctionCallbackInfo<v8_Value> &args);
@@ -56,7 +56,7 @@ namespace agora
                 static void VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
                 static void SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                void OnApiError(int apiType, const char *errorMessage);
+                void OnApiError(const char *errorMessage);
                 
 
             private:

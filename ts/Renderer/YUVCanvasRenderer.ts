@@ -2,15 +2,14 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:48
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:28:20
+ * @Last Modified time: 2021-05-10 20:27:46
  */
 
 const YUVBuffer = require("yuv-buffer");
 const YUVCanvas = require("yuv-canvas");
 const isEqual = require("lodash.isequal");
 
-import { VideoFrame } from "../Api/types";
-import { CanvasOptions, CONTENT_MODE } from "./type";
+import { CanvasOptions, CONTENT_MODE, VideoFrame } from "./type";
 import { IRenderer } from "./IRender";
 import { logWarn } from "../Utils";
 
@@ -198,9 +197,9 @@ export class YUVCanvasRenderer implements IRenderer {
       this._videoFrame.vBuffer = new Uint8Array((frameWidth * frameHeight) / 4);
     }
 
-    this._videoFrame.yBuffer.set(frame.yBuffer as Buffer);
-    this._videoFrame.uBuffer.set(frame.uBuffer as Buffer);
-    this._videoFrame.vBuffer.set(frame.vBuffer as Buffer);
+    this._videoFrame.yBuffer.set(frame.yBuffer);
+    this._videoFrame.uBuffer.set(frame.uBuffer);
+    this._videoFrame.vBuffer.set(frame.vBuffer);
 
     this._videoFrame.width = frame.width;
     this._videoFrame.height = frame.height;
@@ -249,5 +248,17 @@ export class YUVCanvasRenderer implements IRenderer {
     return this._customeElement ? false : this._customeElement === element;
   }
 
-  refreshCanvas() {}
+  refreshCanvas() {
+    if (this._cacheCanvasOptions) {
+      this.zoom(
+        this._cacheCanvasOptions.rotation === 90 ||
+          this._cacheCanvasOptions.rotation === 270,
+        this._cacheCanvasOptions.contentMode,
+        this._cacheCanvasOptions.frameWidth,
+        this._cacheCanvasOptions.frameHeight,
+        this._cacheCanvasOptions.clientWidth,
+        this._cacheCanvasOptions.clientHeight
+      );
+    }
+  }
 }

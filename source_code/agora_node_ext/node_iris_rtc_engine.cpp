@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:37 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:22:50
+ * @Last Modified time: 2021-05-10 15:12:55
  */
 #include "node_iris_rtc_engine.h"
 
@@ -50,7 +50,7 @@ namespace agora
                 Nan::SetPrototypeMethod(_template, "CallApiWithBuffer", CallApiWithBuffer);
                 
                 Nan::SetPrototypeMethod(_template, "OnEvent", OnEvent);
-                Nan::SetPrototypeMethod(_template, "GetChannel", GetChannel);
+                Nan::SetPrototypeMethod(_template, "CreateChannel", CreateChannel);
                 Nan::SetPrototypeMethod(_template, "GetDeviceManager", GetDeviceManager);
                 Nan::SetPrototypeMethod(_template, "GetScreenWindowsInfo", GetScreenWindowsInfo);
                 Nan::SetPrototypeMethod(_template, "GetScreenDisplaysInfo", GetScreenDisplaysInfo);
@@ -106,7 +106,7 @@ namespace agora
                 try {
                     _ret = _engine->_iris_engine.get()->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
                 } catch(std::exception& e) {
-                    _engine->OnApiError(_apiType, e.what());
+                    _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
@@ -178,14 +178,14 @@ namespace agora
                 _engine->_iris_event_handler->addEvent(_parameter, _persistObj, _persist);
             }
 
-            void NodeIrisRtcEngine::GetChannel(const Nan_FunctionCallbackInfo<v8_Value> &args)
+            void NodeIrisRtcEngine::CreateChannel(const Nan_FunctionCallbackInfo<v8_Value> &args)
             {
-                LOG_F(INFO, " NodeIrisRtcEngine::GetChannel");
+                LOG_F(INFO, " NodeIrisRtcEngine::CreateChannel");
                 auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
                 auto _isolate = args.GetIsolate();
-
+                auto _channelId = nan_api_get_value_utf8string_(args[0]);
                 auto _iris_channel = _engine->_iris_engine->channel();
-                auto _js_channel = NodeIrisRtcChannel::Init(_isolate, _iris_channel);
+                auto _js_channel = NodeIrisRtcChannel::Init(_isolate, _iris_channel, _channelId.c_str());
                 args.GetReturnValue().Set(_js_channel);
             }
 
@@ -316,7 +316,7 @@ namespace agora
                 try {
                     _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _result);
                  } catch (std::exception& e) {
-                    _engine->OnApiError(_apiType, e.what());
+                    _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
@@ -339,7 +339,7 @@ namespace agora
                     _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType, _parameter.c_str(), _buffer.c_str(), _length, _result);
                 } catch (std::exception& e) {
                     LOG_F(INFO, "VideoSourceCallApiWithBuffer catch exception: %s", e.what());
-                    _engine->OnApiError(_apiType, e.what());
+                    _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
@@ -359,7 +359,7 @@ namespace agora
                 args.GetReturnValue().Set(_retObj);
             }
 
-            void NodeIrisRtcEngine::OnApiError(int apiType, const char *errorMessage)
+            void NodeIrisRtcEngine::OnApiError(const char *errorMessage)
             {
                 _iris_event_handler->OnEvent("apiError", errorMessage);
             }
@@ -378,7 +378,7 @@ namespace agora
                     _ret = _engine->_iris_raw_data_plugin_manager.get()->CallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
                 } catch(std::exception& e) {
                     LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
-                    _engine->OnApiError(_apiType, e.what());
+                    _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
@@ -398,7 +398,7 @@ namespace agora
                 try {
                     _ret = _engine->_video_source_proxy->PluginCallApi((ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
                 } catch (std::exception& e) {
-                    _engine->OnApiError(_apiType, e.what());
+                    _engine->OnApiError(e.what());
                 }
                 auto _retObj = v8_Object::New(_isolate);
                 v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)

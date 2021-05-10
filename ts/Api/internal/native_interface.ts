@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:38:45
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-09 21:27:22
+ * @Last Modified time: 2021-05-10 20:26:16
  */
 
 import {
@@ -13,10 +13,8 @@ import {
   ApiTypeVideoDeviceManager,
   ApiTypeRawDataPlugin,
 } from "./native_api_type";
-
-import { WindowInfo, VideoFrame } from "../types";
-
-import { VideoFrameCacheConfig } from "../../renderer/type";
+import { WindowInfo } from "../types";
+import { VideoFrameCacheConfig, VideoFrame } from "../../renderer/type";
 
 /**
  * interface for c++ addon (.node)
@@ -33,7 +31,7 @@ export interface NodeIrisRtcEngine {
   SetAddonLogFile(filePath: string): Result;
   PluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
   OnEvent(callbackName: string, callback: Function): void;
-  GetChannel(): NodeIrisRtcChannel;
+  CreateChannel(channelId: string): NodeIrisRtcChannel;
   GetDeviceManager(): NodeIrisRtcDeviceManager;
   GetScreenDisplaysInfo(): Array<Object>;
   GetScreenWindowsInfo(): Array<WindowInfo>;
