@@ -31,8 +31,7 @@ namespace agora
                 void EnableVideoFrameCache(const iris::rtc::IrisRtcRendererCacheConfig &cache_config,
                                            unsigned int uid, const char *channel_id = "");
 
-                void DisableVideoFrameCache(unsigned int uid = -1,
-                                            const char *channel_id = "");
+                void DisableVideoFrameCache(const char *channel_id = "", unsigned int uid = -1);
 
                 bool GetVideoFrame(iris::rtc::IrisRtcVideoFrameObserver::VideoFrame &video_frame,
                                    bool &is_new_frame, unsigned int uid,

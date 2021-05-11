@@ -11,6 +11,11 @@ namespace agora {
                 ERROR_PARAMETER_4 = -4,
                 ERROR_PARAMETER_5 = -5
             };
+
+            enum PROCESS_TYPE {
+                MAIN,
+                SCREEN_SHARE
+            };
         }
     }
 }

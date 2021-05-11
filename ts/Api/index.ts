@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 20:27:05
+ * @Last Modified time: 2021-05-11 13:43:02
  */
 import {
   ApiTypeEngine,
@@ -10,11 +10,12 @@ import {
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
   ApiTypeRawDataPlugin,
+  PROCESS_TYPE
 } from "./internal/native_api_type";
 import {
   NodeIrisRtcEngine,
   NodeIrisRtcChannel,
-  NodeIrisRtcDeviceManager,
+  NodeIrisRtcDeviceManager
 } from "./internal/native_interface";
 import {
   Rect,
@@ -87,7 +88,7 @@ import {
   METADATA_TYPE,
   CHANNEL_PROFILE_TYPE,
   WindowInfo,
-  Device,
+  Device
 } from "./types";
 import { EventEmitter } from "events";
 import { deprecate, logWarn, logInfo, logError } from "../Utils";
@@ -129,7 +130,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   setAddonLogFile(filePath: string): number {
-    let ret = this._rtcEngine.SetAddonLogFile(filePath);
+    let ret = this._rtcEngine.SetAddonLogFile(PROCESS_TYPE.MAIN, filePath);
     return ret.retCode;
   }
 
@@ -2253,6 +2254,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineInitialize,
       JSON.stringify(param)
     );
@@ -2293,7 +2295,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - If the method call fails, returns empty or `ERR_REFUSED (5)`.
    */
   createChannel(channelId: string): AgoraRtcChannel | null {
-    let _rtcChannel = this._rtcEngine.CreateChannel(channelId);
+    let _rtcChannel = this._rtcEngine.CreateChannel(PROCESS_TYPE.MAIN, channelId);
     return new AgoraRtcChannel(channelId, _rtcChannel, this);
   }
 
@@ -2302,7 +2304,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The version of the current SDK.
    */
   getVersion(): string {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineGetVersion, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineGetVersion, "");
     return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
@@ -2317,6 +2319,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetErrorDescription,
       JSON.stringify(param)
     );
@@ -2329,6 +2332,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getConnectionState(): CONNECTION_STATE_TYPE {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetConnectionState,
       ""
     );
@@ -2404,6 +2408,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineJoinChannel,
       JSON.stringify(param)
     );
@@ -2434,7 +2439,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   leaveChannel(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineLeaveChannel, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineLeaveChannel, "");
     return ret.retCode;
   }
 
@@ -2455,7 +2460,7 @@ class AgoraRtcEngine extends EventEmitter {
   release(): number {
     this._rendererManager?.clear();
     this._rendererManager = undefined;
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineRelease, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineRelease, "");
 
     return ret.retCode;
   }
@@ -2493,6 +2498,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetHighQualityAudioParameters,
       JSON.stringify(param)
     );
@@ -2667,6 +2673,7 @@ class AgoraRtcEngine extends EventEmitter {
       token,
     };
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineRenewToken,
       JSON.stringify(param)
     );
@@ -2696,6 +2703,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetChannelProfile,
       JSON.stringify(param)
     );
@@ -2729,6 +2737,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetClientRole,
       JSON.stringify(param)
     );
@@ -2776,6 +2785,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetClientRole,
       JSON.stringify(param)
     );
@@ -2809,7 +2819,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startEchoTest(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStartEchoTest, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineStartEchoTest, "");
     return ret.retCode;
   }
 
@@ -2820,7 +2830,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopEchoTest(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopEchoTest, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineStopEchoTest, "");
     return ret.retCode;
   }
 
@@ -2854,6 +2864,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStartEchoTest,
       JSON.stringify(param)
     );
@@ -2915,6 +2926,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAddVideoWaterMark,
       JSON.stringify(param)
     );
@@ -2930,6 +2942,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   clearVideoWatermarks(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineClearVideoWaterMarks,
       ""
     );
@@ -2969,6 +2982,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   enableLastmileTest(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableLastMileTest,
       ""
     );
@@ -2983,6 +2997,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   disableLastmileTest(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineDisableLastMileTest,
       ""
     );
@@ -3028,6 +3043,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStartLastMileProbeTest,
       JSON.stringify(param)
     );
@@ -3042,6 +3058,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   stopLastmileProbeTest(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStopLastMileProbeTest,
       ""
     );
@@ -3079,7 +3096,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableVideo(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineEnableVideo, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineEnableVideo, "");
     return ret.retCode;
   }
 
@@ -3113,7 +3130,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableVideo(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineDisableVideo, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineDisableVideo, "");
     return ret.retCode;
   }
 
@@ -3133,7 +3150,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   startPreview(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStartPreview, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineStartPreview, "");
     return ret.retCode;
   }
 
@@ -3144,7 +3161,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopPreview(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopPreview, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineStopPreview, "");
     return ret.retCode;
   }
 
@@ -3174,6 +3191,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetVideoProfile,
       JSON.stringify(param)
     );
@@ -3215,6 +3233,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetCameraCapturerConfiguration,
       JSON.stringify(param)
     );
@@ -3261,6 +3280,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetVideoEncoderConfiguration,
       JSON.stringify(param)
     );
@@ -3304,6 +3324,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetBeautyEffectOptions,
       JSON.stringify(param)
     );
@@ -3333,6 +3354,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetRemoteUserPriority,
       JSON.stringify(param)
     );
@@ -3364,7 +3386,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   enableAudio(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineEnableAudio, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineEnableAudio, "");
     return ret.retCode;
   }
 
@@ -3391,7 +3413,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   disableAudio(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineDisableAudio, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineDisableAudio, "");
     return ret.retCode;
   }
 
@@ -3454,6 +3476,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetAudioProfile,
       JSON.stringify(param)
     );
@@ -3479,6 +3502,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetVideoQualityParameters,
       JSON.stringify(param)
     );
@@ -3514,6 +3538,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetEncryptionSecret,
       JSON.stringify(param)
     );
@@ -3553,6 +3578,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetEncryptionMode,
       JSON.stringify(param)
     );
@@ -3586,6 +3612,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineMuteLocalAudioStream,
       JSON.stringify(param)
     );
@@ -3608,6 +3635,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineMuteAllRemoteAudioStreams,
       JSON.stringify(param)
     );
@@ -3642,6 +3670,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetDefaultMuteAllRemoteAudioStreams,
       JSON.stringify(param)
     );
@@ -3666,6 +3695,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineMuteRemoteAudioStream,
       JSON.stringify(param)
     );
@@ -3699,6 +3729,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineMuteLocalVideoStream,
       JSON.stringify(param)
     );
@@ -3738,6 +3769,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableLocalVideo,
       JSON.stringify(param)
     );
@@ -3785,6 +3817,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableLocalAudio,
       JSON.stringify(param)
     );
@@ -3808,6 +3841,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineMuteAllRemoteVideoStreams,
       JSON.stringify(param)
     );
@@ -3843,6 +3877,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetDefaultMuteAllRemoteVideoStreams,
       JSON.stringify(param)
     );
@@ -3891,6 +3926,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableAudioVolumeIndication,
       JSON.stringify(param)
     );
@@ -3915,6 +3951,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineMuteRemoteVideoStream,
       JSON.stringify(param)
     );
@@ -3939,6 +3976,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLogFile,
       JSON.stringify(param)
     );
@@ -3980,6 +4018,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLogFileSize,
       JSON.stringify(param)
     );
@@ -4014,6 +4053,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLogFilter,
       JSON.stringify(param)
     );
@@ -4039,6 +4079,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableDualStreamMode,
       JSON.stringify(param)
     );
@@ -4083,6 +4124,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetRemoteVideoStreamType,
       JSON.stringify(param)
     );
@@ -4107,6 +4149,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetRemoteDefaultVideoStreamType,
       JSON.stringify(param)
     );
@@ -4140,6 +4183,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableWebSdkInteroperability,
       JSON.stringify(param)
     );
@@ -4166,6 +4210,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalVideoMirrorMode,
       JSON.stringify(param)
     );
@@ -4187,6 +4232,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalVoicePitch,
       JSON.stringify(param)
     );
@@ -4213,6 +4259,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalVoiceEqualization,
       JSON.stringify(param)
     );
@@ -4246,6 +4293,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalVoiceReverb,
       JSON.stringify(param)
     );
@@ -4267,6 +4315,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalVoiceChanger,
       JSON.stringify(param)
     );
@@ -4293,6 +4342,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalVoiceReverbPreset,
       JSON.stringify(param)
     );
@@ -4342,6 +4392,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLocalPublishFallbackOption,
       JSON.stringify(param)
     );
@@ -4388,6 +4439,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetRemoteSubscribeFallbackOption,
       JSON.stringify(param)
     );
@@ -4449,6 +4501,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineRegisterLocalUserAccount,
       JSON.stringify(param)
     );
@@ -4514,6 +4567,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineJoinChannelWithUserAccount,
       JSON.stringify(param)
     );
@@ -4546,6 +4600,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetUserInfoByUserAccount,
       JSON.stringify(param)
     );
@@ -4581,6 +4636,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetUserInfoByUid,
       JSON.stringify(param)
     );
@@ -4639,6 +4695,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSwitchChannel,
       JSON.stringify(param)
     );
@@ -4664,6 +4721,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAdjustRecordingSignalVolume,
       JSON.stringify(param)
     );
@@ -4688,6 +4746,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAdjustPlaybackSignalVolume,
       JSON.stringify(param)
     );
@@ -4725,6 +4784,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAdjustUserPlaybackSignalVolume,
       JSON.stringify(param)
     );
@@ -4801,6 +4861,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStartAudioRecording,
       JSON.stringify(param)
     );
@@ -4818,6 +4879,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   stopAudioRecording(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStopAudioRecording,
       ""
     );
@@ -5271,6 +5333,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableLoopBackRecording,
       JSON.stringify(param)
     );
@@ -5439,6 +5502,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
       JSON.stringify(param)
     );
@@ -5472,6 +5536,7 @@ class AgoraRtcEngine extends EventEmitter {
       };
 
       let ret = this._rtcEngine.CallApi(
+        PROCESS_TYPE.MAIN, 
         ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
         JSON.stringify(param)
       );
@@ -5485,6 +5550,7 @@ class AgoraRtcEngine extends EventEmitter {
       };
 
       let ret = this._rtcEngine.CallApi(
+        PROCESS_TYPE.MAIN, 
         ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
         JSON.stringify(param)
       );
@@ -5509,6 +5575,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineUpdateScreenCaptureParameters,
       JSON.stringify(param)
     );
@@ -5533,6 +5600,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetScreenCaptureContentHint,
       JSON.stringify(param)
     );
@@ -5547,6 +5615,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   stopScreenCapture(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStopScreenCapture,
       ""
     );
@@ -5567,6 +5636,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineUpdateScreenCaptureRegion,
       JSON.stringify(param)
     );
@@ -5629,6 +5699,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStartAudioMixing,
       JSON.stringify(param)
     );
@@ -5644,7 +5715,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAudioMixing(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopAudioMixing, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineStopAudioMixing, "");
     return ret.retCode;
   }
 
@@ -5658,6 +5729,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   pauseAudioMixing(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEnginePauseAudioMixing,
       ""
     );
@@ -5674,6 +5746,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   resumeAudioMixing(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineResumeAudioMixing,
       ""
     );
@@ -5700,6 +5773,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAdjustAudioMixingVolume,
       JSON.stringify(param)
     );
@@ -5720,6 +5794,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAdjustAudioMixingPlayoutVolume,
       JSON.stringify(param)
     );
@@ -5740,6 +5815,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAdjustAudioMixingPublishVolume,
       JSON.stringify(param)
     );
@@ -5756,6 +5832,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getAudioMixingDuration(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetAudioMixingDuration,
       ""
     );
@@ -5773,6 +5850,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getAudioMixingCurrentPosition(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetAudioMixingCurrentPosition,
       ""
     );
@@ -5791,6 +5869,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getAudioMixingPlayoutVolume(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetAudioMixingPlayoutVolume,
       ""
     );
@@ -5809,6 +5888,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getAudioMixingPublishVolume(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetAudioMixingPublishVolume,
       ""
     );
@@ -5834,6 +5914,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetAudioMixingPosition,
       JSON.stringify(param)
     );
@@ -5867,6 +5948,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetAudioMixingPitch,
       JSON.stringify(param)
     );
@@ -5913,6 +5995,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAddPublishStreamUrl,
       JSON.stringify(param)
     );
@@ -5939,6 +6022,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineRemovePublishStreamUrl,
       JSON.stringify(param)
     );
@@ -5973,6 +6057,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetLiveTranscoding,
       JSON.stringify(param)
     );
@@ -6034,6 +6119,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineAddInjectStreamUrl,
       JSON.stringify(param)
     );
@@ -6055,6 +6141,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineRemoveInjectStreamUrl,
       JSON.stringify(param)
     );
@@ -6096,6 +6183,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineCreateDataStream,
       JSON.stringify(param)
     );
@@ -6137,9 +6225,11 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApiWithBuffer(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSendStreamMessage,
       JSON.stringify(param),
-      msg
+      msg, 
+      msg.length
     );
     return ret.retCode;
   }
@@ -6190,6 +6280,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStartChannelMediaRelay,
       JSON.stringify(param)
     );
@@ -6226,6 +6317,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineUpdateChannelMediaRelay,
       JSON.stringify(param)
     );
@@ -6254,6 +6346,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   stopChannelMediaRelay(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStopChannelMediaRelay,
       ""
     );
@@ -6273,6 +6366,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   getEffectsVolume(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineGetEffectsVolume,
       ""
     );
@@ -6292,6 +6386,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetEffectsVolume,
       JSON.stringify(param)
     );
@@ -6314,6 +6409,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetVolumeOfEffect,
       JSON.stringify(param)
     );
@@ -6387,6 +6483,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEnginePlayEffect,
       JSON.stringify(param)
     );
@@ -6406,6 +6503,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineStopEffect,
       JSON.stringify(param)
     );
@@ -6418,7 +6516,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   stopAllEffects(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineStopAllEffects, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineStopAllEffects, "");
     return ret.retCode;
   }
   /**
@@ -6447,6 +6545,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEnginePreloadEffect,
       JSON.stringify(param)
     );
@@ -6466,6 +6565,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineUnloadEffect,
       JSON.stringify(param)
     );
@@ -6485,6 +6585,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEnginePauseEffect,
       JSON.stringify(param)
     );
@@ -6497,7 +6598,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   pauseAllEffects(): number {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEnginePauseAllEffects, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEnginePauseAllEffects, "");
     return ret.retCode;
   }
   /**
@@ -6513,6 +6614,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineResumeEffect,
       JSON.stringify(param)
     );
@@ -6526,6 +6628,7 @@ class AgoraRtcEngine extends EventEmitter {
    */
   resumeAllEffects(): number {
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineResumeAllEffects,
       ""
     );
@@ -6554,6 +6657,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableSoundPositionIndication,
       JSON.stringify(param)
     );
@@ -6598,6 +6702,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetRemoteVoicePosition,
       JSON.stringify(param)
     );
@@ -6623,7 +6728,7 @@ class AgoraRtcEngine extends EventEmitter {
    * @return The current call ID.
    */
   getCallId(): string {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineGetCallId, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineGetCallId, "");
     return ret.retCode === 0 ? ret.result : ret.retCode.toString();
   }
 
@@ -6647,6 +6752,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineRate,
       JSON.stringify(param)
     );
@@ -6669,6 +6775,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineComplain,
       JSON.stringify(param)
     );
@@ -6689,6 +6796,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetRecordingAudioFrameParameters,
       JSON.stringify(param)
     );
@@ -6701,6 +6809,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetParameters,
       JSON.stringify(param)
     );
@@ -6719,6 +6828,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineUnRegisterMediaMetadataObserver,
       JSON.stringify(param)
     );
@@ -6736,6 +6846,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineRegisterMediaMetadataObserver,
       JSON.stringify(param)
     );
@@ -6762,9 +6873,11 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApiWithBuffer(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSendMetadata,
       JSON.stringify(param),
-      metadata.buffer
+      metadata.buffer,
+      metadata.buffer.length
     );
     return ret.retCode;
   }
@@ -6785,6 +6898,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetMaxMetadataSize,
       JSON.stringify(param)
     );
@@ -6818,6 +6932,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSendCustomReportMessage,
       JSON.stringify(param)
     );
@@ -6857,6 +6972,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableEncryption,
       JSON.stringify(param)
     );
@@ -6910,6 +7026,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetAudioEffectPreset,
       JSON.stringify(param)
     );
@@ -6961,6 +7078,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetVoiceBeautifierPreset,
       JSON.stringify(param)
     );
@@ -7070,6 +7188,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetAudioEffectParameters,
       JSON.stringify(param)
     );
@@ -7083,6 +7202,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetCloudProxy,
       JSON.stringify(param)
     );
@@ -7095,6 +7215,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineEnableDeepLearningDenoise,
       JSON.stringify(param)
     );
@@ -7113,6 +7234,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeEngine.kEngineSetVoiceBeautifierParameters,
       JSON.stringify(param)
     );
@@ -7120,7 +7242,7 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   uploadLogFile(): string {
-    let ret = this._rtcEngine.CallApi(ApiTypeEngine.kEngineUploadLogFile, "");
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineUploadLogFile, "");
     return ret.result;
   }
 
@@ -7136,6 +7258,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeRawDataPlugin.kRegisterPlugin,
       JSON.stringify(param)
     );
@@ -7148,6 +7271,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeRawDataPlugin.kUnregisterPlugin,
       JSON.stringify(param)
     );
@@ -7156,6 +7280,7 @@ class AgoraRtcEngine extends EventEmitter {
 
   getPlugins(): Plugin[] {
     let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeRawDataPlugin.kGetPlugins,
       ""
     );
@@ -7191,6 +7316,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeRawDataPlugin.kEnablePlugin,
       JSON.stringify(param)
     );
@@ -7204,6 +7330,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeRawDataPlugin.kSetPluginParameter,
       JSON.stringify(param)
     );
@@ -7217,6 +7344,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.MAIN, 
       ApiTypeRawDataPlugin.kGetPluginParameter,
       JSON.stringify(param)
     );
@@ -7276,7 +7404,8 @@ class AgoraRtcEngine extends EventEmitter {
       filePath,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE, 
       ApiTypeEngine.kEngineSetLogFile,
       JSON.stringify(param)
     );
@@ -7323,7 +7452,8 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineEnableWebSdkInteroperability,
       JSON.stringify(param)
     );
@@ -7361,7 +7491,8 @@ class AgoraRtcEngine extends EventEmitter {
       options,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineJoinChannel,
       JSON.stringify(param)
     );
@@ -7379,7 +7510,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceLeaveChannel(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineLeaveChannel,
       ""
     );
@@ -7403,7 +7535,8 @@ class AgoraRtcEngine extends EventEmitter {
       token,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineRenewToken,
       JSON.stringify(param)
     );
@@ -7427,7 +7560,8 @@ class AgoraRtcEngine extends EventEmitter {
       profile,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineSetChannelProfile,
       JSON.stringify(param)
     );
@@ -7455,7 +7589,8 @@ class AgoraRtcEngine extends EventEmitter {
       swapWidthAndHeight,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineSetVideoProfile,
       JSON.stringify(param)
     );
@@ -7476,7 +7611,8 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineEnableDualStreamMode,
       JSON.stringify(param)
     );
@@ -7495,7 +7631,8 @@ class AgoraRtcEngine extends EventEmitter {
       parameters,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineSetParameters,
       JSON.stringify(param)
     );
@@ -7515,7 +7652,8 @@ class AgoraRtcEngine extends EventEmitter {
       regionRect,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineUpdateScreenCaptureRegion,
       JSON.stringify(param)
     );
@@ -7551,7 +7689,8 @@ class AgoraRtcEngine extends EventEmitter {
       deviceName,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineEnableLoopBackRecording,
       JSON.stringify(param)
     );
@@ -7582,7 +7721,8 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   videoSourceEnableAudio(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineEnableAudio,
       ""
     );
@@ -7590,7 +7730,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceDisableAudio(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineDisableAudio,
       ""
     );
@@ -7598,7 +7739,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceEnableVideo(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineEnableVideo,
       ""
     );
@@ -7606,7 +7748,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceDisableVideo(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineDisableVideo,
       ""
     );
@@ -7648,7 +7791,8 @@ class AgoraRtcEngine extends EventEmitter {
       config,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineEnableEncryption,
       JSON.stringify(param)
     );
@@ -7676,7 +7820,8 @@ class AgoraRtcEngine extends EventEmitter {
       encryptionMode,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineSetEncryptionMode,
       JSON.stringify(param)
     );
@@ -7699,7 +7844,8 @@ class AgoraRtcEngine extends EventEmitter {
       secret,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineSetEncryptionSecret,
       JSON.stringify(param)
     );
@@ -7732,6 +7878,7 @@ class AgoraRtcEngine extends EventEmitter {
       };
 
       let ret = this._rtcEngine.CallApi(
+        PROCESS_TYPE.SCREEN_SHARE,
         ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
         JSON.stringify(param)
       );
@@ -7745,6 +7892,7 @@ class AgoraRtcEngine extends EventEmitter {
       };
 
       let ret = this._rtcEngine.CallApi(
+        PROCESS_TYPE.SCREEN_SHARE,
         ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
         JSON.stringify(param)
       );
@@ -7772,7 +7920,8 @@ class AgoraRtcEngine extends EventEmitter {
       captureParams,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
       JSON.stringify(param)
     );
@@ -7793,7 +7942,8 @@ class AgoraRtcEngine extends EventEmitter {
       captureParams,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineUpdateScreenCaptureParameters,
       JSON.stringify(param)
     );
@@ -7814,7 +7964,8 @@ class AgoraRtcEngine extends EventEmitter {
       contentHint,
     };
 
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineSetScreenCaptureContentHint,
       JSON.stringify(param)
     );
@@ -7858,6 +8009,7 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineStartScreenCapture,
       JSON.stringify(param)
     );
@@ -7875,7 +8027,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceStopScreenCapture(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineStopScreenCapture,
       ""
     );
@@ -7893,7 +8046,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceStartPreview(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineStartPreview,
       ""
     );
@@ -7911,7 +8065,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceStopPreview(): number {
-    let ret = this._rtcEngine.VideoSourceCallApi(
+    let ret = this._rtcEngine.CallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeEngine.kEngineStopPreview,
       ""
     );
@@ -7925,7 +8080,8 @@ class AgoraRtcEngine extends EventEmitter {
       order: pluginInfo.order,
     };
 
-    let ret = this._rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeRawDataPlugin.kRegisterPlugin,
       JSON.stringify(param)
     );
@@ -7937,7 +8093,8 @@ class AgoraRtcEngine extends EventEmitter {
       pluginId,
     };
 
-    let ret = this._rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeRawDataPlugin.kUnregisterPlugin,
       JSON.stringify(param)
     );
@@ -7945,7 +8102,8 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   videoSourceGetPlugins(): Plugin[] {
-    let ret = this._rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeRawDataPlugin.kGetPlugins,
       ""
     );
@@ -7980,7 +8138,8 @@ class AgoraRtcEngine extends EventEmitter {
       enabled,
     };
 
-    let ret = this._rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeRawDataPlugin.kEnablePlugin,
       JSON.stringify(param)
     );
@@ -7993,7 +8152,8 @@ class AgoraRtcEngine extends EventEmitter {
       parameter,
     };
 
-    let ret = this._rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeRawDataPlugin.kSetPluginParameter,
       JSON.stringify(param)
     );
@@ -8006,7 +8166,8 @@ class AgoraRtcEngine extends EventEmitter {
       key,
     };
 
-    let ret = this._rtcEngine.VideoSourcePluginCallApi(
+    let ret = this._rtcEngine.PluginCallApi(
+      PROCESS_TYPE.SCREEN_SHARE,
       ApiTypeRawDataPlugin.kGetPluginParameter,
       JSON.stringify(param)
     );
@@ -12976,7 +13137,8 @@ class AgoraRtcChannel extends EventEmitter {
     let ret = this._rtcChannel.CallApiWithBuffer(
       ApiTypeChannel.kChannelSendStreamMessage,
       JSON.stringify(param),
-      msg
+      msg,
+      msg.length
     );
     return ret.retCode;
   }
@@ -13509,7 +13671,8 @@ class AgoraRtcChannel extends EventEmitter {
     let ret = this._rtcChannel.CallApiWithBuffer(
       ApiTypeChannel.kChannelSendMetadata,
       JSON.stringify(param),
-      metadata.buffer
+      metadata.buffer,
+      metadata.buffer.length
     );
     return ret.retCode;
   }

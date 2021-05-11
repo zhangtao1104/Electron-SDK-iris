@@ -45,6 +45,8 @@ namespace agora {
                 int CallApi(ApiTypeEngine apiType, const char* parameter, const char* buffer, int length, char* result);
                 int PluginCallApi(ApiTypeRawDataPlugin apiType, const char* parameter, char* result);
                 int Release();
+                int EnableVideoFrameCache(const char *channelId, unsigned int uid, int width, int height);
+                int DisableVideoFrameCache(const char *channelId, unsigned int uid);
                 void Clear();
                 void OnApiError(const char* event, const char* data);
             };

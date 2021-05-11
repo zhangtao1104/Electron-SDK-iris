@@ -11,6 +11,7 @@ import { IRenderer } from "./IRender";
 import { YUVCanvasRenderer } from "./YUVCanvasRenderer";
 import { NodeIrisRtcEngine } from "../Api/internal/native_interface";
 import { logInfo, logWarn, logError } from "../Utils";
+import { PROCESS_TYPE } from "../Api/internal/native_api_type";
 
 class RendererManager {
   _config: {
@@ -218,7 +219,7 @@ class RendererManager {
             return;
           }
 
-          let retObj = this._rtcEngine.GetVideoStreamData(cachedVideoFrame);
+          let retObj = this._rtcEngine.GetVideoStreamData(PROCESS_TYPE.MAIN, cachedVideoFrame);
 
           if (!retObj.ret) {
             logWarn(
@@ -311,7 +312,7 @@ class RendererManager {
       ? this.userToUid(videoFrameCacheConfig.user)
       : 0;
     logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-    return this._rtcEngine.EnableVideoFrameCache(videoFrameCacheConfig);
+    return this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
   }
 
   disableVideoFrameCache(videoFrameCacheConfig: VideoFrameCacheConfig): number {
@@ -319,7 +320,7 @@ class RendererManager {
       ? this.userToUid(videoFrameCacheConfig.user)
       : 0;
     logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-    return this._rtcEngine.DisableVideoFrameCache(videoFrameCacheConfig);
+    return this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
   }
 
   ensureRendererMap(

@@ -173,6 +173,32 @@ namespace agora
                 return -1;
             }
 
+            int VideoSourceProxy::EnableVideoFrameCache(const char *channelId, unsigned int uid, int width, int height)
+            {
+                if (_initialized)
+                {
+                    VideoFrameCacheConfigParameter parameter;
+                    strncpy(parameter._channelId, channelId, MAX_CHAR_LENGTH);
+                    parameter._uid = uid;
+                    parameter._width = width;
+                    parameter._height = height;
+                    return _iAgoraIpc->sendMessage(AGORA_IPC_ENABLE_VIDEO_FRAME_CACHE, (char *)&parameter, sizeof(parameter)) ? 0 : -1;
+                }
+                return -1;
+            }
+
+            int VideoSourceProxy::DisableVideoFrameCache(const char *channelId, unsigned int uid)
+            {
+                if (_initialized)
+                {
+                    VideoFrameCacheConfigParameter parameter;
+                    strncpy(parameter._channelId, channelId, MAX_CHAR_LENGTH);
+                    parameter._uid = uid;
+                    return _iAgoraIpc->sendMessage(AGORA_IPC_DISABLE_VIDEO_FRAME_CACHE, (char *)&parameter, sizeof(parameter)) ? 0 : -1;
+                }
+                return -1;
+            }
+
             int VideoSourceProxy::Release()
             {
                 if (_initialized)

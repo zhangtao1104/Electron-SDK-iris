@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:44 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 15:12:00
+ * @Last Modified time: 2021-05-11 13:16:40
  */
 #pragma once
 #include <exception>
@@ -50,11 +50,7 @@ namespace agora
                 static void GetVideoStreamData(const Nan_FunctionCallbackInfo<v8_Value> &args);
 
                 static void VideoSourceInitialize(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void VideoSourceCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void VideoSourceCallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 static void VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args);
-                static void VideoSourcePluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
-
                 static void SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args);
                 void OnApiError(const char *errorMessage);
                 

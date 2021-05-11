@@ -35,6 +35,7 @@ namespace agora
                 _ipc_controller.reset();
                 _ipc_sender.reset();
                 _parameter_parser.reset();
+                _video_processer.reset();
             }
 
             bool VideoSource::Initialize(std::string &parameter)
@@ -65,7 +66,9 @@ namespace agora
                 _iris_raw_data.reset(_iris_engine->raw_data());
                 _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->plugin_manager());
                 _iris_event_handler.reset(new VideoSourceIrisEventhandler(_ipc_controller.get()));
+                _iris_rtc_renderer.reset(_iris_raw_data->renderer());
                 _iris_engine->SetEventHandler(_iris_event_handler.get());
+                _video_processer.reset(new VideoProcesser(_iris_engine.get()));
                 char result[512];
                 auto ret = _iris_engine->CallApi(ApiTypeEngine::kEngineInitialize, _apiParameter.c_str(), result);
                 if (ret != 0)
@@ -166,6 +169,19 @@ namespace agora
                     }
                 }
                 break;
+
+                case AGORA_IPC_ENABLE_VIDEO_FRAME_CACHE:
+                {
+                    VideoFrameCacheConfigParameter *_parameter = (VideoFrameCacheConfigParameter *)data;
+                    IrisRtcRendererCacheConfig _cacheConfig(iris::rtc::IrisRtcVideoFrameObserver::VideoFrameType::kFrameTypeYUV420, nullptr, _parameter->_width, _parameter->_height);
+                    _video_processer->EnableVideoFrameCache(_cacheConfig, _parameter->_uid, _parameter->_channelId);
+                }
+
+                case AGORA_IPC_DISABLE_VIDEO_FRAME_CACHE:
+                {
+                    VideoFrameCacheConfigParameter *_parameter = (VideoFrameCacheConfigParameter *)data;
+                    _video_processer->DisableVideoFrameCache(_parameter->_channelId, _parameter->_uid);
+                }
 
                 case AGORA_IPC_DISCONNECT:
                 {

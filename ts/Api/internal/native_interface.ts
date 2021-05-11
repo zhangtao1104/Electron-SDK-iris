@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:38:45
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 20:26:16
+ * @Last Modified time: 2021-05-11 14:08:40
  */
 
 import {
@@ -12,6 +12,7 @@ import {
   ApiTypeAudioDeviceManager,
   ApiTypeVideoDeviceManager,
   ApiTypeRawDataPlugin,
+  PROCESS_TYPE
 } from "./native_api_type";
 import { WindowInfo } from "../types";
 import { VideoFrameCacheConfig, VideoFrame } from "../../renderer/type";
@@ -22,30 +23,25 @@ import { VideoFrameCacheConfig, VideoFrame } from "../../renderer/type";
  * @ignore
  */
 export interface NodeIrisRtcEngine {
-  CallApi(apiType: ApiTypeEngine, params: string): Result;
-  CallApiWithBuffer(
-    apiType: ApiTypeEngine,
-    params: string,
-    buffer: string
-  ): Result;
-  SetAddonLogFile(filePath: string): Result;
-  PluginCallApi(apiType: ApiTypeRawDataPlugin, params: string): Result;
   OnEvent(callbackName: string, callback: Function): void;
-  CreateChannel(channelId: string): NodeIrisRtcChannel;
   GetDeviceManager(): NodeIrisRtcDeviceManager;
   GetScreenDisplaysInfo(): Array<Object>;
   GetScreenWindowsInfo(): Array<WindowInfo>;
-  VideoSourceInitialize(params: string): Result;
-  VideoSourceCallApi(apiType: ApiTypeEngine, params: string): Result;
-  VideoSourceCallApiWithBuffer(apiType: ApiTypeEngine, params: string): Result;
-  VideoSourceRelease(): Result;
-  VideoSourcePluginCallApi(
-    apiType: ApiTypeRawDataPlugin,
-    params: string
+  SetAddonLogFile(processType: PROCESS_TYPE, filePath: string): Result;
+  CallApi(processType: PROCESS_TYPE, apiType: ApiTypeEngine, params: string): Result;
+  CallApiWithBuffer(
+    processType: PROCESS_TYPE,
+    apiType: ApiTypeEngine,
+    params: string,
+    buffer: string,
+    bufferLength: number
   ): Result;
-  EnableVideoFrameCache(config: VideoFrameCacheConfig): number;
-  DisableVideoFrameCache(config: VideoFrameCacheConfig): number;
+  PluginCallApi(processType: PROCESS_TYPE, apiType: ApiTypeRawDataPlugin, params: string): Result;
+  CreateChannel(processType: PROCESS_TYPE, channelId: string): NodeIrisRtcChannel;
+  EnableVideoFrameCache(processType: PROCESS_TYPE, config: VideoFrameCacheConfig): number;
+  DisableVideoFrameCache(processType: PROCESS_TYPE, config: VideoFrameCacheConfig): number;
   GetVideoStreamData(
+    processType: PROCESS_TYPE, 
     streamInfo: VideoFrame
   ): {
     ret: boolean;
@@ -59,6 +55,8 @@ export interface NodeIrisRtcEngine {
     rotation: number;
     timestamp: number;
   };
+  VideoSourceInitialize(params: string): Result;
+  VideoSourceRelease(): Result;
 }
 
 /**
@@ -70,7 +68,8 @@ export interface NodeIrisRtcChannel {
   CallApiWithBuffer(
     apiType: ApiTypeChannel,
     params: string,
-    buffer: string
+    buffer: string,
+    length: number
   ): Result;
   OnEvent(callbackName: string, callback: Function): void;
 }

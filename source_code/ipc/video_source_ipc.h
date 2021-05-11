@@ -46,6 +46,8 @@ enum AgoraIpcMsg
     AGORA_IPC_ON_EVENT,
     AGORA_IPC_ON_EVENT_WITH_BUFFER,
     AGORA_IPC_PLUGIN_CALL_API,
+    AGORA_IPC_ENABLE_VIDEO_FRAME_CACHE,
+    AGORA_IPC_DISABLE_VIDEO_FRAME_CACHE,
 };
 
 /**
@@ -85,6 +87,13 @@ struct CallbackParameter {
     char _eventData[MAX_CHAR_LENGTH];
     char _buffer[MAX_CHAR_LENGTH];
     int _length;
+};
+
+struct VideoFrameCacheConfigParameter {
+    int _width;
+    int _height;
+    char _channelId[MAX_CHAR_LENGTH];
+    unsigned int _uid;
 };
 
 #define MAX_TOKEN_LEN 512

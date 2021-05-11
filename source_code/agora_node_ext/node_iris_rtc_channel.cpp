@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io 
  * @Date: 2021-04-22 20:53:18 
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 21:24:50
+ * @Last Modified time: 2021-05-11 13:42:50
  */
 #include "node_iris_rtc_channel.h"
 
@@ -96,8 +96,10 @@ namespace agora
                 auto _isolate = args.GetIsolate();
                 auto _apiType = nan_api_get_value_int32_(args[0]);
                 auto _parameter = nan_api_get_value_utf8string_(args[1]);
+                auto _buffer = nan_api_get_value_utf8string_(args[2]);
+                auto _length = nan_api_get_value_int32_(args[3]);
                 char _result[512];
-                int _ret = -1;
+                int _ret = ERROR_PARAMETER_1;
                 memset(_result, '\0', 512);
                 auto _retObj = v8_Object::New(_isolate);
 
@@ -111,14 +113,12 @@ namespace agora
                     }
                     case ApiTypeChannel::kChannelSendStreamMessage:
                     {
-                        auto _buffer = nan_api_get_value_utf8string_(args[2]);
 
                         _ret = _channel->_iris_channel.get()->CallApi((ApiTypeChannel)_apiType, _parameter.c_str(), const_cast<char *>(_buffer.c_str()), _result);
                         break;
                     }
                     case ApiTypeChannel::kChannelSendMetadata:
                     {
-                        auto _buffer = nan_api_get_value_utf8string_(args[2]);
                         _ret = _channel->_iris_channel.get()->CallApi((ApiTypeChannel)_apiType, _parameter.c_str(), const_cast<char *>(_buffer.c_str()), _result);
                         break;
                     }

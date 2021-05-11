@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:36:26
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 20:26:00
+ * @Last Modified time: 2021-05-11 11:59:59
  */
 
 export enum ApiTypeEngine {
@@ -260,7 +260,13 @@ export enum ApiTypeRawDataPlugin {
   kRelease,
 }
 
+export enum PROCESS_TYPE {
+  MAIN,
+  SCREEN_SHARE
+}
+
 export interface Result {
   retCode: number;
   result: string;
 }
+
