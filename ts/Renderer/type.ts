@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:39
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 20:24:22
+ * @Last Modified time: 2021-05-11 16:12:24
  */
 
 export enum CONTENT_MODE {
@@ -39,7 +39,7 @@ export interface VideoFrameCacheConfig {
   height?: number;
 }
 
-export type User = "local" | "videoSource" | number | string;
+export type User = "local" | "videoSource" | number | string ;
 
 export type Channel = "" | string;
 
@@ -48,6 +48,7 @@ export interface RendererConfig {
   view: Element | undefined;
   rendererOptions?: RendererOptions;
   channelId?: Channel;
+  fps?: number;
 }
 
 export interface VideoFrame {

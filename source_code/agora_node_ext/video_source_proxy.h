@@ -8,48 +8,55 @@
 #else
 #include <uuid/uuid.h>
 #endif
+#include "ipc_video_frame_listener.h"
+#include "iris_rtc_engine.h"
+#include "loguru.hpp"
+#include "node_event.h"
+#include "node_process.h"
 #include "video_source_event_handler.h"
 #include "video_source_ipc.h"
-#include "iris_rtc_engine.h"
-#include "node_process.h"
-#include "node_event.h"
+#include <fstream>
 #include <iosfwd>
 #include <sstream>
-#include <fstream>
-#include "loguru.hpp"
-
-
 
 namespace agora {
-    namespace rtc {
-        namespace electron {
-            class VideoSourceProxy: public AgoraIpcListener {
-            private:
-                std::atomic_bool _initialized {false};
-                std::shared_ptr<IVideoSourceEventHandler> _videoSourceEventHandlerPtr;
-                std::string _peerId;
-                std::unique_ptr<IAgoraIpc> _iAgoraIpc;
-                std::unique_ptr<AgoraIpcDataReceiver> _iAgoraIpcDataReceiver;
-                std::unique_ptr<INodeProcess> _iNodeProcess;
-                std::thread _messageThread;
-                NodeEvent _statusEvent;
+namespace rtc {
+namespace electron {
+class VideoSourceProxy : public AgoraIpcListener {
+private:
+  std::atomic_bool _initialized{false};
+  std::shared_ptr<IVideoSourceEventHandler> _video_source_event_handler;
+  std::shared_ptr<IpcVideoFrameListener> _ipc_video_frame_listener;
+  std::string _peer_id;
+  std::unique_ptr<IAgoraIpc> _agora_ipc;
+  std::unique_ptr<AgoraIpcDataReceiver> _ipc_data_receiver;
+  std::unique_ptr<INodeProcess> _node_process;
+  std::thread _message_thread;
+  NodeEvent _status_event;
 
-            public:
-                VideoSourceProxy();
-                ~VideoSourceProxy();
+public:
+  VideoSourceProxy(std::shared_ptr<IpcVideoFrameListener> listener);
+  ~VideoSourceProxy();
 
-                virtual void OnMessage(unsigned int msg, char* payload, unsigned int len) override; 
-                bool Initialize(IVideoSourceEventHandler *videoSourceEventHandler, std::string& parameter); 
-                void LoopMessage();
-                int CallApi(ApiTypeEngine apiType, const char* parameter, char* result);
-                int CallApi(ApiTypeEngine apiType, const char* parameter, const char* buffer, int length, char* result);
-                int PluginCallApi(ApiTypeRawDataPlugin apiType, const char* parameter, char* result);
-                int Release();
-                int EnableVideoFrameCache(const char *channelId, unsigned int uid, int width, int height);
-                int DisableVideoFrameCache(const char *channelId, unsigned int uid);
-                void Clear();
-                void OnApiError(const char* event, const char* data);
-            };
-        }
-    }
-}
+  virtual void OnMessage(unsigned int msg, char *payload,
+                         unsigned int len) override;
+  bool
+  Initialize(std::shared_ptr<IVideoSourceEventHandler> videoSourceEventHandler,
+             std::string &parameter);
+  void LoopMessage();
+  int CallApi(ApiTypeEngine apiType, const char *parameter, char *result);
+  int CallApi(ApiTypeEngine apiType, const char *parameter, const char *buffer,
+              int length, char *result);
+  int PluginCallApi(ApiTypeRawDataPlugin apiType, const char *parameter,
+                    char *result);
+  int Release();
+  int EnableVideoFrameCache(const char *channelId, unsigned int uid, int width,
+                            int height);
+  int DisableVideoFrameCache(const char *channelId, unsigned int uid);
+  void Clear();
+  void OnApiError(const char *event, const char *data);
+  void OnVideoFrameReceive(const char *data, int len);
+};
+} // namespace electron
+} // namespace rtc
+} // namespace agora

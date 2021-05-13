@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-11 13:43:02
+ * @Last Modified time: 2021-05-11 22:27:45
  */
 import {
   ApiTypeEngine,
@@ -611,6 +611,8 @@ class AgoraRtcEngine extends EventEmitter {
                 "",
                 videoFrameItem
               );
+
+              logError(`firstLocalVideoFrame local ${data.width}, ${data.height}`)
             }
             break;
 
@@ -641,6 +643,7 @@ class AgoraRtcEngine extends EventEmitter {
                 data.width,
                 data.height
               );
+              
               this._rendererManager?.addVideoFrameCacheToMap(
                 data.uid,
                 data.channelId,
@@ -1604,6 +1607,18 @@ class AgoraRtcEngine extends EventEmitter {
                 data.width,
                 data.height,
                 data.elapsed
+              );
+              logError(`videoSourceFirstLocalVideoFrame ${data.width} ${data.height}`)
+              let videoFrameItem = self.resizeBuffer(
+                0,
+                "",
+                data.width,
+                data.height
+              );
+              this._rendererManager?.addVideoFrameCacheToMap(
+                "videoSource",
+                "",
+                videoFrameItem
               );
             }
             break;
@@ -2607,6 +2622,7 @@ class AgoraRtcEngine extends EventEmitter {
    * This applies to ALL views except the ones added to the high frame rate
    * stream.
    * @param {number} fps The renderer frame rate (fps).
+   * 
    */
   setVideoRenderFPS(fps: number) {
     if (this._rendererManager) {
@@ -5163,6 +5179,7 @@ class AgoraRtcEngine extends EventEmitter {
    * - < 0: Failure.
    */
   getRecordingDeviceInfo(): Array<Device> {
+    deprecate('getRecordingDeviceInfo', 'getAudioRecordingDevices')
     return this.getAudioRecordingDevices();
   }
 
@@ -5451,27 +5468,35 @@ class AgoraRtcEngine extends EventEmitter {
   }
 
   /**
+   * @private
+   * @ignore
+   */
+  getScreenWindowsInfo(): Array<WindowInfo> {
+    deprecate('getScreenWindowsInfo', 'getWindowsInfo');
+    return this.getWindowsInfo()
+  }
+
+  /**
    * Gets the window ID when using the video source.
    *
    * This method gets the ID of the whole window and relevant inforamtion.
    * You can share the whole or part of a window by specifying the window ID.
    * @return {Array} The array list of the window ID and relevant information.
    */
-  getScreenWindowsInfo(): Array<WindowInfo> {
+  getWindowsInfo(): Array<WindowInfo> {
     return this._rtcEngine.GetScreenWindowsInfo();
   }
 
   /**
-   * Gets the display ID when using the video source.
-   *
-   * This method gets the ID of the whole display and relevant inforamtion.
-   * You can share the whole or part of a display by specifying the window ID.
-   * @return {Array} The array list of the display ID and relevant information.
-   * The display ID returned is different on Windows and macOS systems.
-   * You don't need to pay attention to the specific content of the returned
-   * object, just use it for screen sharing.
+   * @private
+   * @ignore
    */
   getScreenDisplaysInfo(): Array<Object> {
+    deprecate('getScreenDisplaysInfo', 'getScreensInfo');
+    return this.getScreensInfo();
+  }
+
+  getScreensInfo(): Array<Object> {
     return this._rtcEngine.GetScreenDisplaysInfo();
   }
 
@@ -5528,7 +5553,7 @@ class AgoraRtcEngine extends EventEmitter {
     regionRect: Rectangle,
     captureParams: ScreenCaptureParameters
   ): number {
-    if (process.platform === "win32") {
+    if (process.platform === "darwin") {
       let param = {
         displayId: screenSymbol,
         regionRect,
@@ -5541,7 +5566,7 @@ class AgoraRtcEngine extends EventEmitter {
         JSON.stringify(param)
       );
       return ret.retCode;
-    } else process.platform === "darwin";
+    } else process.platform === "win32";
     {
       let param = {
         screenRect: screenSymbol,
@@ -7870,7 +7895,7 @@ class AgoraRtcEngine extends EventEmitter {
     regionRect: Rectangle,
     captureParams: ScreenCaptureParameters
   ): number {
-    if (process.platform === "win32") {
+    if (process.platform === "darwin") {
       let param = {
         displayId: screenSymbol,
         regionRect,
@@ -7883,7 +7908,7 @@ class AgoraRtcEngine extends EventEmitter {
         JSON.stringify(param)
       );
       return ret.retCode;
-    } else process.platform === "darwin";
+    } else process.platform === "win32";
     {
       let param = {
         screenRect: screenSymbol,
@@ -11732,28 +11757,6 @@ declare interface AgoraRtcEngine {
       oldState: STREAM_SUBSCRIBE_STATE,
       newState: STREAM_SUBSCRIBE_STATE,
       elapseSinceLastState: number
-    ) => void
-  ): this;
-
-  on(
-    evt: "videoSourceOnFirstLocalVideoFrame",
-    cb: (
-      uid: number,
-      channelId: string,
-      width: number,
-      height: number,
-      elapsed: number
-    ) => void
-  ): this;
-
-  on(
-    evt: "videoSourceOnFirstRemoteVideoFrame",
-    cb: (
-      uid: number,
-      channelId: string,
-      width: number,
-      height: number,
-      elapsed: number
     ) => void
   ): this;
 }

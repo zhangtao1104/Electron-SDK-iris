@@ -5,7 +5,7 @@ import {
   RENDER_MODE,
   CONTENT_MODE,
   VideoFrameCacheConfig,
-  RendererConfig,
+  RendererConfig
 } from "./type";
 import { IRenderer } from "./IRender";
 import { YUVCanvasRenderer } from "./YUVCanvasRenderer";
@@ -126,6 +126,8 @@ class RendererManager {
       height: 0,
     };
 
+    ((rendererConfig.user === "local") || (rendererConfig.user === "videoSource")) ? Object.assign(config, {channelId: ''}) : {}
+ 
     this.enableVideoFrameCache(config);
     this.addRenderer(
       rendererConfig.user,
@@ -219,40 +221,45 @@ class RendererManager {
             return;
           }
 
-          let retObj = this._rtcEngine.GetVideoStreamData(PROCESS_TYPE.MAIN, cachedVideoFrame);
+          let retObj;
+          if (user !== "videoSource") {
+            retObj = this._rtcEngine.GetVideoStreamData(PROCESS_TYPE.MAIN, cachedVideoFrame);
+            logWarn( `startRenderer: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} videoSource111`);
+          } else {
+            retObj = this._rtcEngine.GetVideoStreamData(PROCESS_TYPE.SCREEN_SHARE, cachedVideoFrame);
+            logWarn( `startRenderer: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} 111`);
+          }
 
-          if (!retObj.ret) {
+          if (!retObj || !retObj.ret) {
             logWarn(
               `Channel: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} have no stream`
             );
             return;
           }
 
-          if (cachedVideoFrame.uid != null) {
-            let user = this.uidToUser(cachedVideoFrame.uid);
-            let render = this.getRenderer(user, cachedVideoFrame.channelId);
-            let videoFrame: VideoFrame = {
-              left: retObj.left,
-              right: retObj.right,
-              top: retObj.top,
-              bottom: retObj.bottom,
-              width: retObj.width,
-              height: retObj.height,
-              yBuffer: cachedVideoFrame.yBuffer as Buffer,
-              uBuffer: cachedVideoFrame.uBuffer as Buffer,
-              vBuffer: cachedVideoFrame.vBuffer as Buffer,
-              mirror: false,
-              rotation: retObj.rotation,
-            };
+          let render = this.getRenderer(user, cachedVideoFrame.channelId);
+          let videoFrame: VideoFrame = {
+            left: retObj.left,
+            right: retObj.right,
+            top: retObj.top,
+            bottom: retObj.bottom,
+            width: retObj.width,
+            height: retObj.height,
+            yBuffer: cachedVideoFrame.yBuffer as Buffer,
+            uBuffer: cachedVideoFrame.uBuffer as Buffer,
+            vBuffer: cachedVideoFrame.vBuffer as Buffer,
+            mirror: false,
+            rotation: retObj.rotation,
+          };
 
-            if (render) {
-              render.forEach((renderItem) => {
-                renderItem.drawFrame(videoFrame);
-              });
-            } else {
-              logWarn(`Channel: ${channelId} User: ${user} have no renderer`);
-            }
+          if (render) {
+            render.forEach((renderItem) => {
+              renderItem.drawFrame(videoFrame);
+            });
+          } else {
+            logWarn(`Channel: ${channelId} User: ${user} have no renderer`);
           }
+          logWarn(`startRenderer: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} 222`);
         });
       });
     }, 1000 / this._config.videoFps);
@@ -311,16 +318,28 @@ class RendererManager {
     videoFrameCacheConfig.uid = videoFrameCacheConfig.user
       ? this.userToUid(videoFrameCacheConfig.user)
       : 0;
-    logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-    return this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+
+    if (videoFrameCacheConfig.user === "videoSource") {
+      logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+      return this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
+    } else {
+      logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+      return this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+    }
   }
 
   disableVideoFrameCache(videoFrameCacheConfig: VideoFrameCacheConfig): number {
     videoFrameCacheConfig.uid = videoFrameCacheConfig.user
       ? this.userToUid(videoFrameCacheConfig.user)
       : 0;
-    logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-    return this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+
+      if (videoFrameCacheConfig.user === "videoSource") {
+        logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+        return this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
+      } else {
+        logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+        return this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+      }
   }
 
   ensureRendererMap(

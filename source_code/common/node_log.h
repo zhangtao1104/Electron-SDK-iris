@@ -3,12 +3,11 @@
 /**
  * Log level definition
  */
-enum log_level
-{
-	LOG_LEVEL_ERROR,
-	LOG_LEVEL_WARNING,
-	LOG_LEVEL_INFO,
-	LOG_LEVEL_VERBOSE
+enum log_level {
+  LOG_LEVEL_ERROR,
+  LOG_LEVEL_WARNING,
+  LOG_LEVEL_INFO,
+  LOG_LEVEL_VERBOSE
 };
 
 bool startLogService(const char *path);
@@ -30,7 +29,8 @@ void node_log(enum log_level level, const char *format, ...);
 /**
  * write log with warning log level
  */
-#define LOG_WARNING(format, ...) node_log(LOG_LEVEL_WARNING, format, ##__VA_ARGS__)
+#define LOG_WARNING(format, ...)                                               \
+  node_log(LOG_LEVEL_WARNING, format, ##__VA_ARGS__)
 
 /**
  * write log with info log level
@@ -40,7 +40,8 @@ void node_log(enum log_level level, const char *format, ...);
 /**
  * write log with verbose log level
  */
-#define LOG_VERBOSE(format, ...) node_log(LOG_LEVEL_VERBOSE, format, ##__VA_ARGS__)
+#define LOG_VERBOSE(format, ...)                                               \
+  node_log(LOG_LEVEL_VERBOSE, format, ##__VA_ARGS__)
 
 /**
  * write function enter log.
