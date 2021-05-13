@@ -63,12 +63,6 @@ bool VideoProcesser::VideoSourceGetVideoFrame(
 
 void VideoProcesser::OnVideoFrameReceived(const char *data, int len) {
   std::lock_guard<std::mutex> lock(_video_frame_mutex);
-  VideoFrameHeader *_header = (VideoFrameHeader *)data;
-  FILE *file = fopen("./aftertest.yuv", "ab+");
-  fwrite(data + sizeof(VideoFrameHeader), 1,
-         _header->_width * _header->_height * 3 / 2, file);
-  fclose(file);
-
   _cached_video_source_video_frame->UpdateBuffer(data);
 }
 } // namespace electron
