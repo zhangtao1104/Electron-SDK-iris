@@ -147,6 +147,8 @@
                                 './sdk/dll/libagora_ai_denoise_extension.dll',
                                 './sdk/dll/libagora_dav1d_extension.dll',
                                 './sdk/dll/libagora-core.dll',
+                                './sdk/dll/libagora-wgc.dll',
+                                './sdk/dll/libagora-jnd_extension.dll',
                             ]
                         }],
                         'link_settings': {
