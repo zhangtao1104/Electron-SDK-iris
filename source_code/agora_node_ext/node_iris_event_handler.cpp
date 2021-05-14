@@ -2,14 +2,21 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:49
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-11 17:00:28
+ * @Last Modified time: 2021-05-13 22:37:47
  */
 #include "node_iris_event_handler.h"
+#include "node_iris_rtc_engine.h"
 
 namespace agora {
 namespace rtc {
 namespace electron {
-NodeIrisEventHandler::~NodeIrisEventHandler() { _callbacks.clear(); }
+NodeIrisEventHandler::NodeIrisEventHandler(NodeIrisRtcEngine *engine)
+    : _node_iris_engine(engine) {}
+
+NodeIrisEventHandler::~NodeIrisEventHandler() {
+  _callbacks.clear();
+  _node_iris_engine = nullptr;
+}
 
 void NodeIrisEventHandler::addEvent(const std::string &eventName,
                                     Nan_Persistent<v8_Object> &obj,
@@ -121,7 +128,7 @@ void NodeIrisEventHandler::OnVideoSourceEvent(const char *eventName,
 }
 
 void NodeIrisEventHandler::OnVideoSourceExit() {
-  LOG_F(INFO, "OnVideoSourceExit");
+  _node_iris_engine->VideoSourceRelease();
 }
 } // namespace electron
 } // namespace rtc

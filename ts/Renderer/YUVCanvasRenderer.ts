@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:48
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 20:27:46
+ * @Last Modified time: 2021-05-14 14:56:19
  */
 
 const YUVBuffer = require("yuv-buffer");
@@ -192,6 +192,7 @@ export class YUVCanvasRenderer implements IRenderer {
       this._videoFrame.width != frame.width ||
       this._videoFrame.height != frame.height
     ) {
+      logWarn(`YUVCanvasRenderer new Uint8Array before width ${this._videoFrame.width}, height ${this._videoFrame.height}, current: width ${frameWidth} height ${frameHeight}`);
       this._videoFrame.yBuffer = new Uint8Array(frameWidth * frameHeight);
       this._videoFrame.uBuffer = new Uint8Array((frameWidth * frameHeight) / 4);
       this._videoFrame.vBuffer = new Uint8Array((frameWidth * frameHeight) / 4);

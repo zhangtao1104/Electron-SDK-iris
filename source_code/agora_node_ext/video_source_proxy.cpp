@@ -213,6 +213,7 @@ int VideoSourceProxy::Release() {
 }
 
 void VideoSourceProxy::Clear() {
+  LOG_F(INFO, "VideoSourceProxy::Clear() ");
   _initialized = false;
   _video_source_event_handler = nullptr;
 

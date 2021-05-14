@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:44
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-11 13:16:40
+ * @Last Modified time: 2021-05-13 22:41:35
  */
 #pragma once
 #include "iris_rtc_engine.h"
@@ -11,7 +11,6 @@
 #include "loguru.hpp"
 #include "nan_api.h"
 #include "node_base.h"
-#include "node_iris_event_handler.h"
 #include "node_iris_rtc_channel.h"
 #include "node_iris_rtc_device_manager.h"
 #include "node_log.h"
@@ -23,6 +22,8 @@
 namespace agora {
 namespace rtc {
 namespace electron {
+class NodeIrisEventHandler;
+
 class NodeIrisRtcEngine : public node::ObjectWrap {
 public:
   explicit NodeIrisRtcEngine(v8_Isolate *isolate);
@@ -30,11 +31,9 @@ public:
 
   static void Init(v8_Local<v8_Object> &module);
   static void CreateInstance(const v8_FunctionCallbackInfo<v8_Value> &args);
-
   static void CallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args);
-
   static void CreateChannel(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void GetDeviceManager(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void
@@ -42,20 +41,19 @@ public:
   static void
   GetScreenDisplaysInfo(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void PluginCallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
-
   static void
   EnableVideoFrameCache(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void
   DisableVideoFrameCache(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void
   GetVideoStreamData(const Nan_FunctionCallbackInfo<v8_Value> &args);
-
   static void
   VideoSourceInitialize(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void
   VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args);
   void OnApiError(const char *errorMessage);
+  int VideoSourceRelease();
 
 private:
   static Nan_Persistent<v8_Function> _constructor;

@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
   _videoSource->Initialize(_parameter);
   _videoSource->Run();
   _videoSource->Release();
+  LOG_F(INFO, "VideoSource::Exit");
   return 0;
 }
 
@@ -87,10 +88,7 @@ void VideoSource::Run() {
     LOG_F(INFO, "VideoSource process open fail");
     return;
   }
-  _process->Monitor([this](INodeProcess *) {
-    LOG_F(INFO, "VideoSource process Exit");
-    this->Exit(false);
-  });
+  _process->Monitor([this](INodeProcess *) { this->Exit(false); });
 
   _ipc_controller->run();
 }

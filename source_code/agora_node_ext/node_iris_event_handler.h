@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:53
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-11 19:05:15
+ * @Last Modified time: 2021-05-13 22:30:48
  */
 #pragma once
 #include "iris_event_handler.h"
@@ -15,6 +15,7 @@
 namespace agora {
 namespace rtc {
 namespace electron {
+class NodeIrisRtcEngine;
 class NodeIrisEventHandler : public iris::IrisEventHandler,
                              public IVideoSourceEventHandler {
 public:
@@ -24,6 +25,7 @@ public:
   } EventCallback;
 
 public:
+  NodeIrisEventHandler(NodeIrisRtcEngine *engine);
   virtual ~NodeIrisEventHandler();
 
   virtual void OnEvent(const char *event, const char *data) override;
@@ -44,6 +46,7 @@ public:
 
 private:
   std::unordered_map<std::string, EventCallback *> _callbacks;
+  NodeIrisRtcEngine *_node_iris_engine;
 };
 } // namespace electron
 } // namespace rtc

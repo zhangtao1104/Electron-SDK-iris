@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:18
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-13 14:24:47
+ * @Last Modified time: 2021-05-13 22:39:43
  */
 #include "node_iris_rtc_channel.h"
 
@@ -20,7 +20,7 @@ NodeIrisRtcChannel::NodeIrisRtcChannel(v8_Isolate *isolate,
   _channel_id = channelId;
   _isolate = isolate;
   _iris_channel.reset(irisChannel);
-  _iris_channel_event_handler.reset(new NodeIrisEventHandler());
+  _iris_channel_event_handler.reset(new NodeIrisEventHandler(nullptr));
   _iris_channel->RegisterEventHandler(channelId,
                                       _iris_channel_event_handler.get());
   LOG_F(INFO, "NodeIrisRtcChannel::NodeIrisRtcChannel  channelId: %s",

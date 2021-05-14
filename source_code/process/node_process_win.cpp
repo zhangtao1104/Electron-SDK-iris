@@ -4,10 +4,6 @@
  * Proprietary and Confidential -- Agora.io
  */
 
-/*
- *  Created by Wang Yongli, 2018
- */
-
 #include "node_log.h"
 #include "node_process.h"
 #include <Windows.h>

@@ -2,9 +2,10 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:37
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-12 22:01:45
+ * @Last Modified time: 2021-05-13 23:13:52
  */
 #include "node_iris_rtc_engine.h"
+#include "node_iris_event_handler.h"
 
 namespace agora {
 namespace rtc {
@@ -14,7 +15,7 @@ using namespace iris::rtc;
 Nan_Persistent<v8_Function> NodeIrisRtcEngine::_constructor;
 
 NodeIrisRtcEngine::NodeIrisRtcEngine(v8_Isolate *isolate) : _isolate(isolate) {
-  _iris_event_handler.reset(new NodeIrisEventHandler());
+  _iris_event_handler.reset(new NodeIrisEventHandler(this));
   _iris_engine.reset(new IrisRtcEngine());
   _iris_raw_data.reset(_iris_engine->raw_data());
   _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->plugin_manager());
@@ -24,6 +25,7 @@ NodeIrisRtcEngine::NodeIrisRtcEngine(v8_Isolate *isolate) : _isolate(isolate) {
 }
 
 NodeIrisRtcEngine::~NodeIrisRtcEngine() {
+  LOG_F(INFO, "NodeIrisRtcEngine::~NodeIrisRtcEngine");
   _video_processer.reset();
   _iris_event_handler.reset();
   _iris_raw_data_plugin_manager.reset();
@@ -81,6 +83,7 @@ void NodeIrisRtcEngine::CreateInstance(
     _iris_engine->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
   } else {
+    LOG_F(INFO, "CreateInstance from js");
     auto cons = v8_Local<v8_Function>::New(_isolate, _constructor);
     auto _context = _isolate->GetCurrentContext();
     auto _instance = cons->NewInstance(_context).ToLocalChecked();
@@ -330,12 +333,17 @@ void NodeIrisRtcEngine::VideoSourceRelease(
     const Nan_FunctionCallbackInfo<v8_Value> &args) {
   auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
   auto _isolate = args.GetIsolate();
-  auto _result = _engine->_video_source_proxy->Release();
+  auto _result = _engine->VideoSourceRelease();
   auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
       v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
           args.GetReturnValue()
               .Set(_retObj);
+}
+
+int NodeIrisRtcEngine::VideoSourceRelease() {
+  LOG_F(INFO, "VideoSourceRelease");
+  return _video_source_proxy->Release();
 }
 
 void NodeIrisRtcEngine::SetAddonLogFile(

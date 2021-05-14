@@ -5,7 +5,7 @@
     'targets': [
         {
             'target_name': 'VideoSource',
-            'cflags_cc!': [ '-fno-rtti' ],
+            'cflags_cc!': ['-fno-rtti'],
             'type': 'executable',
             'defines': [
                 'UNICODE'
@@ -36,8 +36,27 @@
                     'OS=="win"',
                     {
                         'library_dirs': [
-
-                        ]
+                            './sdk/lib',
+                        ],
+                        'link_settings': {
+                            'libraries': [
+                                '-lagora_rtc_sdk.lib',
+                                '-lws2_32.lib'
+                            ]
+                        },
+                        'link_settings!': [
+                            '-liojs.lib',
+                        ],
+                        'sources': [
+                            './source_code/process/node_process_win.cpp',
+                        ],
+                        'include_dirs': [
+                            './sdk/include'
+                        ],
+                        'defines!': [
+                            '_USING_V110_SDK71_',
+                            '_HAS_EXCEPTIONS=0'
+                        ],
                     }
                 ], [
                     'OS=="mac"',
@@ -87,7 +106,7 @@
         },
         {
             'target_name': 'agora_node_ext',
-            'cflags_cc!': [ '-fno-rtti' ],
+            'cflags_cc!': ['-fno-rtti'],
             'include_dirs': [
                 './source_code/iris/rtc/cxx/include',
                 './source_code/iris/rtc/cxx/include/internal',
@@ -100,6 +119,7 @@
                 './source_code/ipc/',
                 './source_code/process/',
                 './source_code/raw_data/video_transporter/',
+                './source_code/windowInfo/',
                 "<!(node -e \"require('nan')\")"
             ],
             'sources': [
@@ -114,6 +134,21 @@
                 [
                     'OS=="win"',
                     {
+                        'copies': [{
+                            'destination': '<(PRODUCT_DIR)',
+                            'files': [
+                                './sdk/dll/agora_rtc_sdk.dll',
+                                './sdk/dll/libagora-fdkaac.dll',
+                                './sdk/dll/libagora-ffmpeg.dll',
+                                './sdk/dll/libagora-mpg123.dll',
+                                './sdk/dll/libagora-soundtouch.dll',
+                                './sdk/dll/libhwcodec.dll',
+                                './sdk/dll/av1.dll',
+                                './sdk/dll/libagora_ai_denoise_extension.dll',
+                                './sdk/dll/libagora_dav1d_extension.dll',
+                                './sdk/dll/libagora-core.dll',
+                            ]
+                        }],
                         'link_settings': {
                             'libraries': [
                                 '-lws2_32.lib',
@@ -121,9 +156,20 @@
                                 '-lgdiplus.lib'
                             ]
                         },
+                        'library_dirs': [
+                            './sdk/lib',
+                        ],
                         'defines!': [
                             '_USING_V110_SDK71_',
                             '_HAS_EXCEPTIONS=0'
+                        ],
+                        'sources': [
+                            './source_code/process/node_process_win.cpp',
+                            './source_code/windowInfo/node_screen_window_info_win.cpp',
+                            './source_code/windowInfo/node_screen_window_info.h'
+                        ],
+                        'include_dirs': [
+                            './sdk/include'
                         ],
 
                     }
@@ -160,8 +206,8 @@
                             ]
                         },
                         'sources': [
-                            './source_code/agora_node_ext/node_screen_window_info_mac.cpp',
-                            './source_code/agora_node_ext/node_screen_window_info.h',
+                            './source_code/windowInfo/node_screen_window_info_mac.cpp',
+                            './source_code/windowInfo/node_screen_window_info.h',
                             './source_code/process/node_process_unix.cpp',
                             './source_code/iris/third_party/libyuv/source/compare_gcc.cc',
                             './source_code/iris/third_party/libyuv/source/rotate_gcc.cc',

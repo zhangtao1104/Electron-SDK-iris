@@ -224,10 +224,8 @@ class RendererManager {
           let retObj;
           if (user !== "videoSource") {
             retObj = this._rtcEngine.GetVideoStreamData(PROCESS_TYPE.MAIN, cachedVideoFrame);
-            logWarn( `startRenderer: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} videoSource111`);
           } else {
             retObj = this._rtcEngine.GetVideoStreamData(PROCESS_TYPE.SCREEN_SHARE, cachedVideoFrame);
-            logWarn( `startRenderer: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} 111`);
           }
 
           if (!retObj || !retObj.ret) {
@@ -245,21 +243,21 @@ class RendererManager {
             bottom: retObj.bottom,
             width: retObj.width,
             height: retObj.height,
-            yBuffer: cachedVideoFrame.yBuffer as Buffer,
-            uBuffer: cachedVideoFrame.uBuffer as Buffer,
-            vBuffer: cachedVideoFrame.vBuffer as Buffer,
+            yBuffer: cachedVideoFrame.yBuffer,
+            uBuffer: cachedVideoFrame.uBuffer,
+            vBuffer: cachedVideoFrame.vBuffer,
             mirror: false,
             rotation: retObj.rotation,
           };
 
           if (render) {
             render.forEach((renderItem) => {
+              logWarn(`drawFrame User: ${user}  width ${videoFrame.width}, height ${videoFrame.height}`);
               renderItem.drawFrame(videoFrame);
             });
           } else {
             logWarn(`Channel: ${channelId} User: ${user} have no renderer`);
           }
-          logWarn(`startRenderer: ${channelId} User: ${user} uid: ${cachedVideoFrame.uid} 222`);
         });
       });
     }, 1000 / this._config.videoFps);
