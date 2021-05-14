@@ -50,14 +50,13 @@ void NodeIrisEventHandler::OnEvent(const char *event, const char *data) {
 
 void NodeIrisEventHandler::OnEvent(const char *event, const char *data,
                                    const void *buffer, unsigned length) {
-  // LOG_F(INFO, "NodeIrisEventHandler::OnEvent(const char *event, const char
-  // *data, const void *buffer, unsigned length) , %s", event);
   std::string _eventName(event);
   std::string _eventData(data);
-  char stringData[length + 1];
-  stringData[length] = '\0';
-  memcpy(stringData, buffer, length);
-  std::string _eventBuffer(stringData);
+  std::vector<char> stringData;
+  stringData.resize(length + 1, '\0');
+
+  memcpy(stringData.data(), buffer, length);
+  std::string _eventBuffer(stringData.data());
   node_async_call::async_call([this, _eventName, _eventData, _eventBuffer] {
     auto it = _callbacks.find("call_back_with_buffer");
     if (it != _callbacks.end()) {
@@ -99,15 +98,15 @@ void NodeIrisEventHandler::OnVideoSourceEvent(const char *eventName,
   });
 }
 
-void NodeIrisEventHandler::OnVideoSourceEvent(const char *eventName,
-                                              const char *eventData,
+void NodeIrisEventHandler::OnVideoSourceEvent(const char *event,
+                                              const char *data,
                                               const char *buffer, int length) {
-  std::string _eventName(eventName);
-  std::string _eventData(eventData);
-  char stringData[length + 1];
-  stringData[length] = '\0';
-  memcpy(stringData, buffer, length);
-  std::string _eventBuffer(stringData);
+  std::string _eventName(event);
+  std::string _eventData(data);
+  std::vector<char> stringData;
+  stringData.resize(length + 1, '\0');
+  memcpy(stringData.data(), buffer, length);
+  std::string _eventBuffer(stringData.data());
   node_async_call::async_call([this, _eventName, _eventData, _eventBuffer] {
     auto it = _callbacks.find("video_source_call_back_with_buffer");
     if (it != _callbacks.end()) {
