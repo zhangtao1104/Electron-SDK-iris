@@ -57,6 +57,36 @@
                             '_USING_V110_SDK71_',
                             '_HAS_EXCEPTIONS=0'
                         ],
+                        'configurations': {
+                            'Release': {
+                                'msvs_settings': {
+                                    'VCCLCompilerTool': {
+                                        'ExceptionHandling': '0',
+                                        'AdditionalOptions': [
+                                            '/EHsc'
+                                        ]
+                                    },
+                                    'VCManifestTool': {
+                                        'EmbedManifest': 'true',
+                                        'AdditionalManifestFiles': '../Resources/dpi_aware.manifest'
+                                    }
+                                }
+                            },
+                            'Debug': {
+                                'msvs_settings': {
+                                    'VCCLCompilerTool': {
+                                        'ExceptionHandling': '0',
+                                        'AdditionalOptions': [
+                                            '/EHsc'
+                                        ]
+                                    },
+                                    'VCManifestTool': {
+                                        'EmbedManifest': 'true',
+                                        'AdditionalManifestFiles': '../Resources/dpi_aware.manifest'
+                                    }
+                                }
+                            }
+                        }
                     }
                 ], [
                     'OS=="mac"',
@@ -171,8 +201,31 @@
                             './source_code/windowInfo/node_screen_window_info.h'
                         ],
                         'include_dirs': [
-                            './sdk/include'
+                            './sdk/include',
+                            './extra/internal'
                         ],
+                        'configurations': {
+                            'Release': {
+                                'msvs_settings': {
+                                    'VCCLCompilerTool': {
+                                        'ExceptionHandling': '0',
+                                        'AdditionalOptions': [
+                                            '/EHsc'
+                                        ]
+                                    }
+                                }
+                            },
+                            'Debug': {
+                                'msvs_settings': {
+                                    'VCCLCompilerTool': {
+                                        'ExceptionHandling': '0',
+                                        'AdditionalOptions': [
+                                            '/EHsc'
+                                        ]
+                                    }
+                                }
+                            }
+                        }
 
                     }
                 ],
