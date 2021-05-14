@@ -7,6 +7,7 @@
 #include "node_base.h"
 #include "video_source_ipc.h"
 #include <memory>
+#include <mutex>
 #include <thread>
 
 namespace agora {
