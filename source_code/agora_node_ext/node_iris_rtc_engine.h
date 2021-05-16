@@ -52,6 +52,7 @@ public:
   static void
   VideoSourceRelease(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void SetAddonLogFile(const Nan_FunctionCallbackInfo<v8_Value> &args);
+  static void Release(const Nan_FunctionCallbackInfo<v8_Value> &args);
   void OnApiError(const char *errorMessage);
   int VideoSourceRelease();
 
@@ -61,10 +62,9 @@ private:
   std::unique_ptr<VideoSourceProxy> _video_source_proxy;
   std::shared_ptr<VideoProcesser> _video_processer;
   std::shared_ptr<iris::rtc::IrisRtcEngine> _iris_engine;
-  std::shared_ptr<iris::rtc::IrisRtcRawDataPluginManager>
-      _iris_raw_data_plugin_manager;
-  std::shared_ptr<iris::rtc::IrisRtcRawData> _iris_raw_data;
   std::shared_ptr<NodeIrisEventHandler> _iris_event_handler;
+  iris::rtc::IrisRtcRawDataPluginManager *_iris_raw_data_plugin_manager;
+  iris::rtc::IrisRtcRawData *_iris_raw_data;
 };
 } // namespace electron
 } // namespace rtc

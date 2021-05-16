@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:49
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-13 22:37:47
+ * @Last Modified time: 2021-05-16 21:36:25
  */
 #include "node_iris_event_handler.h"
 #include "node_iris_rtc_engine.h"
@@ -11,9 +11,12 @@ namespace agora {
 namespace rtc {
 namespace electron {
 NodeIrisEventHandler::NodeIrisEventHandler(NodeIrisRtcEngine *engine)
-    : _node_iris_engine(engine) {}
+    : _node_iris_engine(engine) {
+  node_async_call::close(false);
+}
 
 NodeIrisEventHandler::~NodeIrisEventHandler() {
+  node_async_call::close(true);
   _callbacks.clear();
   _node_iris_engine = nullptr;
 }

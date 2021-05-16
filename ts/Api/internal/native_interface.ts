@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:38:45
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-11 14:08:40
+ * @Last Modified time: 2021-05-16 16:59:34
  */
 
 import {
@@ -38,8 +38,8 @@ export interface NodeIrisRtcEngine {
   ): Result;
   PluginCallApi(processType: PROCESS_TYPE, apiType: ApiTypeRawDataPlugin, params: string): Result;
   CreateChannel(processType: PROCESS_TYPE, channelId: string): NodeIrisRtcChannel;
-  EnableVideoFrameCache(processType: PROCESS_TYPE, config: VideoFrameCacheConfig): number;
-  DisableVideoFrameCache(processType: PROCESS_TYPE, config: VideoFrameCacheConfig): number;
+  EnableVideoFrameCache(processType: PROCESS_TYPE, config: VideoFrameCacheConfig): Result;
+  DisableVideoFrameCache(processType: PROCESS_TYPE, config: VideoFrameCacheConfig): Result;
   GetVideoStreamData(
     processType: PROCESS_TYPE, 
     streamInfo: VideoFrame
@@ -57,6 +57,7 @@ export interface NodeIrisRtcEngine {
   };
   VideoSourceInitialize(params: string): Result;
   VideoSourceRelease(): Result;
+  Release(): Result;
 }
 
 /**
@@ -72,6 +73,7 @@ export interface NodeIrisRtcChannel {
     length: number
   ): Result;
   OnEvent(callbackName: string, callback: Function): void;
+  Release(): void;
 }
 
 /**
@@ -86,4 +88,5 @@ export interface NodeIrisRtcDeviceManager {
     apiType: ApiTypeVideoDeviceManager,
     params: string
   ): Result;
+  Release(): void;
 }

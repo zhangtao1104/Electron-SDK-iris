@@ -40,9 +40,8 @@ private:
   std::shared_ptr<IAgoraIpc> _ipc_controller;
   std::shared_ptr<AgoraIpcDataSender> _ipc_sender;
   std::shared_ptr<iris::rtc::IrisRtcEngine> _iris_engine;
-  std::shared_ptr<iris::rtc::IrisRtcRawData> _iris_raw_data;
-  std::shared_ptr<iris::rtc::IrisRtcRawDataPluginManager>
-      _iris_raw_data_plugin_manager;
+  iris::rtc::IrisRtcRawData *_iris_raw_data;
+  iris::rtc::IrisRtcRawDataPluginManager *_iris_raw_data_plugin_manager;
   std::atomic_bool _initialize{false};
 };
 } // namespace electron

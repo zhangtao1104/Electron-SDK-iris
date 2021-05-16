@@ -219,11 +219,11 @@ public:
   void stop();
 
 private:
+  std::unique_ptr<std::thread> m_thread;
   std::function<void(const char *, int)> m_handler;
   std::string m_id;
   bool m_initialized;
   shm_ipc<1, DATA_DELIVER_BLOCK_SIZE> m_ipcData;
-  std::unique_ptr<std::thread> m_thread;
 };
 
 /**

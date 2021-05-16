@@ -53,8 +53,8 @@ bool VideoSource::Initialize(std::string &parameter) {
   }
 
   _iris_engine.reset(new IrisRtcEngine());
-  _iris_raw_data.reset(_iris_engine->raw_data());
-  _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->plugin_manager());
+  _iris_raw_data = _iris_engine->raw_data();
+  _iris_raw_data_plugin_manager = _iris_raw_data->plugin_manager();
   _iris_event_handler.reset(new VideoSourceIrisEventhandler(_ipc_controller));
   _iris_engine->SetEventHandler(_iris_event_handler.get());
   _video_processer.reset(new VideoProcesser(_iris_engine));

@@ -24,7 +24,8 @@ public:
   CallApiAudioDevice(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void
   CallApiVideoDevice(const Nan_FunctionCallbackInfo<v8_Value> &args);
-  static void Release(void *selfPtr);
+  static void Release(const Nan_FunctionCallbackInfo<v8_Value> &args);
+  static void ReleaseNodeSource(void *selfPtr);
 
 private:
   static Nan_Persistent<v8_Function> _constructor;

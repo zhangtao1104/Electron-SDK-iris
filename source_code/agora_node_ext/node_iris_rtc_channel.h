@@ -27,14 +27,15 @@ public:
   static void CallApi(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void CallApiWithBuffer(const Nan_FunctionCallbackInfo<v8_Value> &args);
   static void OnEvent(const Nan_FunctionCallbackInfo<v8_Value> &args);
-  static void Release(void *data);
+  static void Release(const Nan_FunctionCallbackInfo<v8_Value> &args);
+  static void ReleaseNodeSource(void *data);
   void OnApiError(const char *errorMessage);
 
 private:
+  std::unique_ptr<NodeIrisEventHandler> _iris_channel_event_handler;
   v8_Isolate *_isolate;
   static Nan_Persistent<v8_Function> _constructor;
-  std::unique_ptr<iris::rtc::IrisRtcChannel> _iris_channel;
-  std::unique_ptr<NodeIrisEventHandler> _iris_channel_event_handler;
+  iris::rtc::IrisRtcChannel *_iris_channel;
   std::string _channel_id;
 };
 } // namespace electron

@@ -22,9 +22,9 @@ public:
       bool resize) override;
 
 private:
+  std::shared_ptr<AgoraIpcDataSender> _ipc_data_sender;
   frame_buffer _buffer;
   unsigned int _MAX_BUFFER_LENG;
-  std::shared_ptr<AgoraIpcDataSender> _ipc_data_sender;
   int _current_frame;
   int _frame_rate;
 };

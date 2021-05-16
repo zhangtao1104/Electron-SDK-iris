@@ -16,7 +16,7 @@ Nan_Persistent<v8_Function> NodeIrisRtcDeviceManager::_constructor;
 NodeIrisRtcDeviceManager::NodeIrisRtcDeviceManager(
     v8_Isolate *isolate, IrisRtcDeviceManager *deviceManager)
     : _isolate(isolate), _deviceManager(deviceManager) {
-  node::AddEnvironmentCleanupHook(isolate, Release, this);
+  node::AddEnvironmentCleanupHook(isolate, ReleaseNodeSource, this);
 }
 
 NodeIrisRtcDeviceManager::~NodeIrisRtcDeviceManager() {
@@ -35,6 +35,7 @@ NodeIrisRtcDeviceManager::Init(v8_Isolate *isolate,
 
   Nan::SetPrototypeMethod(_template, "CallApiAudioDevice", CallApiAudioDevice);
   Nan::SetPrototypeMethod(_template, "CallApiVideoDevice", CallApiVideoDevice);
+  Nan::SetPrototypeMethod(_template, "Release", Release);
   _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
 
   auto cons = _template->GetFunction(_context).ToLocalChecked();
@@ -62,14 +63,19 @@ void NodeIrisRtcDeviceManager::CallApiAudioDevice(
   auto _deviceManager =
       ObjectWrap::Unwrap<NodeIrisRtcDeviceManager>(args.Holder());
   auto _isolate = args.GetIsolate();
-
   auto _apiType = nan_api_get_value_int32_(args[0]);
   auto _parameter = nan_api_get_value_utf8string_(args[1]);
-
   char _result[512];
   memset(_result, '\0', 512);
-  auto _ret = _deviceManager->_deviceManager->CallApi(
-      (ApiTypeAudioDeviceManager)_apiType, _parameter.c_str(), _result);
+
+  int _ret = ERROR_PARAMETER_1;
+
+  if (_deviceManager->_deviceManager) {
+    _ret = _deviceManager->_deviceManager->CallApi(
+        (ApiTypeAudioDeviceManager)_apiType, _parameter.c_str(), _result);
+  } else {
+    _ret = ERROR_NOT_INIT;
+  }
 
   auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
@@ -83,14 +89,18 @@ void NodeIrisRtcDeviceManager::CallApiVideoDevice(
   auto _deviceManager =
       ObjectWrap::Unwrap<NodeIrisRtcDeviceManager>(args.Holder());
   auto _isolate = args.GetIsolate();
-
   auto _apiType = nan_api_get_value_int32_(args[0]);
   auto _parameter = nan_api_get_value_utf8string_(args[1]);
-
   char _result[512];
   memset(_result, '\0', 512);
-  auto _ret = _deviceManager->_deviceManager->CallApi(
-      (ApiTypeVideoDeviceManager)_apiType, _parameter.c_str(), _result);
+  int _ret = ERROR_PARAMETER_1;
+
+  if (_deviceManager->_deviceManager) {
+    _ret = _deviceManager->_deviceManager->CallApi(
+        (ApiTypeVideoDeviceManager)_apiType, _parameter.c_str(), _result);
+  } else {
+    _ret = ERROR_NOT_INIT;
+  }
 
   auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
@@ -99,7 +109,14 @@ void NodeIrisRtcDeviceManager::CallApiVideoDevice(
               .Set(_retObj);
 }
 
-void NodeIrisRtcDeviceManager::Release(void *selfPtr) {
+void NodeIrisRtcDeviceManager::Release(
+    const Nan_FunctionCallbackInfo<v8_Value> &args) {
+  auto _deviceManager =
+      ObjectWrap::Unwrap<NodeIrisRtcDeviceManager>(args.Holder());
+  _deviceManager->_deviceManager = nullptr;
+}
+
+void NodeIrisRtcDeviceManager::ReleaseNodeSource(void *selfPtr) {
   auto _selfPtr = static_cast<NodeIrisRtcDeviceManager *>(selfPtr);
   delete _selfPtr;
   _selfPtr = nullptr;

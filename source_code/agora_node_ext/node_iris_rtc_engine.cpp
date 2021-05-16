@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:37
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-13 23:13:52
+ * @Last Modified time: 2021-05-16 17:03:30
  */
 #include "node_iris_rtc_engine.h"
 #include "node_iris_event_handler.h"
@@ -17,22 +17,15 @@ Nan_Persistent<v8_Function> NodeIrisRtcEngine::_constructor;
 NodeIrisRtcEngine::NodeIrisRtcEngine(v8_Isolate *isolate) : _isolate(isolate) {
   _iris_event_handler.reset(new NodeIrisEventHandler(this));
   _iris_engine.reset(new IrisRtcEngine());
-  _iris_raw_data.reset(_iris_engine->raw_data());
-  _iris_raw_data_plugin_manager.reset(_iris_raw_data.get()->plugin_manager());
   _video_processer.reset(new VideoProcesser(_iris_engine));
   _video_source_proxy.reset(new VideoSourceProxy(_video_processer));
+  _iris_raw_data = _iris_engine->raw_data();
+  _iris_raw_data_plugin_manager = _iris_raw_data->plugin_manager();
   _iris_engine->SetEventHandler(_iris_event_handler.get());
 }
 
 NodeIrisRtcEngine::~NodeIrisRtcEngine() {
   LOG_F(INFO, "NodeIrisRtcEngine::~NodeIrisRtcEngine");
-  _video_processer.reset();
-  _iris_event_handler.reset();
-  _iris_raw_data_plugin_manager.reset();
-  _iris_raw_data.reset();
-  _iris_engine.reset();
-  _video_source_proxy.reset();
-  stopLogService();
 }
 
 void NodeIrisRtcEngine::Init(v8_Local<v8_Object> &_module) {
@@ -65,7 +58,7 @@ void NodeIrisRtcEngine::Init(v8_Local<v8_Object> &_module) {
   Nan::SetPrototypeMethod(_template, "VideoSourceInitialize",
                           VideoSourceInitialize);
   Nan::SetPrototypeMethod(_template, "VideoSourceRelease", VideoSourceRelease);
-
+  Nan::SetPrototypeMethod(_template, "Release", Release);
   _constructor.Reset(_template->GetFunction(_context).ToLocalChecked());
   _module->Set(_context,
                Nan::New<v8_String>("NodeIrisRtcEngine").ToLocalChecked(),
@@ -102,17 +95,23 @@ void NodeIrisRtcEngine::CallApi(
   memset(_result, '\0', 512);
   LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
   int _ret = ERROR_PARAMETER_1;
-  try {
-    if (_process_type == PROCESS_TYPE::MAIN) {
-      _ret = _engine->_iris_engine.get()->CallApi((ApiTypeEngine)_apiType,
-                                                  _parameter.c_str(), _result);
-    } else {
-      _ret = _engine->_video_source_proxy->CallApi((ApiTypeEngine)_apiType,
-                                                   _parameter.c_str(), _result);
+
+  if (_engine->_iris_engine) {
+    try {
+      if (_process_type == PROCESS_TYPE::MAIN) {
+        _ret = _engine->_iris_engine->CallApi((ApiTypeEngine)_apiType,
+                                              _parameter.c_str(), _result);
+      } else {
+        _ret = _engine->_video_source_proxy->CallApi(
+            (ApiTypeEngine)_apiType, _parameter.c_str(), _result);
+      }
+    } catch (std::exception &e) {
+      _engine->OnApiError(e.what());
     }
-  } catch (std::exception &e) {
-    _engine->OnApiError(e.what());
+  } else {
+    _ret = ERROR_NOT_INIT;
   }
+
   auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
       v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
@@ -132,45 +131,49 @@ void NodeIrisRtcEngine::CallApiWithBuffer(
   char _result[512];
   int _ret = ERROR_PARAMETER_1;
   memset(_result, '\0', 512);
-  auto _retObj = v8_Object::New(_isolate);
 
-  try {
-    switch (ApiTypeEngine(_apiType)) {
-    case kEngineRegisterPacketObserver: {
-      break;
-    }
-    case kEngineSendStreamMessage: {
-      if (_process_type == PROCESS_TYPE::MAIN) {
-        _ret = _engine->_iris_engine.get()->CallApi(
-            (ApiTypeEngine)_apiType, _parameter.c_str(),
-            const_cast<char *>(_buffer.c_str()), _result);
-      } else {
-        _ret = _engine->_video_source_proxy->CallApi(
-            (ApiTypeEngine)_apiType, _parameter.c_str(), _buffer.c_str(),
-            _length, _result);
+  if (_engine->_iris_engine) {
+    try {
+      switch (ApiTypeEngine(_apiType)) {
+      case kEngineRegisterPacketObserver: {
+        break;
       }
-      break;
+      case kEngineSendStreamMessage: {
+        if (_process_type == PROCESS_TYPE::MAIN) {
+          _ret = _engine->_iris_engine->CallApi(
+              (ApiTypeEngine)_apiType, _parameter.c_str(),
+              const_cast<char *>(_buffer.c_str()), _result);
+        } else {
+          _ret = _engine->_video_source_proxy->CallApi(
+              (ApiTypeEngine)_apiType, _parameter.c_str(), _buffer.c_str(),
+              _length, _result);
+        }
+        break;
+      }
+      case kEngineSendMetadata: {
+        break;
+      }
+      case kMediaPushAudioFrame: {
+        break;
+      }
+      case kMediaPullAudioFrame: {
+        break;
+      }
+      case kMediaPushVideoFrame: {
+        break;
+      }
+      default: {
+        break;
+      }
+      }
+    } catch (std::exception &e) {
+      _engine->OnApiError(e.what());
     }
-    case kEngineSendMetadata: {
-      break;
-    }
-    case kMediaPushAudioFrame: {
-      break;
-    }
-    case kMediaPullAudioFrame: {
-      break;
-    }
-    case kMediaPushVideoFrame: {
-      break;
-    }
-    default: {
-      break;
-    }
-    }
-  } catch (std::exception &e) {
-    _engine->OnApiError(e.what());
+  } else {
+    _ret = ERROR_NOT_INIT;
   }
 
+  auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
       v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
           args.GetReturnValue()
@@ -188,7 +191,11 @@ void NodeIrisRtcEngine::OnEvent(
   auto _obj = args.This();
   Nan_Persistent<v8_Object> _persistObj;
   _persistObj.Reset(_obj);
-  _engine->_iris_event_handler->addEvent(_parameter, _persistObj, _persist);
+  if (_engine->_iris_engine) {
+    _engine->_iris_event_handler->addEvent(_parameter, _persistObj, _persist);
+  } else {
+    LOG_F(INFO, "NodeIrisRtcEngine::OnEvent error Not Init Engine");
+  }
 }
 
 void NodeIrisRtcEngine::CreateChannel(
@@ -198,12 +205,16 @@ void NodeIrisRtcEngine::CreateChannel(
   auto _isolate = args.GetIsolate();
   auto _process_type = nan_api_get_value_int32_(args[0]);
   auto _channelId = nan_api_get_value_utf8string_(args[1]);
-  auto _iris_channel = _engine->_iris_engine->channel();
-  if (_process_type == PROCESS_TYPE::MAIN) {
-    auto _js_channel =
-        NodeIrisRtcChannel::Init(_isolate, _iris_channel, _channelId.c_str());
-    args.GetReturnValue().Set(_js_channel);
+  if (_engine->_iris_engine) {
+    auto _iris_channel = _engine->_iris_engine->channel();
+    if (_process_type == PROCESS_TYPE::MAIN) {
+      auto _js_channel =
+          NodeIrisRtcChannel::Init(_isolate, _iris_channel, _channelId.c_str());
+      args.GetReturnValue().Set(_js_channel);
+    } else {
+    }
   } else {
+    LOG_F(INFO, "NodeIrisRtcEngine::CreateChannel error Not Init Engine");
   }
 }
 
@@ -212,10 +223,14 @@ void NodeIrisRtcEngine::GetDeviceManager(
   auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
   auto _isolate = args.GetIsolate();
 
-  auto _device_manager = _engine->_iris_engine->device_manager();
-  auto _js_device_manager =
-      NodeIrisRtcDeviceManager::Init(_isolate, _device_manager);
-  args.GetReturnValue().Set(_js_device_manager);
+  if (_engine->_iris_engine) {
+    auto _device_manager = _engine->_iris_engine->device_manager();
+    auto _js_device_manager =
+        NodeIrisRtcDeviceManager::Init(_isolate, _device_manager);
+    args.GetReturnValue().Set(_js_device_manager);
+  } else {
+    LOG_F(INFO, "NodeIrisRtcEngine::GetDeviceManager error Not Init Engine");
+  }
 }
 
 void NodeIrisRtcEngine::GetScreenWindowsInfo(
@@ -315,15 +330,19 @@ void NodeIrisRtcEngine::VideoSourceInitialize(
   auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
   auto _isolate = args.GetIsolate();
   auto _parameter = nan_api_get_value_utf8string_(args[0]);
-  auto _result = ERROR_PARAMETER_1;
+  auto _ret = ERROR_PARAMETER_1;
   LOG_F(INFO, "VideoSourceInitialize parameter: %s", _parameter.c_str());
-
-  if (_engine->_video_source_proxy->Initialize(_engine->_iris_event_handler,
-                                               _parameter))
-    _result = ERROR_OK;
+  if (_engine->_video_source_proxy) {
+    if (_engine->_video_source_proxy->Initialize(_engine->_iris_event_handler,
+                                                 _parameter))
+      _ret = ERROR_OK;
+  } else {
+    _ret = ERROR_NOT_INIT;
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
+  }
 
   auto _retObj = v8_Object::New(_isolate);
-  v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
+  v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _ret)
       v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
           args.GetReturnValue()
               .Set(_retObj);
@@ -333,9 +352,16 @@ void NodeIrisRtcEngine::VideoSourceRelease(
     const Nan_FunctionCallbackInfo<v8_Value> &args) {
   auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
   auto _isolate = args.GetIsolate();
-  auto _result = _engine->VideoSourceRelease();
+  int _ret = ERROR_PARAMETER_1;
+  if (_engine->_video_source_proxy) {
+    _ret = _engine->VideoSourceRelease();
+  } else {
+    _ret = ERROR_NOT_INIT;
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
+  }
+
   auto _retObj = v8_Object::New(_isolate);
-  v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _result)
+  v8_SET_OBJECT_PROP_INT32(_isolate, _retObj, "retCode", _ret)
       v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
           args.GetReturnValue()
               .Set(_retObj);
@@ -379,18 +405,25 @@ void NodeIrisRtcEngine::PluginCallApi(
   memset(_result, '\0', 512);
   LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
   int _ret = ERROR_PARAMETER_1;
-  try {
-    if (_process_type == PROCESS_TYPE::MAIN) {
-      _ret = _engine->_iris_raw_data_plugin_manager.get()->CallApi(
-          (ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
-    } else {
-      _ret = _engine->_video_source_proxy->PluginCallApi(
-          (ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
+
+  if (_engine->_iris_engine) {
+    try {
+      if (_process_type == PROCESS_TYPE::MAIN) {
+        _ret = _engine->_iris_raw_data_plugin_manager->CallApi(
+            (ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
+      } else {
+        _ret = _engine->_video_source_proxy->PluginCallApi(
+            (ApiTypeRawDataPlugin)_apiType, _parameter.c_str(), _result);
+      }
+    } catch (std::exception &e) {
+      LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
+      _engine->OnApiError(e.what());
     }
-  } catch (std::exception &e) {
-    LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
-    _engine->OnApiError(e.what());
+  } else {
+    _ret = ERROR_NOT_INIT;
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
   }
+
   auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
       v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", _result)
@@ -410,22 +443,33 @@ void NodeIrisRtcEngine::EnableVideoFrameCache(
   auto _height = nan_api_get_object_int32_(_isolate, _obj, "height");
 
   int _ret = ERROR_PARAMETER_1;
-  IrisRtcRendererCacheConfig config(
-      IrisRtcVideoFrameObserver::VideoFrameType::kFrameTypeYUV420, nullptr,
-      _width, _height);
-  try {
-    if (_process_type == PROCESS_TYPE::MAIN) {
-      _ret = _engine->_video_processer->EnableVideoFrameCache(
-          config, _uid, _channelId.c_str());
-    } else {
-      _ret = _engine->_video_source_proxy->EnableVideoFrameCache(
-          _channelId.c_str(), _uid, _width, _height);
+
+  if (_engine->_iris_engine) {
+    IrisRtcRendererCacheConfig config(
+        IrisRtcVideoFrameObserver::VideoFrameType::kFrameTypeYUV420, nullptr,
+        _width, _height);
+    try {
+      if (_process_type == PROCESS_TYPE::MAIN) {
+        _ret = _engine->_video_processer->EnableVideoFrameCache(
+            config, _uid, _channelId.c_str());
+      } else {
+        _ret = _engine->_video_source_proxy->EnableVideoFrameCache(
+            _channelId.c_str(), _uid, _width, _height);
+      }
+    } catch (std::exception &e) {
+      LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
+      _engine->OnApiError(e.what());
     }
-  } catch (std::exception &e) {
-    LOG_F(INFO, "PluginCallApi catch exception %s", e.what());
-    _engine->OnApiError(e.what());
+  } else {
+    _ret = ERROR_NOT_INIT;
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
   }
-  args.GetReturnValue().Set(_ret);
+
+  auto _retObj = v8_Object::New(_isolate);
+  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
+      v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
+          args.GetReturnValue()
+              .Set(_retObj);
 }
 
 void NodeIrisRtcEngine::DisableVideoFrameCache(
@@ -438,18 +482,29 @@ void NodeIrisRtcEngine::DisableVideoFrameCache(
   auto _channelId = nan_api_get_object_utf8string_(_isolate, _obj, "channelId");
 
   int _ret = ERROR_PARAMETER_1;
-  try {
-    if (_process_type == PROCESS_TYPE::MAIN) {
-      _ret = _engine->_video_processer->DisableVideoFrameCache(
-          _channelId.c_str(), _uid);
-    } else {
-      _ret = _engine->_video_source_proxy->DisableVideoFrameCache(
-          _channelId.c_str(), _uid);
+
+  if (_engine->_iris_engine) {
+    try {
+      if (_process_type == PROCESS_TYPE::MAIN) {
+        _ret = _engine->_video_processer->DisableVideoFrameCache(
+            _channelId.c_str(), _uid);
+      } else {
+        _ret = _engine->_video_source_proxy->DisableVideoFrameCache(
+            _channelId.c_str(), _uid);
+      }
+    } catch (std::exception &e) {
+      _engine->OnApiError(e.what());
     }
-  } catch (std::exception &e) {
-    _engine->OnApiError(e.what());
+  } else {
+    _ret = ERROR_NOT_INIT;
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
   }
-  args.GetReturnValue().Set(_ret);
+
+  auto _retObj = v8_Object::New(_isolate);
+  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "retCode", _ret)
+      v8_SET_OBJECT_PROP_STRING(_isolate, _retObj, "result", "")
+          args.GetReturnValue()
+              .Set(_retObj);
 }
 
 void NodeIrisRtcEngine::GetVideoStreamData(
@@ -484,16 +539,21 @@ void NodeIrisRtcEngine::GetVideoStreamData(
   bool isFresh = false;
   bool ret = false;
 
-  try {
-    if (_process_type == PROCESS_TYPE::MAIN) {
-      ret = _engine->_video_processer->GetVideoFrame(_videoFrame, isFresh, _uid,
-                                                     _channelId.c_str());
-    } else {
-      ret = _engine->_video_processer->VideoSourceGetVideoFrame(
-          _videoFrame, isFresh, _uid, _channelId.c_str());
+  if (_engine->_iris_engine) {
+    try {
+      if (_process_type == PROCESS_TYPE::MAIN) {
+        ret = _engine->_video_processer->GetVideoFrame(
+            _videoFrame, isFresh, _uid, _channelId.c_str());
+      } else {
+        ret = _engine->_video_processer->VideoSourceGetVideoFrame(
+            _videoFrame, isFresh, _uid, _channelId.c_str());
+      }
+    } catch (std::exception &e) {
+      _engine->OnApiError(e.what());
     }
-  } catch (std::exception &e) {
-    _engine->OnApiError(e.what());
+  } else {
+    ret = false;
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
   }
   auto _retObj = v8_Object::New(_isolate);
   v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "ret", ret);
@@ -511,6 +571,24 @@ void NodeIrisRtcEngine::GetVideoStreamData(
                             _videoFrame.render_time_ms);
   args.GetReturnValue().Set(_retObj);
 }
+
+void NodeIrisRtcEngine::Release(
+    const Nan_FunctionCallbackInfo<v8_Value> &args) {
+  auto _engine = ObjectWrap::Unwrap<NodeIrisRtcEngine>(args.Holder());
+  if (_engine->_iris_engine) {
+    _engine->_video_processer.reset();
+    _engine->_iris_event_handler.reset();
+    _engine->_iris_raw_data_plugin_manager = nullptr;
+    _engine->_iris_raw_data = nullptr;
+    _engine->_iris_engine.reset();
+    _engine->_video_source_proxy.reset();
+    stopLogService();
+    LOG_F(INFO, "NodeIrisRtcEngine::Release done");
+  } else {
+    LOG_F(INFO, "VideoSourceInitialize NodeIris Engine Not Init");
+  }
+}
+
 } // namespace electron
 } // namespace rtc
 } // namespace agora

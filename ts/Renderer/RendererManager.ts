@@ -319,10 +319,12 @@ class RendererManager {
 
     if (videoFrameCacheConfig.user === "videoSource") {
       logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-      return this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
+      let ret = this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
+      return ret.retCode;
     } else {
       logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-      return this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+      let ret = this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+      return ret.retCode;
     }
   }
 
@@ -333,10 +335,12 @@ class RendererManager {
 
       if (videoFrameCacheConfig.user === "videoSource") {
         logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-        return this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
+        let ret = this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
+        return ret.retCode;
       } else {
         logInfo(`disableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
-        return this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+        let ret = this._rtcEngine.DisableVideoFrameCache(PROCESS_TYPE.MAIN, videoFrameCacheConfig);
+        return ret.retCode;
       }
   }
 

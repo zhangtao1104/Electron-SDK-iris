@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-14 13:30:29
+ * @Last Modified time: 2021-05-16 17:19:05
  */
 import {
   ApiTypeEngine,
@@ -2475,8 +2475,14 @@ class AgoraRtcEngine extends EventEmitter {
   release(): number {
     this._rendererManager?.clear();
     this._rendererManager = undefined;
-    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineRelease, "");
+    let param = {
+      sync: true
+    }
 
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.MAIN, ApiTypeEngine.kEngineRelease, JSON.stringify(param));
+    this._rtcDeviceManager.Release();
+    this._rtcEngine.Release();
+    logInfo(`AgoraRtcEngine release done`)
     return ret.retCode;
   }
 
@@ -13573,6 +13579,7 @@ class AgoraRtcChannel extends EventEmitter {
       ApiTypeChannel.kChannelRelease,
       JSON.stringify(param)
     );
+    this._rtcChannel.Release();
     return ret.retCode;
   }
 

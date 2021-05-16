@@ -17,8 +17,8 @@ class VideoProcesser : public IpcVideoFrameListener {
 private:
   std::mutex _video_frame_mutex;
   std::shared_ptr<iris::rtc::IrisRtcEngine> _iris_rtc_engine;
-  std::shared_ptr<iris::rtc::IrisRtcRawData> _iris_rtc_raw_data;
-  std::shared_ptr<iris::rtc::IrisRtcRenderer> _iris_rtc_renderer;
+  iris::rtc::IrisRtcRawData *_iris_rtc_raw_data;
+  iris::rtc::IrisRtcRenderer *_iris_rtc_renderer;
   iris::rtc::IrisRtcRendererDelegate *_iris_rtc_renderer_delegate;
   std::unique_ptr<VideoFrame> _cached_video_source_video_frame;
 

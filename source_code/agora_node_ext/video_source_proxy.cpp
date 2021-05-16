@@ -7,9 +7,7 @@ namespace rtc {
 namespace electron {
 VideoSourceProxy::VideoSourceProxy(
     std::shared_ptr<IpcVideoFrameListener> listener)
-    : _status_event(false) {
-  _ipc_video_frame_listener = listener;
-}
+    : _status_event(false), _ipc_video_frame_listener(listener) {}
 
 VideoSourceProxy::~VideoSourceProxy() {
   Clear();

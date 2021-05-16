@@ -10,15 +10,15 @@ VideoProcesser::VideoProcesser(
     std::shared_ptr<iris::rtc::IrisRtcEngine> irisRtcEngine)
     : _iris_rtc_renderer_delegate(nullptr) {
   _iris_rtc_engine = irisRtcEngine;
-  _iris_rtc_raw_data.reset(_iris_rtc_engine->raw_data());
-  _iris_rtc_renderer.reset(_iris_rtc_raw_data->renderer());
+  _iris_rtc_raw_data = _iris_rtc_engine->raw_data();
+  _iris_rtc_renderer = _iris_rtc_raw_data->renderer();
   _cached_video_source_video_frame.reset(new VideoFrame());
 }
 
 VideoProcesser::~VideoProcesser() {
   _iris_rtc_engine.reset();
-  _iris_rtc_raw_data.reset();
-  _iris_rtc_renderer.reset();
+  _iris_rtc_raw_data = nullptr;
+  _iris_rtc_renderer = nullptr;
   if (_iris_rtc_renderer_delegate) {
     delete _iris_rtc_renderer_delegate;
     _iris_rtc_renderer_delegate = nullptr;

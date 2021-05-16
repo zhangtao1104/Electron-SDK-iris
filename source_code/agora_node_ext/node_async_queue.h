@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:14
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-10 21:24:39
+ * @Last Modified time: 2021-05-16 21:46:14
  */
 #pragma once
 
@@ -39,6 +39,7 @@ public:
   ~async_queue() {
     uv_close((uv_handle_t *)h_, [](uv_handle_t *handle) { free(handle); });
   }
+
   int async_call(Elem &&e, uint64_t ts = 0) {
     if (closed_) {
       return -1;
@@ -59,12 +60,13 @@ public:
     return q_.size();
   }
   bool empty() const { return size() == 0; }
-  void close() {
+  void close(bool closed) {
     if (!empty()) {
       // LOG_WARNING(" You should close this queue after taking all the
       // elements!");
     }
-    closed_ = true;
+    clear();
+    closed_ = closed;
   }
   bool closed() const { return closed_; }
   void set_priority(int prio) {}
@@ -104,6 +106,10 @@ class node_async_call {
 public:
   static void async_call(task_type &&cb) {
     node_async_call::instance().node_queue_->async_call(std::move(cb));
+  }
+
+  static void close(bool closed) {
+    node_async_call::instance().node_queue_->close(closed);
   }
 
 private:
