@@ -11,7 +11,7 @@ import { IRenderer } from "./IRender";
 import { YUVCanvasRenderer } from "./YUVCanvasRenderer";
 import { NodeIrisRtcEngine } from "../Api/internal/native_interface";
 import { logInfo, logWarn, logError } from "../Utils";
-import { PROCESS_TYPE } from "../Api/internal/native_api_type";
+import { PROCESS_TYPE } from "../Api/internal/native_type";
 
 class RendererManager {
   _config: {
