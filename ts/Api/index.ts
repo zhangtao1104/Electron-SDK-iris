@@ -11,7 +11,7 @@ import {
   ApiTypeVideoDeviceManager,
   ApiTypeRawDataPlugin,
   PROCESS_TYPE
-} from "./internal/native_api_type";
+} from "./internal/native_type";
 import {
   NodeIrisRtcEngine,
   NodeIrisRtcChannel,

@@ -13,7 +13,7 @@ import {
   ApiTypeVideoDeviceManager,
   ApiTypeRawDataPlugin,
   PROCESS_TYPE
-} from "./native_api_type";
+} from "./native_type";
 import { WindowInfo } from "../types";
 import { VideoFrameCacheConfig, VideoFrame } from "../../renderer/type";
 
