@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-16 17:19:05
+ * @Last Modified time: 2021-05-17 16:27:26
  */
 import {
   ApiTypeEngine,
@@ -2575,7 +2575,11 @@ class AgoraRtcEngine extends EventEmitter {
    * - 0: Success.
    * - < 0: Failure.
    */
-  setupLocalVideo(view: Element, rendererOptions?: RendererOptions): number {
+  setupLocalVideo(view: Element, rendererOptions: RendererOptions = {
+    append: false,
+    contentMode: CONTENT_MODE.FIT,
+    mirror: false,
+  }): number {
     deprecate("setupLocalVideo", "setView");
     let rendererConfig: RendererConfig = {
       user: "local",
@@ -7448,11 +7452,16 @@ class AgoraRtcEngine extends EventEmitter {
    * @ignore
    * @deprecated
    */
-  setupLocalVideoSource(view: Element): void {
+  setupLocalVideoSource(view: Element, rendererOptions: RendererOptions = {
+    append: false,
+    contentMode: CONTENT_MODE.FIT,
+    mirror: false,
+  }): void {
     deprecate("setupLocalVideoSource", "setView");
     let rendererConfig: RendererConfig = {
       user: "videoSource",
       view,
+      rendererOptions
     };
     this.setView(rendererConfig);
   }
