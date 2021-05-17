@@ -36,7 +36,7 @@
                     'OS=="win"',
                     {
                         'library_dirs': [
-                            './sdk/lib',
+                            './sdk/lib/win32/x86_64',
                         ],
                         'link_settings': {
                             'libraries': [
@@ -167,18 +167,16 @@
                         'copies': [{
                             'destination': '<(PRODUCT_DIR)',
                             'files': [
-                                './sdk/dll/agora_rtc_sdk.dll',
-                                './sdk/dll/libagora-fdkaac.dll',
-                                './sdk/dll/libagora-ffmpeg.dll',
-                                './sdk/dll/libagora-mpg123.dll',
-                                './sdk/dll/libagora-soundtouch.dll',
-                                './sdk/dll/libhwcodec.dll',
-                                './sdk/dll/av1.dll',
-                                './sdk/dll/libagora_ai_denoise_extension.dll',
-                                './sdk/dll/libagora_dav1d_extension.dll',
-                                './sdk/dll/libagora-core.dll',
-                                './sdk/dll/libagora-wgc.dll',
-                                './sdk/dll/libagora-jnd_extension.dll',
+                                './sdk/lib/win32/x86_64/agora_rtc_sdk.dll',
+                                './sdk/lib/win32/x86_64/libagora-fdkaac.dll',
+                                './sdk/lib/win32/x86_64/libagora-ffmpeg.dll',
+                                './sdk/lib/win32/x86_64/libagora-mpg123.dll',
+                                './sdk/lib/win32/x86_64/libagora-soundtouch.dll',
+                                './sdk/lib/win32/x86_64/libhwcodec.dll',
+                                './sdk/lib/win32/x86_64/av1.dll',
+                                './sdk/lib/win32/x86_64/libagora_ai_denoise_extension.dll',
+                                './sdk/lib/win32/x86_64/libagora_dav1d_extension.dll',
+                                './sdk/lib/win32/x86_64/libagora-core.dll'
                             ]
                         }],
                         'link_settings': {
@@ -189,7 +187,7 @@
                             ]
                         },
                         'library_dirs': [
-                            './sdk/lib',
+                            './sdk/lib/win32/x86_64',
                         ],
                         'defines!': [
                             '_USING_V110_SDK71_',
