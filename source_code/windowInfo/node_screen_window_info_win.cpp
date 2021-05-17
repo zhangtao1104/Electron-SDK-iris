@@ -1,8 +1,10 @@
 #include "node_screen_window_info.h"
 #include <Psapi.h>
 #include <algorithm>
+#include <comdef.h>
 #include <gdiplus.h>
 #include <gdiplusheaders.h>
+#include <shellapi.h>
 #include <tchar.h>
 #include <unordered_set>
 
