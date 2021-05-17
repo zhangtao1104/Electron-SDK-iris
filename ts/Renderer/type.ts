@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:39
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-14 14:10:06
+ * @Last Modified time: 2021-05-17 15:28:45
  */
 
 export enum CONTENT_MODE {
@@ -28,7 +28,7 @@ export interface RendererOptions {
 export enum RENDER_MODE {
   WEBGL = 1,
   SOFTWARE = 2,
-  CUSTOME = 3,
+  CUSTOM = 3,
 }
 
 export interface VideoFrameCacheConfig {
