@@ -41,7 +41,8 @@
                         'link_settings': {
                             'libraries': [
                                 '-lagora_rtc_sdk.lib',
-                                '-lws2_32.lib'
+                                '-lws2_32.lib',
+                                '-lagora_rtc_sdk.lib'
                             ]
                         },
                         'link_settings!': [
