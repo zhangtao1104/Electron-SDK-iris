@@ -184,7 +184,8 @@
                             'libraries': [
                                 '-lws2_32.lib',
                                 '-lRpcrt4.lib',
-                                '-lgdiplus.lib'
+                                '-lgdiplus.lib',
+                                '-lagora_rtc_sdk.lib'
                             ]
                         },
                         'library_dirs': [
