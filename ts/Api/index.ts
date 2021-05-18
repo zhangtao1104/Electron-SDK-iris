@@ -7421,6 +7421,9 @@ class AgoraRtcEngine extends EventEmitter {
     };
 
     let ret = this._rtcEngine.VideoSourceInitialize(JSON.stringify(param));
+    this.videoSourceEnableLocalVideo(false)
+    this.videoSourceMuteAllRemoteVideoStreams(true)
+    this.videoSourceMuteAllRemoteAudioStreams(true)
     return ret.retCode;
   }
 
@@ -7922,6 +7925,7 @@ class AgoraRtcEngine extends EventEmitter {
         ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
         JSON.stringify(param)
       );
+
       return ret.retCode;
     } else process.platform === "win32";
     {
@@ -8112,6 +8116,35 @@ class AgoraRtcEngine extends EventEmitter {
     );
     return ret.retCode;
   }
+
+  videoSourceEnableLocalVideo(enabled: boolean): number {
+    let param = {
+      enabled
+    }
+
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.SCREEN_SHARE, ApiTypeEngine.kEngineEnableLocalAudio, JSON.stringify(param))
+    return ret.retCode
+  }
+
+  videoSourceMuteAllRemoteVideoStreams(mute: boolean): number {
+    let param = {
+      mute
+    }
+
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.SCREEN_SHARE, ApiTypeEngine.kEngineMuteAllRemoteVideoStreams, JSON.stringify(param))
+    return ret.retCode
+  }
+
+  videoSourceMuteAllRemoteAudioStreams(mute: boolean): number {
+    let param = {
+      mute
+    }
+
+    let ret = this._rtcEngine.CallApi(PROCESS_TYPE.SCREEN_SHARE, ApiTypeEngine.kEngineMuteAllRemoteAudioStreams, JSON.stringify(param))
+    return ret.retCode
+  }
+
+
 
   videoSourceRegisterPlugin(pluginInfo: PluginInfo): number {
     let param = {

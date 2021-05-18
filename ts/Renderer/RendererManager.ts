@@ -252,7 +252,6 @@ class RendererManager {
 
           if (render) {
             render.forEach((renderItem) => {
-              logWarn(`drawFrame User: ${user}  width ${videoFrame.width}, height ${videoFrame.height}`);
               renderItem.drawFrame(videoFrame);
             });
           } else {
