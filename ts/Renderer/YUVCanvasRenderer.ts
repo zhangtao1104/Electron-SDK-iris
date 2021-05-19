@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:48
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-14 14:56:19
+ * @Last Modified time: 2021-05-19 15:59:03
  */
 
 const YUVBuffer = require("yuv-buffer");
@@ -31,12 +31,9 @@ export class YUVCanvasRenderer implements IRenderer {
     this._videoFrame = {
       mirror: false,
       rotation: 0,
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
       width: 0,
       height: 0,
+      yStride: 0,
       yBuffer: new Uint8Array(0),
       uBuffer: new Uint8Array(0),
       vBuffer: new Uint8Array(0),
@@ -177,14 +174,8 @@ export class YUVCanvasRenderer implements IRenderer {
       return;
     }
 
-    let frameWidth =
-      frame.width +
-      (frame.left ? frame.left : 0) +
-      (frame.right ? frame.right : 0);
-    let frameHeight =
-      frame.height +
-      (frame.top ? frame.top : 0) +
-      (frame.bottom ? frame.bottom : 0);
+    let frameWidth = frame.yStride
+    let frameHeight = frame.height
 
     if (
       this._videoFrame.width === 0 ||
@@ -204,16 +195,12 @@ export class YUVCanvasRenderer implements IRenderer {
 
     this._videoFrame.width = frame.width;
     this._videoFrame.height = frame.height;
-    this._videoFrame.left = frame.left;
-    this._videoFrame.right = frame.right;
-    this._videoFrame.top = frame.top;
-    this._videoFrame.bottom = frame.bottom;
     this._videoFrame.mirror = frame.mirror;
     this._videoFrame.rotation = frame.rotation;
 
     let options: CanvasOptions = {
-      frameWidth: frameWidth,
-      frameHeight: frameHeight,
+      frameWidth: frame.width,
+      frameHeight: frame.height,
       rotation: frame.rotation ? frame.rotation : 0,
       mirror: frame.mirror ? frame.mirror : false,
       contentMode: this._contentMode,

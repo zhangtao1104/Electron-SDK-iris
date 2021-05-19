@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:38:45
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-16 16:59:34
+ * @Last Modified time: 2021-05-19 16:00:18
  */
 
 import {
@@ -46,12 +46,9 @@ export interface NodeIrisRtcEngine {
   ): {
     ret: boolean;
     isNewFrame: boolean;
+    yStride: number;
     width: number;
     height: number;
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
     rotation: number;
     timestamp: number;
   };

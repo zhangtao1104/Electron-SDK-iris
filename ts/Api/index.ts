@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 11:39:24
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-17 16:27:26
+ * @Last Modified time: 2021-05-19 15:39:02
  */
 import {
   ApiTypeEngine,
@@ -88,7 +88,8 @@ import {
   METADATA_TYPE,
   CHANNEL_PROFILE_TYPE,
   WindowInfo,
-  Device
+  Device,
+  MacScreenId
 } from "./types";
 import { EventEmitter } from "events";
 import { deprecate, logWarn, logInfo, logError } from "../Utils";
@@ -184,16 +185,17 @@ class AgoraRtcEngine extends EventEmitter {
   resizeBuffer(
     uid: number,
     channelId: string,
-    width: number,
+    yStride: number,
     height: number
   ): VideoFrame {
     return {
       uid,
       channelId,
-      yBuffer: Buffer.alloc(width * height),
-      uBuffer: Buffer.alloc((width * height) / 4),
-      vBuffer: Buffer.alloc((width * height) / 4),
-      width,
+      yBuffer: Buffer.alloc(yStride * height),
+      uBuffer: Buffer.alloc((yStride * height) / 4),
+      vBuffer: Buffer.alloc((yStride * height) / 4),
+      yStride,
+      width: 0,
       height,
     };
   }
@@ -1285,6 +1287,11 @@ class AgoraRtcEngine extends EventEmitter {
                 data.uid,
                 data.elapsed
               );
+
+              fire(
+                "videosourcejoinedsuccess",
+                data.uid
+              );
             }
             break;
 
@@ -1307,6 +1314,8 @@ class AgoraRtcEngine extends EventEmitter {
           case "onLeaveChannel":
             {
               let data: { stats: RtcStats } = JSON.parse(_eventData);
+              fire("videoSourceLeaveChannel", data.stats);
+              fire("videosourceleavechannel", data.stats);
               fire("videoSourceLeaveChannel", data.stats);
             }
             break;
@@ -5565,7 +5574,7 @@ class AgoraRtcEngine extends EventEmitter {
   ): number {
     if (process.platform === "darwin") {
       let param = {
-        displayId: screenSymbol,
+        displayId: (screenSymbol as MacScreenId).id,
         regionRect,
         captureParams,
       };
@@ -5575,6 +5584,13 @@ class AgoraRtcEngine extends EventEmitter {
         ApiTypeEngine.kEngineStartScreenCaptureByDisplayId,
         JSON.stringify(param)
       );
+      
+      if (ret.retCode === 0) {
+        this.enableLocalVideo(true)
+      } else {
+        this.enableLocalVideo(false)
+      }
+
       return ret.retCode;
     } else process.platform === "win32";
     {
@@ -5589,6 +5605,12 @@ class AgoraRtcEngine extends EventEmitter {
         ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
         JSON.stringify(param)
       );
+
+      if (ret.retCode === 0) {
+        this.enableLocalVideo(true)
+      } else {
+        this.enableLocalVideo(false)
+      }
       return ret.retCode;
     }
   }
@@ -5654,6 +5676,8 @@ class AgoraRtcEngine extends EventEmitter {
       ApiTypeEngine.kEngineStopScreenCapture,
       ""
     );
+    
+    this.enableLocalVideo(false)
     return ret.retCode;
   }
 
@@ -7915,7 +7939,7 @@ class AgoraRtcEngine extends EventEmitter {
   ): number {
     if (process.platform === "darwin") {
       let param = {
-        displayId: screenSymbol,
+        displayId: (screenSymbol as MacScreenId).id,
         regionRect,
         captureParams,
       };
@@ -7926,6 +7950,12 @@ class AgoraRtcEngine extends EventEmitter {
         JSON.stringify(param)
       );
 
+      if (ret.retCode === 0) {
+        this.videoSourceEnableLocalVideo(true)
+      } else {
+        this.videoSourceEnableLocalVideo(false)
+      }
+      
       return ret.retCode;
     } else process.platform === "win32";
     {
@@ -7940,6 +7970,13 @@ class AgoraRtcEngine extends EventEmitter {
         ApiTypeEngine.kEngineStartScreenCaptureByScreenRect,
         JSON.stringify(param)
       );
+
+      if (ret.retCode === 0) {
+        this.videoSourceEnableLocalVideo(true)
+      } else {
+        this.videoSourceEnableLocalVideo(false)
+      }
+      
       return ret.retCode;
     }
   }
@@ -7969,6 +8006,13 @@ class AgoraRtcEngine extends EventEmitter {
       ApiTypeEngine.kEngineStartScreenCaptureByWindowId,
       JSON.stringify(param)
     );
+
+    if (ret.retCode === 0) {
+      this.videoSourceEnableLocalVideo(true)
+    } else {
+      this.videoSourceEnableLocalVideo(false)
+    }
+
     return ret.retCode;
   }
 
@@ -8057,6 +8101,13 @@ class AgoraRtcEngine extends EventEmitter {
       ApiTypeEngine.kEngineStartScreenCapture,
       JSON.stringify(param)
     );
+
+    if (ret.retCode === 0) {
+      this.videoSourceEnableLocalVideo(true)
+    } else {
+      this.videoSourceEnableLocalVideo(false)
+    }
+    
     return ret.retCode;
   }
 
@@ -8076,6 +8127,8 @@ class AgoraRtcEngine extends EventEmitter {
       ApiTypeEngine.kEngineStopScreenCapture,
       ""
     );
+
+    this.videoSourceEnableLocalVideo(false)
     return ret.retCode;
   }
 

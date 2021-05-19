@@ -82,16 +82,17 @@ class RendererManager {
   resizeBuffer(
     uid: number,
     channelId: string,
-    width: number,
+    yStride: number,
     height: number
   ): VideoFrame {
     return {
       uid,
       channelId,
-      yBuffer: Buffer.alloc(width * height),
-      uBuffer: Buffer.alloc((width * height) / 4),
-      vBuffer: Buffer.alloc((width * height) / 4),
-      width,
+      yBuffer: Buffer.alloc(yStride * height),
+      uBuffer: Buffer.alloc((yStride * height) / 4),
+      vBuffer: Buffer.alloc((yStride * height) / 4),
+      yStride,
+      width: 0,
       height,
     };
   }
@@ -237,16 +238,13 @@ class RendererManager {
 
           let render = this.getRenderer(user, cachedVideoFrame.channelId);
           let videoFrame: VideoFrame = {
-            left: retObj.left,
-            right: retObj.right,
-            top: retObj.top,
-            bottom: retObj.bottom,
             width: retObj.width,
             height: retObj.height,
             yBuffer: cachedVideoFrame.yBuffer,
             uBuffer: cachedVideoFrame.uBuffer,
             vBuffer: cachedVideoFrame.vBuffer,
             mirror: false,
+            yStride: retObj.yStride,
             rotation: retObj.rotation,
           };
 
@@ -316,8 +314,9 @@ class RendererManager {
       ? this.userToUid(videoFrameCacheConfig.user)
       : 0;
 
+    logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
+
     if (videoFrameCacheConfig.user === "videoSource") {
-      logInfo(`enableVideoFrameCache ${JSON.stringify(videoFrameCacheConfig)}`);
       let ret = this._rtcEngine.EnableVideoFrameCache(PROCESS_TYPE.SCREEN_SHARE, videoFrameCacheConfig);
       return ret.retCode;
     } else {

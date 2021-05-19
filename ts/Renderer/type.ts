@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-28 13:34:39
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-17 15:28:45
+ * @Last Modified time: 2021-05-19 15:51:34
  */
 
 export enum CONTENT_MODE {
@@ -54,15 +54,12 @@ export interface RendererConfig {
 export interface VideoFrame {
   width: number;
   height: number;
+  yStride: number;
   yBuffer: Buffer | Uint8Array;
   uBuffer: Buffer | Uint8Array;
   vBuffer: Buffer | Uint8Array;
   mirror?: boolean;
   rotation?: number;
-  left?: number;
-  right?: number;
-  top?: number;
-  bottom?: number;
   uid?: number;
   channelId?: string;
 }

@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:37
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-19 11:02:31
+ * @Last Modified time: 2021-05-19 16:04:11
  */
 #include "node_iris_rtc_engine.h"
 #include "node_iris_event_handler.h"
@@ -527,9 +527,10 @@ void NodeIrisRtcEngine::GetVideoStreamData(
       nan_api_get_object_property_value_(_isolate, _videoStreamObj, "uBuffer");
   auto _vBufferVal =
       nan_api_get_object_property_value_(_isolate, _videoStreamObj, "vBuffer");
-  auto _width = nan_api_get_object_uint32_(_isolate, _videoStreamObj, "width");
   auto _height =
       nan_api_get_object_uint32_(_isolate, _videoStreamObj, "height");
+  auto _yStride =
+      nan_api_get_object_uint32_(_isolate, _videoStreamObj, "yStride");
   auto _yBuffer = node::Buffer::Data(_yBufferVal);
   auto _uBuffer = node::Buffer::Data(_uBufferVal);
   auto _vBuffer = node::Buffer::Data(_vBufferVal);
@@ -537,8 +538,8 @@ void NodeIrisRtcEngine::GetVideoStreamData(
   _videoFrame.y_buffer = _yBuffer;
   _videoFrame.u_buffer = _uBuffer;
   _videoFrame.v_buffer = _vBuffer;
-  _videoFrame.width = _width;
   _videoFrame.height = _height;
+  _videoFrame.y_stride = _yStride;
 
   bool isFresh = false;
   bool ret = false;
@@ -564,12 +565,7 @@ void NodeIrisRtcEngine::GetVideoStreamData(
   v8_SET_OBJECT_PROP_BOOL(_isolate, _retObj, "isNewFrame", isFresh);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "width", _videoFrame.width);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "height", _videoFrame.height);
-  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "left",
-                            (_videoFrame.y_stride - _videoFrame.width) / 2);
-  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "right",
-                            (_videoFrame.y_stride - _videoFrame.width) / 2);
-  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "top", 0);
-  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "bottom", 0);
+  v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "yStride", _videoFrame.y_stride);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "rotation", 0);
   v8_SET_OBJECT_PROP_UINT32(_isolate, _retObj, "timestamp",
                             _videoFrame.render_time_ms);

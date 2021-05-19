@@ -31,8 +31,8 @@ void VideoSourceIrisVideoFrameObserver::OnVideoFrameReceived(
   _header->_yStride = video_frame.y_stride;
 
   char *yBuffer = _data + sizeof(VideoFrameHeader);
-  char *uBuffer = yBuffer + _header->_width * _header->_height;
-  char *vBuffer = uBuffer + _header->_width * _header->_height / 4;
+  char *uBuffer = yBuffer + _header->_yStride * _header->_height;
+  char *vBuffer = uBuffer + _header->_yStride * _header->_height / 4;
 
   memcpy(yBuffer, video_frame.y_buffer, video_frame.y_buffer_length);
   memcpy(uBuffer, video_frame.u_buffer, video_frame.u_buffer_length);
