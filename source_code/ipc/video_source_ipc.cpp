@@ -11,7 +11,7 @@
 #include "video_source_ipc.h"
 
 #define VIDEO_SOURCE_BLOCK_NUM 10
-#define VIDEO_SOURCE_BLOCK_SIZE 1536
+#define VIDEO_SOURCE_BLOCK_SIZE 2200
 
 struct VideoSourceIpcMsgHeader {
   AgoraIpcMsg msg;
@@ -35,6 +35,7 @@ private:
   shm_ipc<VIDEO_SOURCE_BLOCK_NUM, VIDEO_SOURCE_BLOCK_SIZE> m_ipc;
   std::string m_id;
   bool m_ipcOwner;
+  std::atomic_bool m_initialize{false};
   const static uint32_t s_ipcChannelNum;
   const static uint32_t s_ipcSourceWriteChannelId;
   const static uint32_t s_ipcSourceReadChannelId;
@@ -45,9 +46,10 @@ const uint32_t AgoraVideoSourceIpcImpl::s_ipcSourceWriteChannelId = 0;
 const uint32_t AgoraVideoSourceIpcImpl::s_ipcSourceReadChannelId = 1;
 
 AgoraVideoSourceIpcImpl::AgoraVideoSourceIpcImpl(AgoraIpcListener *listener)
-    : IAgoraIpc(listener), m_id(), m_ipcOwner(false) {}
+    : IAgoraIpc(listener), m_id(), m_ipcOwner(false), m_initialize(false) {}
 
 AgoraVideoSourceIpcImpl::~AgoraVideoSourceIpcImpl() {
+  LOG_F(INFO, "AgoraVideoSourceIpcImpl::~AgoraVideoSourceIpcImpl");
   disconnect();
   if (m_ipcOwner) {
     m_ipc.close();
@@ -57,6 +59,7 @@ AgoraVideoSourceIpcImpl::~AgoraVideoSourceIpcImpl() {
 
 bool AgoraVideoSourceIpcImpl::initialize(const std::string &id) {
   m_id = id;
+  m_initialize = true;
   return true;
 }
 
@@ -78,6 +81,7 @@ bool AgoraVideoSourceIpcImpl::connect() {
     m_ipc.close();
     return false;
   }
+  LOG_F(INFO, "AgoraVideoSourceIpcImpl::connect()");
   return true;
 }
 
@@ -86,6 +90,8 @@ bool AgoraVideoSourceIpcImpl::disconnect() {
                       m_ipcOwner ? CHANNEL_READ : CHANNEL_WRITE);
   m_ipc.close_channel(AgoraVideoSourceIpcImpl::s_ipcSourceWriteChannelId,
                       m_ipcOwner ? CHANNEL_WRITE : CHANNEL_READ);
+  m_initialize = false;
+  LOG_F(INFO, "AgoraVideoSourceIpcImpl::disconnect()");
   return true;
 }
 
@@ -122,7 +128,7 @@ void AgoraVideoSourceIpcImpl::run() {
   VideoSourceIpcMsgHeader *header;
   uint32_t fd = m_ipcOwner ? AgoraVideoSourceIpcImpl::s_ipcSourceReadChannelId
                            : AgoraVideoSourceIpcImpl::s_ipcSourceWriteChannelId;
-  while (true) {
+  while (m_initialize) {
     int ret = m_ipc.read(fd, readBuf, VIDEO_SOURCE_BLOCK_SIZE);
     if (ret < 0)
       break;

@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:49
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-16 21:36:25
+ * @Last Modified time: 2021-05-18 15:07:20
  */
 #include "node_iris_event_handler.h"
 #include "node_iris_rtc_engine.h"
@@ -130,6 +130,7 @@ void NodeIrisEventHandler::OnVideoSourceEvent(const char *event,
 }
 
 void NodeIrisEventHandler::OnVideoSourceExit() {
+  LOG_F(INFO, "NodeIrisEventHandler::OnVideoSourceExit");
   _node_iris_engine->VideoSourceRelease();
 }
 } // namespace electron

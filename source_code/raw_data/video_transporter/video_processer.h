@@ -16,15 +16,15 @@ namespace electron {
 class VideoProcesser : public IpcVideoFrameListener {
 private:
   std::mutex _video_frame_mutex;
-  std::shared_ptr<iris::rtc::IrisRtcEngine> _iris_rtc_engine;
+  std::weak_ptr<iris::rtc::IrisRtcEngine> _iris_rtc_engine;
+  std::unique_ptr<VideoFrame> _cached_video_source_video_frame;
   iris::rtc::IrisRtcRawData *_iris_rtc_raw_data;
   iris::rtc::IrisRtcRenderer *_iris_rtc_renderer;
   iris::rtc::IrisRtcRendererDelegate *_iris_rtc_renderer_delegate;
-  std::unique_ptr<VideoFrame> _cached_video_source_video_frame;
 
 public:
   explicit VideoProcesser(
-      std::shared_ptr<iris::rtc::IrisRtcEngine> irisRtcEngine);
+      std::shared_ptr<iris::rtc::IrisRtcEngine> &irisRtcEngine);
   virtual ~VideoProcesser();
 
   int EnableVideoFrameCache(

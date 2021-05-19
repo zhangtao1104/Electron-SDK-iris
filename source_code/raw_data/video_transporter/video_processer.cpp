@@ -7,10 +7,10 @@ namespace electron {
 using namespace iris::rtc;
 
 VideoProcesser::VideoProcesser(
-    std::shared_ptr<iris::rtc::IrisRtcEngine> irisRtcEngine)
+    std::shared_ptr<iris::rtc::IrisRtcEngine> &irisRtcEngine)
     : _iris_rtc_renderer_delegate(nullptr) {
   _iris_rtc_engine = irisRtcEngine;
-  _iris_rtc_raw_data = _iris_rtc_engine->raw_data();
+  _iris_rtc_raw_data = _iris_rtc_engine.lock()->raw_data();
   _iris_rtc_renderer = _iris_rtc_raw_data->renderer();
   _cached_video_source_video_frame.reset(new VideoFrame());
 }
@@ -29,7 +29,7 @@ VideoProcesser::~VideoProcesser() {
 int VideoProcesser::EnableVideoFrameCache(
     const IrisRtcRendererCacheConfig &cache_config, unsigned int uid,
     const char *channel_id) {
-  LOG_F(INFO, "EnableVideoFrameCache 444 uid: %u", uid);
+  LOG_F(INFO, "EnableVideoFrameCache uid: %u", uid);
   _iris_rtc_renderer_delegate = cache_config.delegate;
   _iris_rtc_renderer->EnableVideoFrameCache(cache_config, uid, channel_id);
   return ERROR_OK;

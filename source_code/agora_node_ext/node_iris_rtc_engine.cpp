@@ -2,7 +2,7 @@
  * @Author: zhangtao@agora.io
  * @Date: 2021-04-22 20:53:37
  * @Last Modified by: zhangtao@agora.io
- * @Last Modified time: 2021-05-16 17:03:30
+ * @Last Modified time: 2021-05-19 11:02:31
  */
 #include "node_iris_rtc_engine.h"
 #include "node_iris_event_handler.h"
@@ -93,7 +93,8 @@ void NodeIrisRtcEngine::CallApi(
   auto _parameter = nan_api_get_value_utf8string_(args[2]);
   char _result[512];
   memset(_result, '\0', 512);
-  LOG_F(INFO, "CallApi parameter: %s", _parameter.c_str());
+  LOG_F(INFO, "CallApi parameter: type: %d, parameter: %s", _process_type,
+        _parameter.c_str());
   int _ret = ERROR_PARAMETER_1;
 
   if (_engine->_iris_engine) {
@@ -369,7 +370,10 @@ void NodeIrisRtcEngine::VideoSourceRelease(
 
 int NodeIrisRtcEngine::VideoSourceRelease() {
   LOG_F(INFO, "VideoSourceRelease");
-  return _video_source_proxy->Release();
+  if (_video_source_proxy.get()) {
+    _video_source_proxy->Release();
+  }
+  return ERROR_OK;
 }
 
 void NodeIrisRtcEngine::SetAddonLogFile(

@@ -37,7 +37,7 @@ void VideoSourceIrisVideoFrameObserver::OnVideoFrameReceived(
   memcpy(yBuffer, video_frame.y_buffer, video_frame.y_buffer_length);
   memcpy(uBuffer, video_frame.u_buffer, video_frame.u_buffer_length);
   memcpy(vBuffer, video_frame.v_buffer, video_frame.v_buffer_length);
-
+  LOG_F(INFO, "VideoSourceIrisVideoFrameObserver::OnVideoFrameReceived");
   if (_ipc_data_sender) {
     _ipc_data_sender->sendData(_data, _MAX_BUFFER_LENG);
   }
