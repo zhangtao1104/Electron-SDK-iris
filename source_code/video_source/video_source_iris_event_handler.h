@@ -9,7 +9,7 @@ namespace rtc {
 namespace electron {
 class VideoSourceIrisEventhandler : public iris::IrisEventHandler {
 public:
-  VideoSourceIrisEventhandler(std::shared_ptr<IAgoraIpc>);
+  VideoSourceIrisEventhandler(std::shared_ptr<IAgoraIpc> &ipcController);
   virtual ~VideoSourceIrisEventhandler();
 
   virtual void OnEvent(const char *event, const char *data) override;
@@ -18,7 +18,7 @@ public:
                        unsigned int length) override;
 
 private:
-  std::shared_ptr<IAgoraIpc> _ipcController;
+  std::weak_ptr<IAgoraIpc> _ipcController;
 };
 } // namespace electron
 } // namespace rtc

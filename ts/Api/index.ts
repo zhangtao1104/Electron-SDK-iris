@@ -4925,7 +4925,7 @@ class AgoraRtcEngine extends EventEmitter {
       ""
     );
 
-    let deviceList = new Array<Device>(ret.retCode);
+    let deviceList = new Array<Device>();
     for (let i = 0; i < ret.retCode; i++) {
       let param = {
         index: i,
@@ -5032,7 +5032,7 @@ class AgoraRtcEngine extends EventEmitter {
       ""
     );
 
-    let deviceList = new Array<Device>(ret.retCode);
+    let deviceList = new Array<Device>();
     for (let i = 0; i < ret.retCode; i++) {
       let param = {
         index: i,

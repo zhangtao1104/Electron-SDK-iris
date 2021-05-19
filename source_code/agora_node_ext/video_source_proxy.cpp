@@ -17,8 +17,10 @@ VideoSourceProxy::~VideoSourceProxy() {
 bool VideoSourceProxy::Initialize(
     std::shared_ptr<IVideoSourceEventHandler> videoSourceEventHandler,
     std::string &parameter) {
-  if (_initialized)
+  if (_initialized) {
+    LOG_F(INFO, "VideoSourceProxy Initialize already ");
     return true;
+  }
 
   Clear();
   _video_source_event_handler = videoSourceEventHandler;
@@ -42,7 +44,6 @@ bool VideoSourceProxy::Initialize(
   _peer_id += uid;
   _peer_id = _peer_id.substr(0, 20);
 #endif
-  LOG_F(INFO, "video_source_proxy peerId %s", _peer_id.c_str());
   _agora_ipc.reset(createAgoraIpc(this));
   _agora_ipc->initialize(_peer_id);
   _agora_ipc->listen();
@@ -50,6 +51,7 @@ bool VideoSourceProxy::Initialize(
   _message_thread = std::thread(&VideoSourceProxy::LoopMessage, this);
   std::string targetPath;
   if (!INodeProcess::getCurrentModuleFileName(targetPath)) {
+    LOG_F(INFO, "VideoSourceProxy getCurrentModuleFileName fail ");
     return false;
   }
 
@@ -69,11 +71,13 @@ bool VideoSourceProxy::Initialize(
                           apiParameter.c_str(), nullptr};
   _node_process.reset(INodeProcess::CreateNodeProcess(path.c_str(), params));
   if (!_node_process.get()) {
+    LOG_F(INFO, "VideoSourceProxy CreateNodeProcess fail ");
     return false;
   }
 
   NodeEvent::WaitResult result = _status_event.WaitFor(5000);
   if (result != NodeEvent::WAIT_RESULT_SET) {
+    LOG_F(INFO, "VideoSourceProxy CreateNodeProcess result : %d ", result);
     return false;
   }
   _node_process->Monitor([videoSourceEventHandler](INodeProcess *pProcess) {
@@ -86,6 +90,7 @@ bool VideoSourceProxy::Initialize(
           std::bind(&VideoSourceProxy::OnVideoFrameReceive, this,
                     std::placeholders::_1, std::placeholders::_2))) {
     _ipc_data_receiver.reset();
+    LOG_F(INFO, "VideoSourceProxy _ipc_data_receiver initialize fail");
     return false;
   }
 
